@@ -1,0 +1,8 @@
+D:/Spencer/dev/c++/gba-emu/build/CMakeFiles/edit_cache.dir
+D:/Spencer/dev/c++/gba-emu/build/CMakeFiles/rebuild_cache.dir
+D:/Spencer/dev/c++/gba-emu/build/src/emulator/CMakeFiles/gba.dir
+D:/Spencer/dev/c++/gba-emu/build/src/emulator/CMakeFiles/edit_cache.dir
+D:/Spencer/dev/c++/gba-emu/build/src/emulator/CMakeFiles/rebuild_cache.dir
+D:/Spencer/dev/c++/gba-emu/build/src/frontend/CMakeFiles/edit_cache.dir
+D:/Spencer/dev/c++/gba-emu/build/src/frontend/CMakeFiles/main.dir
+D:/Spencer/dev/c++/gba-emu/build/src/frontend/CMakeFiles/rebuild_cache.dir
