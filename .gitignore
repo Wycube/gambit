@@ -1,2 +1,5 @@
 .vscode
 build/
+
+# CMake generate file
+src/common/Version.hpp

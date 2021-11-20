@@ -1,0 +1,13 @@
+#pragma once
+
+#define _VERSION_MAJOR "@PROJECT_VERSION_MAJOR@"
+#define _VERSION_MINOR "@PROJECT_VERSION_MINOR@"
+#define _GIT_DESC "@GIT_DESCRIBE@"
+
+namespace common {
+
+const char *VERSION_MAJOR = _VERSION_MAJOR;
+const char *VERSION_MINOR = _VERSION_MINOR;
+const char *GIT_DESC = _GIT_DESC;
+
+} //namespace common

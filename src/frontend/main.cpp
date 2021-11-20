@@ -1,5 +1,6 @@
-#include "emulator/core/cpu/arm/Arm.hpp"
+#include "core/cpu/arm/Arm.hpp"
 #include "common/Utilities.hpp"
+#include "common/Version.hpp"
 
 #include <iostream>
 #include <bitset>
@@ -19,12 +20,14 @@ int main() {
     std::mt19937 rand;
     std::uniform_int_distribution<u32> dist(0, std::numeric_limits<u32>::max());
 
-    for(int i = 0; i < 1000; i++) {
-        //std::cout << std::bitset<32>(dist(rand)) << "\n";
-        u32 rand_instr = dist(rand);
+    // for(int i = 0; i < 1000; i++) {
+    //     //std::cout << std::bitset<32>(dist(rand)) << "\n";
+    //     u32 rand_instr = dist(rand);
 
-        print_instr(rand_instr);
-    }
+    //     print_instr(rand_instr);
+    // }
+
+    printf("Version %s.%s-%s\n", common::VERSION_MAJOR, common::VERSION_MINOR, common::GIT_DESC);
 
     //Test every data processing opcode
     // for(u8 i = 0; i < 16; i++) {

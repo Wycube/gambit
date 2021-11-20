@@ -50,7 +50,7 @@ auto immediateShift(u16 shift_operand) -> std::string {
         }
     }
 
-    return "r" + std::to_string(rm) + ", " + SHIFT_MNEMONICS[shift] + " #0x" + hex(shift_imm);
+    return "r" + std::to_string(rm) + ", " + SHIFT_MNEMONICS[shift] + " #0x" + common::hex(shift_imm);
 }
 
 //#<immediate>
@@ -59,7 +59,7 @@ auto immediate(u16 shift_operand) -> std::string {
     u8 immed_8 = shift_operand & 0xFF;
     u32 immediate = (immed_8 >> rotate_imm) | (immed_8 << (32 - rotate_imm)); //Rotate right by (rotate_imm * 2)
 
-    return "#0x" + hex(immediate);
+    return "#0x" + common::hex(immediate);
 }
 
 //AND{<cond>}{S} <Rd>, <Rn>, <shift_operand> - Math
@@ -216,10 +216,10 @@ auto immediateOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::strin
     std::string diss = "[r" + std::to_string(rn);
 
     if(p) {
-        diss += ", " + sign + "#0x" + hex(offset_8) + "]";
+        diss += ", " + sign + "#0x" + common::hex(offset_8) + "]";
         diss += w ? "!" : "";
     } else {
-        diss += "], " + sign + "#0x" + hex(offset_8);
+        diss += "], " + sign + "#0x" + common::hex(offset_8);
     }
 
     return diss;
@@ -282,7 +282,7 @@ auto scaledRegisterOffset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::str
     if(shift != 0 || shift_imm != 0) {
         diss += ", ";
         diss += shift_imm != 0 ? SHIFT_MNEMONICS[shift] : "rrx";
-        diss += " #0x" + hex(shift_imm);
+        diss += " #0x" + common::hex(shift_imm);
     }
 
     diss += p ? w ? "]!" : "]" : "";
@@ -299,7 +299,7 @@ auto immediate12Offset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::string
     diss += !p ? "]" : "";
     diss += ", #";
     diss += u ? '+' : '-';
-    diss += "0x" + hex(offset);
+    diss += "0x" + common::hex(offset);
     diss += p ? w ? "]!" : "]" : "";
 
     return diss;
@@ -388,7 +388,7 @@ auto dissasembleBranch(u32 instruction) -> std::string {
     diss = "b";
     diss += l ? "l" : "";
     diss += CONDITION_EXTENSIONS[condition];
-    diss += " #0x" + hex(8 + immediate); //This would be PC + immediate or instruction_address + 8 + immediate
+    diss += " #0x" + common::hex(8 + immediate); //This would be PC + immediate or instruction_address + 8 + immediate
 
     return diss;
 }
@@ -412,7 +412,7 @@ auto addressMode5(u8 rn, u8 offset, bool p, bool u, bool w) -> std::string {
     } else {
         diff += "#";
         diff += u ? '+' : '-';
-        diff += "0x" + hex(offset * 4); //In assembly the offset has to be a multiple of four from 0 - 255*4
+        diff += "0x" + common::hex(offset * 4); //In assembly the offset has to be a multiple of four from 0 - 255*4
         diff += p ? w ? "]!" : "]" : "";
     }
 
@@ -498,7 +498,7 @@ auto dissasembleSoftwareInterrupt(u32 instruction) -> std::string {
     std::string diss;
     diss = "swi";
     diss += CONDITION_EXTENSIONS[condition];
-    diss += " #0x" + hex(immed_24);
+    diss += " #0x" + common::hex(immed_24);
 
     return diss; 
 }

@@ -5,6 +5,8 @@
 #include <string>
 
 
+namespace common {
+
 inline auto hex(u32 value) -> std::string {
     //Check the last seven nibbles to see if any can be removed (they are zero)
     u8 start = 7;
@@ -58,3 +60,5 @@ inline auto to_lower(const std::string &text) -> std::string {
 
     return lower_case;
 }
+
+} //namespace common
