@@ -23,9 +23,12 @@ set(PROJECT_VERSION_MINOR 1)
 
 find_package(Git)
 if(GIT_FOUND)
-	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} describe --always --long
+	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} describe --always --long --dirty
 	OUTPUT_VARIABLE GIT_DESCRIBE 
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+	# Remove tag from output
+	string(REGEX REPLACE "[0-9].[0-9]-" "" GIT_DESCRIBE "${GIT_DESCRIBE}")
 else()
 	message(FATAL_ERROR "Git was not found")
 endif()
