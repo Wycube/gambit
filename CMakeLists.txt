@@ -27,7 +27,7 @@ if(GIT_FOUND)
 	OUTPUT_VARIABLE GIT_DESCRIBE 
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-	# Remove tag from output
+	# Remove trailing information from output
 	string(REGEX REPLACE "(-0)?-g([0-9]|[a-f])+(-dirty)?" "" GIT_DESCRIBE "${GIT_DESCRIBE}")
 else()
 	message(FATAL_ERROR "Git was not found")
