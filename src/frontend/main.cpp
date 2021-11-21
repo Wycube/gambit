@@ -27,7 +27,7 @@ int main() {
     //     print_instr(rand_instr);
     // }
 
-    printf("Version %s.%s-%s\n", common::VERSION_MAJOR, common::VERSION_MINOR, common::GIT_DESC);
+    printf("Version %s\n", common::GIT_DESC);
 
     //Test every data processing opcode
     // for(u8 i = 0; i < 16; i++) {

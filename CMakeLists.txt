@@ -28,7 +28,7 @@ if(GIT_FOUND)
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 	# Remove tag from output
-	string(REGEX REPLACE "[0-9].[0-9]-" "" GIT_DESCRIBE "${GIT_DESCRIBE}")
+	string(REGEX REPLACE "(-0)?-g([0-9]|[a-f])+(-dirty)?" "" GIT_DESCRIBE "${GIT_DESCRIBE}")
 else()
 	message(FATAL_ERROR "Git was not found")
 endif()
