@@ -1,4 +1,4 @@
-#include "Dissasembly.hpp"
+#include "Disassembly.hpp"
 #include "common/Utilities.hpp"
 
 #include <cassert>
@@ -65,7 +65,7 @@ auto immediate(u16 shift_operand) -> std::string {
 //AND{<cond>}{S} <Rd>, <Rn>, <shift_operand> - Math
 //CMP{<cond>}{S} <Rn>, <shift_operand>       - Compare
 //MOV{<cond>}{S} <Rd>, <shift_operand>       - Move
-auto dissasembleDataProcessing(u32 instruction) -> std::string {
+auto disassembleDataProcessing(u32 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[16] = {
         "and", "eor", "sub", "rsb", "add", "adc", "sbc", "rsc",
         "tst", "teq", "cmp", "cmn", "orr", "mov", "bic", "mvn"
@@ -112,7 +112,7 @@ auto dissasembleDataProcessing(u32 instruction) -> std::string {
 
 //MUL{<cond>}{S} <Rd>, <Rm>, <Rs>
 //MLA{<cond>}{S} <Rd>, <Rm>, <Rs>
-auto dissasembleMultiply(u32 instruction) -> std::string {
+auto disassembleMultiply(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rd = (instruction >> 16) & 0xF;
     u8 rn = (instruction >> 12) & 0xF;
@@ -136,7 +136,7 @@ auto dissasembleMultiply(u32 instruction) -> std::string {
 //UMLAL{<cond>}{S} <RdLo>, <RdHi>, <Rm>, <Rs>
 //SMULL{<cond>}{S} <RdLo>, <RdHi>, <Rm>, <Rs>
 //SMLAL{<cond>}{S} <RdLo>, <RdHi>, <Rm>, <Rs>
-auto dissasembleMultiplyLong(u32 instruction) -> std::string {
+auto disassembleMultiplyLong(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rd_hi = (instruction >> 16) & 0xF;
     u8 rd_lo = (instruction >> 12) & 0xF;
@@ -158,7 +158,7 @@ auto dissasembleMultiplyLong(u32 instruction) -> std::string {
 
 
 //SWP{<cond>}{B} <Rd>, <Rm>, [Rn]
-auto dissasembleDataSwap(u32 instruction) -> std::string {
+auto disassembleDataSwap(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rn = (instruction >> 16) & 0xF;
     u8 rd = (instruction >> 12) & 0xF;
@@ -176,7 +176,7 @@ auto dissasembleDataSwap(u32 instruction) -> std::string {
 
 
 //BX{<cond>} <Rm>
-auto dissasembleBranchExchange(u32 instruction) -> std::string {
+auto disassembleBranchExchange(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rm = instruction & 0xF;
 
@@ -227,7 +227,7 @@ auto immediateOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::strin
 
 //LDR{<cond>}H|SH|SB <Rd>, <addressing_mode>
 //STR{<cond>}H <Rd>, <addressing_mode>
-auto dissasembleHalfwordTransfer(u32 instruction) -> std::string {
+auto disassembleHalfwordTransfer(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rn = (instruction >> 16) & 0xF;
     u8 rd = (instruction >> 12) & 0xF;
@@ -306,7 +306,7 @@ auto immediate12Offset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::string
 }
 
 //LDR|STR{<cond>}{B}{T} <Rd>, <addressing_mode>
-auto dissasembleSingleTransfer(u32 instruction) -> std::string {
+auto disassembleSingleTransfer(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rn = (instruction >> 16) & 0xF;
     u8 rd = (instruction >> 12) & 0xF;
@@ -329,14 +329,14 @@ auto dissasembleSingleTransfer(u32 instruction) -> std::string {
 }
 
 
-auto dissasembleUndefined(u32 instruction) -> std::string {
+auto disassembleUndefined(u32 instruction) -> std::string {
     return "undefined";
 }
 
 
 //LDM|STM{<cond>}<addressing_mode> <Rn>{!}, <registers>{^}
 //<addressing_mode> = IA/IB/DA/DB
-auto dissasembleBlockTransfer(u32 instruction) -> std::string {
+auto disassembleBlockTransfer(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rn = (instruction >> 16) & 0xF;
     u8 pu = (instruction >> 23) & 0x3;
@@ -377,7 +377,7 @@ auto dissasembleBlockTransfer(u32 instruction) -> std::string {
 
 
 //B{L}{<cond>} <target_address>
-auto dissasembleBranch(u32 instruction) -> std::string {
+auto disassembleBranch(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     bool l = (instruction >> 24) & 0x1;
     s32 immediate = instruction & 0xFFFFFF;
@@ -420,7 +420,7 @@ auto addressMode5(u8 rn, u8 offset, bool p, bool u, bool w) -> std::string {
 }
 
 //LDC|STC{<cond>}{L} <coproc>, <CRd>, <addressing_mode>
-auto dissasembleCoDataTransfer(u32 instruction) -> std::string {
+auto disassembleCoDataTransfer(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rn = (instruction >> 16) & 0xF;
     u8 crd = (instruction >> 12) & 0xF;
@@ -443,7 +443,7 @@ auto dissasembleCoDataTransfer(u32 instruction) -> std::string {
 }
 
 //CDP{<cond>} <coproc>, <opcode_1>, <CRd>, <CRn>, <CRm>, <opcode_2>
-auto dissasembleCoDataOperation(u32 instruction) -> std::string {
+auto disassembleCoDataOperation(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 opcode_1 = (instruction >> 20) & 0xF;
     u8 crn = (instruction >> 16) & 0xF;
@@ -466,7 +466,7 @@ auto dissasembleCoDataOperation(u32 instruction) -> std::string {
 }
 
 //MRC|MCR{<cond>} <coproc>, <opcode_1>, <Rd>, <CRn>, <CRm>{, <opcode_2>}
-auto dissasembleCoRegisterTransfer(u32 instruction) -> std::string {
+auto disassembleCoRegisterTransfer(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 opcode_1 = (instruction >> 21) & 0x7;
     u8 crn = (instruction >> 16) & 0xF;
@@ -491,7 +491,7 @@ auto dissasembleCoRegisterTransfer(u32 instruction) -> std::string {
 
 
 //SWI{<cond>} <immed_24>
-auto dissasembleSoftwareInterrupt(u32 instruction) -> std::string {
+auto disassembleSoftwareInterrupt(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u32 immed_24 = instruction & 0xFFFFFF;
 

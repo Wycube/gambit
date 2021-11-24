@@ -13,7 +13,7 @@ void print_instr(u32 instruction) {
     std::cout << "Instruction: " << std::bitset<32>(instruction) << "\n";
     emu::ArmInstruction parsed = emu::parseInstruction(instruction);
 
-    std::cout << "Dissasembly: " << parsed.dissasembly << "\n";
+    std::cout << "Disassembly: " << parsed.dissasembly << "\n";
 }
 
 int main() {

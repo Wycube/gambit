@@ -1,5 +1,5 @@
 #include "Arm.hpp"
-#include "Dissasembly.hpp"
+#include "Disassembly.hpp"
 
 #include <bitset>
 
@@ -77,33 +77,33 @@ auto parseInstruction(u32 instruction) -> ArmInstruction {
     std::string dissasembly;
 
     switch(type) {
-        case DATA_PROCESSING : dissasembly = dissasembleDataProcessing(instruction);
+        case DATA_PROCESSING : dissasembly = disassembleDataProcessing(instruction);
         break;
-        case MULTIPLY : dissasembly = dissasembleMultiply(instruction);
+        case MULTIPLY : dissasembly = disassembleMultiply(instruction);
         break;
-        case MULTIPLY_LONG : dissasembly = dissasembleMultiplyLong(instruction);
+        case MULTIPLY_LONG : dissasembly = disassembleMultiplyLong(instruction);
         break;
-        case SINGLE_DATA_SWAP : dissasembly = dissasembleDataSwap(instruction);
+        case SINGLE_DATA_SWAP : dissasembly = disassembleDataSwap(instruction);
         break;
-        case BRANCH_AND_EXCHANGE : dissasembly = dissasembleBranchExchange(instruction);
+        case BRANCH_AND_EXCHANGE : dissasembly = disassembleBranchExchange(instruction);
         break;
-        case HALFWORD_DATA_TRANSFER : dissasembly = dissasembleHalfwordTransfer(instruction);
+        case HALFWORD_DATA_TRANSFER : dissasembly = disassembleHalfwordTransfer(instruction);
         break;
-        case SINGLE_DATA_TRANSFER : dissasembly = dissasembleSingleTransfer(instruction);
+        case SINGLE_DATA_TRANSFER : dissasembly = disassembleSingleTransfer(instruction);
         break;
-        case UNDEFINED : dissasembly = dissasembleUndefined(instruction);
+        case UNDEFINED : dissasembly = disassembleUndefined(instruction);
         break;
-        case BLOCK_DATA_TRANSFER : dissasembly = dissasembleBlockTransfer(instruction);
+        case BLOCK_DATA_TRANSFER : dissasembly = disassembleBlockTransfer(instruction);
         break;
-        case BRANCH : dissasembly = dissasembleBranch(instruction);
+        case BRANCH : dissasembly = disassembleBranch(instruction);
         break;
-        case COPROCESSOR_DATA_TRANSFER : dissasembly = dissasembleCoDataTransfer(instruction);
+        case COPROCESSOR_DATA_TRANSFER : dissasembly = disassembleCoDataTransfer(instruction);
         break;
-        case COPROCESSOR_DATA_OPERATION : dissasembly = dissasembleCoDataOperation(instruction);
+        case COPROCESSOR_DATA_OPERATION : dissasembly = disassembleCoDataOperation(instruction);
         break;
-        case COPROCESSOR_REGISTER_TRANSFER : dissasembly = dissasembleCoRegisterTransfer(instruction);
+        case COPROCESSOR_REGISTER_TRANSFER : dissasembly = disassembleCoRegisterTransfer(instruction);
         break;
-        case SOFTWARE_INTERRUPT : dissasembly = dissasembleSoftwareInterrupt(instruction);
+        case SOFTWARE_INTERRUPT : dissasembly = disassembleSoftwareInterrupt(instruction);
         break;
         default: dissasembly = "Unknown";
     }
