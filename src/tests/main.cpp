@@ -4,5 +4,8 @@
 
 
 int main(int argc, char *argv[]) {
-    return lest::run(arm_disassembly_tests, argc, argv);
+    int failures = lest::run(arm_disassembly_tests, argc, argv);
+    std::cout << "\n" << failures << " test(s) failed!\n";
+
+    return failures;
 }

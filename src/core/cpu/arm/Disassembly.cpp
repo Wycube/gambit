@@ -79,17 +79,19 @@ auto disassembleDataProcessing(u32 instruction) -> std::string {
     std::string diss;
     diss += OPCODE_MNEMONICS[opcode]; 
     diss += CONDITION_EXTENSIONS[condition];
-    diss += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
 
     if(opcode < 8 || opcode == 12 || opcode == 14) {
         //<Rd>, <Rn>
+        diss += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
         diss += " r" + std::to_string(rd);
         diss += ", r" + std::to_string(rn);
     } else if(opcode > 7 && opcode < 12) {
         //<Rn>
+        //Doesn't use the S-bit, should be one
         diss += " r" + std::to_string(rn);
     } else if(opcode == 13 || opcode == 15) {
         //<Rd>
+        diss += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
         diss += " r" + std::to_string(rd);
     }
 
