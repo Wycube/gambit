@@ -24,5 +24,30 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::disassembleDataProcessing(0xD1B06001) == "movles r6, r1");
         EXPECT(emu::disassembleDataProcessing(0xE1C74002) == "bic r4, r7, r2");
         EXPECT(emu::disassembleDataProcessing(0xF1E0D003) == "mvnnv r13, r3");
+    },
+
+    CASE("Multiply Instructions") {
+        EXPECT(emu::disassembleMultiply(0x10110895) == "mulnes r1, r5, r8");
+        EXPECT(emu::disassembleMultiply(0xE0090B9F) == "mul r9, r15, r11");
+        EXPECT(emu::disassembleMultiply(0xE0304A91) == "mlas r0, r1, r10, r4");
+        EXPECT(emu::disassembleMultiply(0x4023629B) == "mlami r3, r11, r2, r6");
+    },
+
+    CASE("Multiply Long Instructions") {
+        EXPECT(emu::disassembleMultiplyLong(0xE0834192) == "umull r4, r3, r2, r1");
+        EXPECT(emu::disassembleMultiplyLong(0x309BA290) == "umullccs r10, r11, r0, r2");
+        EXPECT(emu::disassembleMultiplyLong(0xE0B0F793) == "umlals r15, r0, r3, r7");
+        EXPECT(emu::disassembleMultiplyLong(0x00A5469A) == "umlaleq r4, r5, r10, r6");
+        EXPECT(emu::disassembleMultiplyLong(0xE0D10D9C) == "smulls r0, r1, r12, r13");
+        EXPECT(emu::disassembleMultiplyLong(0x70CCD091) == "smullvc r13, r12, r1, r0");
+        EXPECT(emu::disassembleMultiplyLong(0xE0E25E94) == "smlal r5, r2, r4, r14");
+        EXPECT(emu::disassembleMultiplyLong(0x10FCAF9D) == "smlalnes r10, r12, r13, r15");
+    },
+
+    CASE("Single Data Swap Instructions") {
+        EXPECT(emu::disassembleDataSwap(0xE1024095) == "swp r4, r5, [r2]");
+        EXPECT(emu::disassembleDataSwap(0x610FA092) == "swpvs r10, r2, [r15]");
+        EXPECT(emu::disassembleDataSwap(0xC14C3099) == "swpgtb r3, r9, [r12]");
+        EXPECT(emu::disassembleDataSwap(0xE1401098) == "swpb r1, r8, [r0]");
     }
 };
