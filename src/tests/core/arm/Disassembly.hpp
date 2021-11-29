@@ -49,5 +49,25 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::disassembleDataSwap(0x610FA092) == "swpvs r10, r2, [r15]");
         EXPECT(emu::disassembleDataSwap(0xC14C3099) == "swpgtb r3, r9, [r12]");
         EXPECT(emu::disassembleDataSwap(0xE1401098) == "swpb r1, r8, [r0]");
+    },
+
+    CASE("Branch and Exchange Instructions") {
+        EXPECT(emu::disassembleBranchExchange(0xE12FFF11) == "bx r1");
+        EXPECT(emu::disassembleBranchExchange(0xB12FFF1C) == "bxlt r12");
+    },
+
+    CASE("Halfword Data Transfer Instructions") {
+        EXPECT(emu::disassembleHalfwordTransfer(0xE1D255B2) == "ldrh r5, [r2, #+0x52]");
+        EXPECT(emu::disassembleHalfwordTransfer(0xE18A00B4) == "strh r0, [r10, +r4]");
+        EXPECT(emu::disassembleHalfwordTransfer(0xE1787FDF) == "ldrsb r7, [r8, #-0xff]!");
+        EXPECT(emu::disassembleHalfwordTransfer(0xE13940FF) == "ldrsh r4, [r9, -r15]!");
+        EXPECT(emu::disassembleHalfwordTransfer(0x0050E0B1) == "ldreqh r14, [r0], #-0x1");
+        EXPECT(emu::disassembleHalfwordTransfer(0xA08BD0B2) == "strgeh r13, [r11], +r2");
+        EXPECT(emu::disassembleHalfwordTransfer(0xD15554DF) == "ldrlesb r5, [r5, #-0x4f]");
+        EXPECT(emu::disassembleHalfwordTransfer(0x91B230FF) == "ldrlssh r3, [r2, +r15]!");
+    },
+
+    CASE("Single Data Transfer Instructions") {
+        
     }
 };

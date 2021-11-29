@@ -218,10 +218,10 @@ auto immediateOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::strin
     std::string diss = "[r" + std::to_string(rn);
 
     if(p) {
-        diss += ", " + sign + "#0x" + common::hex(offset_8) + "]";
+        diss += ", #" + sign + "0x" + common::hex(offset_8) + "]";
         diss += w ? "!" : "";
     } else {
-        diss += "], " + sign + "#0x" + common::hex(offset_8);
+        diss += "], #" + sign + "0x" + common::hex(offset_8);
     }
 
     return diss;
