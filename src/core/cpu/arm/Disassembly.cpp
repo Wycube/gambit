@@ -284,7 +284,7 @@ auto scaledRegisterOffset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::str
     if(shift != 0 || shift_imm != 0) {
         diss += ", ";
         diss += shift_imm != 0 ? SHIFT_MNEMONICS[shift] : "rrx";
-        diss += " #0x" + common::hex(shift_imm);
+        if(shift_imm != 0) diss += " #0x" + common::hex(shift_imm);
     }
 
     diss += p ? w ? "]!" : "]" : "";
@@ -312,7 +312,7 @@ auto disassembleSingleTransfer(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rn = (instruction >> 16) & 0xF;
     u8 rd = (instruction >> 12) & 0xF;
-    bool i = (instruction >> 25) & 0xF;
+    bool i = (instruction >> 25) & 0x1;
     bool p = (instruction >> 24) & 0x1;
     bool u = (instruction >> 23) & 0x1;
     bool b = (instruction >> 22) & 0x1;
@@ -325,7 +325,7 @@ auto disassembleSingleTransfer(u32 instruction) -> std::string {
     diss += b ? "b" : "";
     diss += !p && w ? "t" : "";
     diss += " r" + std::to_string(rd);
-    diss += i ? scaledRegisterOffset(rn, instruction & 0xFFF, p, u, w) : immediate12Offset(rn, instruction & 0xFFF, p, u, w);
+    diss += ", " + (i ? scaledRegisterOffset(rn, instruction & 0xFFF, p, u, w) : immediate12Offset(rn, instruction & 0xFFF, p, u, w));
 
     return diss;
 }
@@ -349,7 +349,7 @@ auto disassembleBlockTransfer(u32 instruction) -> std::string {
     assert(registers != 0); //Unpredictable
 
     static const char *ADDRESS_MODES[4] = {
-        "da", "ia", "db", "da"
+        "da", "ia", "db", "ib"
     };
 
     std::string diss;

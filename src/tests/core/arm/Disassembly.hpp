@@ -68,6 +68,31 @@ const lest::test arm_disassembly_tests[] = {
     },
 
     CASE("Single Data Transfer Instructions") {
-        
+        EXPECT(emu::disassembleSingleTransfer(0xE595070F) == "ldr r0, [r5, #+0x70f]");
+        EXPECT(emu::disassembleSingleTransfer(0x1751200C) == "ldrneb r2, [r1, -r12]");
+        EXPECT(emu::disassembleSingleTransfer(0x07993D0F) == "ldreq r3, [r9, +r15, lsl #0x1a]");
+        EXPECT(emu::disassembleSingleTransfer(0xE7093060) == "str r3, [r9, -r0, rrx]");
+        EXPECT(emu::disassembleSingleTransfer(0x7524AF2F) == "strvc r10, [r4, #-0xf2f]!");
+        EXPECT(emu::disassembleSingleTransfer(0x37E7400D) == "strccb r4, [r7, +r13]!");
+        EXPECT(emu::disassembleSingleTransfer(0xE760B621) == "strb r11, [r0, -r1, lsr #0xc]!");
+        EXPECT(emu::disassembleSingleTransfer(0xC4B359C7) == "ldrgtt r5, [r3], #+0x9c7");
+        EXPECT(emu::disassembleSingleTransfer(0xE6B0900B) == "ldrt r9, [r0], +r11");
+        EXPECT(emu::disassembleSingleTransfer(0x86242106) == "strhit r2, [r4], -r6, lsl #0x2");
+        EXPECT(emu::disassembleSingleTransfer(0xE62517A7) == "strt r1, [r5], -r7, lsr #0xf");
+        EXPECT(emu::disassembleSingleTransfer(0xA6649F41) == "strgebt r9, [r4], -r1, asr #0x1e");
+        EXPECT(emu::disassembleSingleTransfer(0xE66F03E8) == "strbt r0, [r15], -r8, ror #0x7");
+        EXPECT(emu::disassembleSingleTransfer(0xE6F10062) == "ldrbt r0, [r1], +r2, rrx");
+    },
+
+    CASE("Undefined Instructions") {
+        EXPECT(emu::disassembleUndefined(0x06000010) == "undefined");
+        EXPECT(emu::disassembleUndefined(0x66A38F9C) == "undefined");
+    },
+
+    CASE("Block Data Transfer Instructions") {
+        EXPECT(emu::disassembleBlockTransfer(0xE89502A8) == "ldmia r5, {r3, r5, r7, r9}");
+        EXPECT(emu::disassembleBlockTransfer(0xE9A29020) == "stmib r2!, {r5, r12, r15}");
+        EXPECT(emu::disassembleBlockTransfer(0xE87AB007) == "ldmda r10!, {r0, r1, r2, r12, r13, r15}^");
+        EXPECT(emu::disassembleBlockTransfer(0xE9404200) == "stmdb r0, {r9, r14}^");
     }
 };
