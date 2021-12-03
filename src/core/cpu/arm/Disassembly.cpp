@@ -500,7 +500,7 @@ auto disassembleSoftwareInterrupt(u32 instruction) -> std::string {
     std::string diss;
     diss = "swi";
     diss += CONDITION_EXTENSIONS[condition];
-    diss += " #0x" + common::hex(immed_24);
+    diss += " #" + std::to_string(immed_24);
 
     return diss; 
 }

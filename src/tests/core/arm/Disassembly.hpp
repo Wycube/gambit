@@ -94,5 +94,19 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::disassembleBlockTransfer(0xE9A29020) == "stmib r2!, {r5, r12, r15}");
         EXPECT(emu::disassembleBlockTransfer(0xE87AB007) == "ldmda r10!, {r0, r1, r2, r12, r13, r15}^");
         EXPECT(emu::disassembleBlockTransfer(0xE9404200) == "stmdb r0, {r9, r14}^");
+    },
+
+    CASE("Branch Instructions") {
+        EXPECT(emu::disassembleBranch(0xEA1570AA) == "b #0x55c2b0");
+        EXPECT(emu::disassembleBranch(0x6A05BBB1) == "bvs #0x16eecc");
+        EXPECT(emu::disassembleBranch(0x0B123FEE) == "bleq #0x48ffc0");
+        EXPECT(emu::disassembleBranch(0xEB3DFFA3) == "bl #0xf7fe94");
+    },
+
+    //Coprocessor Instruction tests would go here, except they're not even used on GBA AFAIK
+
+    CASE("Software Interrupt Instructions") {
+        EXPECT(emu::disassembleSoftwareInterrupt(0xEF000041) == "swi #65");
+        EXPECT(emu::disassembleSoftwareInterrupt(0x1F07BFAD) == "swine #507821");
     }
 };
