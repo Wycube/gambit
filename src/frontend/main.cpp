@@ -1,5 +1,5 @@
-#include "core/cpu/arm/Arm.hpp"
-#include "common/Utilities.hpp"
+#include "core/cpu/arm/Instruction.hpp"
+#include "common/StringUtils.hpp"
 #include "common/Version.hpp"
 
 #include <iostream>
@@ -11,9 +11,9 @@
 
 void print_instr(u32 instruction) {
     std::cout << "Instruction: " << std::bitset<32>(instruction) << "\n";
-    emu::ArmInstruction parsed = emu::parseInstruction(instruction);
+    emu::ArmInstruction decoded = emu::decodeInstruction(instruction);
 
-    std::cout << "Disassembly: " << parsed.dissasembly << "\n";
+    std::cout << "Disassembly: " << decoded.dissasembly << "\n";
 }
 
 int main() {
@@ -40,4 +40,16 @@ int main() {
     // u32 instr = 0b11101111001100000100011011010101;
 
     // print_instr(instr);
+
+    // for(int i = 0; i < std::pow(2, 5); i++) {
+    //     bool ones = (i & 0b10101) != 0b10101;
+    //     bool zeros = (i & ~0b10101) != 0;
+
+    //     std::cout << std::bitset<5>(i) << " for ones  : " << ones << "\n";
+    //     std::cout << std::bitset<5>(i) << " for zeros : " << zeros << "\n";
+    // }
+
+    u32 value = 0xE02CC00F;
+    emu::ArmInstruction instr = emu::decodeInstruction(value);
+    std::cout << instr.dissasembly << "\n";
 }

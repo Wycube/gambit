@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Arm.hpp"
+#include "Instruction.hpp"
 
 
 namespace emu {

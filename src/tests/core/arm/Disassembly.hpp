@@ -103,7 +103,8 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::disassembleBranch(0xEB3DFFA3) == "bl #0xf7fe94");
     },
 
-    //Coprocessor Instruction tests would go here, except they're not even used on GBA AFAIK
+    //Coprocessor Instruction tests would go here, except they're not even used on GBA
+    //because it has no coprocessors.
 
     CASE("Software Interrupt Instructions") {
         EXPECT(emu::disassembleSoftwareInterrupt(0xEF000041) == "swi #65");
