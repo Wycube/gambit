@@ -49,7 +49,7 @@ int main() {
     //     std::cout << std::bitset<5>(i) << " for zeros : " << zeros << "\n";
     // }
 
-    u32 value = 0xE02CC00F;
+    u32 value = 0x1F07BFAD;
     emu::ArmInstruction instr = emu::armDecodeInstruction(value);
     std::cout << instr.dissasembly << "\n";
 }

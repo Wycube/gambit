@@ -12,26 +12,14 @@ namespace emu {
  * There is some ambiguity between BX and a Data Processing instruction, but it should
  * be interpreted as a Branch and Exchange not a TEQ, so Branch and Exchange is put first.
  */
-const char *ARM_ENCODINGS[16] = {
-    "000100100001", //Branch and Exchange
-
-    //Data Processing
-    //"000xxxxx0xx1", //Register Shift
-    //"000xxxxxxxx0", //Immediate Shift
-    //"001xxxxxxxxx", //Immediate
-    "00<xxxxx<<<>", //New "all encapsulating" pattern
-    
+const char *ARM_ENCODINGS[] = {
+    "00<xxxxx<<<>", //Data Processing
     "000000xx1001", //Multiply
     "00001xxx1001", //Multiply Long
-
     "00010x001001", //Single Data Swap
+    "000100100001", //Branch and Exchange
     "000xxxxx1<<1", //Halfword Data Transfer
-
-    //Single Data Transfer
-    "011xxxxxxxx0", //Register Offset
-    "010xxxxxxxxx", //Immediate Offset
-    //"01>xxxxxxxx>" New "all encapsulating" pattern
-
+    "01>xxxxxxxx>", //Single Data Transfer
     "100xxxxxxxxx", //Block Data Transfer
     "101xxxxxxxxx", //Branch
     "110xxxxxxxxx", //Coprocessor Data Transfer
@@ -59,10 +47,8 @@ static ArmInstructionType types[17] = {
 
 auto armDetermineType(u32 instruction) -> ArmInstructionType {
     u16 decoding_bits = (((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF));
-    size_t index = common::match_bits(decoding_bits, ARM_ENCODINGS);
-    std::cout << "Index: " << index << "\n";
 
-    return types[common::match_bits(decoding_bits, ARM_ENCODINGS)];
+    return static_cast<ArmInstructionType>(common::match_bits(decoding_bits, ARM_ENCODINGS));
 }
 
 auto armDecodeInstruction(u32 instruction) -> ArmInstruction {

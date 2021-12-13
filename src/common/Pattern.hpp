@@ -51,8 +51,6 @@ auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
             std::pair<T, T> mask;
             T temp = value;
 
-            std::cout << "j: " << j << " char: " << pattern[j] << "\n";
-
             switch(pattern[j]) {
                 case 'x' : continue;
 
@@ -66,16 +64,10 @@ auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
                     if(excl_mask_used) break;
                     
                     mask = generate_exclusion_mask<T>(pattern, j, length);
-
-                    std::cout << "       Pattern:     " << pattern << "\n";
-                    std::cout << "         Value: " << std::bitset<sizeof(T) * 8>(value) << "\n";
-                    std::cout << "Exclusion Mask: " << std::bitset<sizeof(T) * 8>(mask.first) << "\n";
-                    std::cout << "          Mask: " << std::bitset<sizeof(T) * 8>(mask.second) << "\n";
-
                     //Mask out all bits not being tested
                     temp &= mask.second;
-                    //Test if the bits match the pattern, with some bitwise magic
-                    match = ((temp & mask.first) != mask.first || mask.first == 0) || ((temp & ~mask.first) != 0);
+                    //Test if the bits match the exclusion pattern, with an XOR
+                    match = (temp ^ mask.first) != 0;
                     excl_mask_used = true;
                 break;
             }
