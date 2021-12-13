@@ -8,16 +8,18 @@
 namespace emu {
 
 /* 
- * There is some ambiguity between BX and a Data Processing instruction,
- * but it should be interpreted as a Branch and Exchange not a TEQ, so Branch and Exchange is put first.
+ * Only 12 bits are needed to decode a 32-bit ARM instruction: bits 27-20 (8) + bits 7-4 (4).
+ * There is some ambiguity between BX and a Data Processing instruction, but it should
+ * be interpreted as a Branch and Exchange not a TEQ, so Branch and Exchange is put first.
  */
 const char *ARM_ENCODINGS[16] = {
     "000100100001", //Branch and Exchange
 
     //Data Processing
-    "000xxxxx0xx1", //Register Shift
-    "000xxxxxxxx0", //Immediate Shift
-    "001xxxxxxxxx", //Immediate
+    //"000xxxxx0xx1", //Register Shift
+    //"000xxxxxxxx0", //Immediate Shift
+    //"001xxxxxxxxx", //Immediate
+    "00<xxxxx<<<>", //New "all encapsulating" pattern
     
     "000000xx1001", //Multiply
     "00001xxx1001", //Multiply Long
@@ -28,6 +30,7 @@ const char *ARM_ENCODINGS[16] = {
     //Single Data Transfer
     "011xxxxxxxx0", //Register Offset
     "010xxxxxxxxx", //Immediate Offset
+    //"01>xxxxxxxx>" New "all encapsulating" pattern
 
     "100xxxxxxxxx", //Block Data Transfer
     "101xxxxxxxxx", //Branch
@@ -37,7 +40,7 @@ const char *ARM_ENCODINGS[16] = {
     "1111xxxxxxxx"  //Software Interrupt
 };
 
-static InstructionType types[17] = {
+static ArmInstructionType types[17] = {
     BRANCH_AND_EXCHANGE,
     DATA_PROCESSING, DATA_PROCESSING, DATA_PROCESSING,
     MULTIPLY, 
@@ -54,14 +57,16 @@ static InstructionType types[17] = {
     UNDEFINED
 };
 
-auto determineType(u32 instruction) -> InstructionType {
+auto armDetermineType(u32 instruction) -> ArmInstructionType {
     u16 decoding_bits = (((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF));
+    size_t index = common::match_bits(decoding_bits, ARM_ENCODINGS);
+    std::cout << "Index: " << index << "\n";
 
-    return types[common::match_bits<u16>(decoding_bits, ARM_ENCODINGS)];
+    return types[common::match_bits(decoding_bits, ARM_ENCODINGS)];
 }
 
-auto decodeInstruction(u32 instruction) -> ArmInstruction {
-    InstructionType type = determineType(instruction);
+auto armDecodeInstruction(u32 instruction) -> ArmInstruction {
+    ArmInstructionType type = armDetermineType(instruction);
     ConditionCode condition = static_cast<ConditionCode>(instruction >> 28);
     std::string dissasembly;
 
@@ -97,7 +102,7 @@ auto decodeInstruction(u32 instruction) -> ArmInstruction {
         default: dissasembly = "Unknown";
     }
 
-    return ArmInstruction{instruction, dissasembly, condition, type};
+    return ArmInstruction{instruction, type, condition, dissasembly};
 }
 
 } //namespace emu

@@ -4,37 +4,38 @@
 
 #include <type_traits>
 #include <cstring>
+#include <iostream>
+#include <bitset>
 
 
 namespace common {
 
 template<typename T, typename = std::enable_if<std::is_integral<T>::value>>
-auto generate_exclusion_mask(const char *pattern, size_t &j, size_t end) -> T {
-    T mask = 0;
+auto generate_exclusion_mask(const char *pattern, size_t index, const size_t length) -> std::pair<T, T> {
+    T excl_mask = 0, mask = 0;
     
     do {
-        char c = pattern[j];
+        char c = pattern[index];
 
         if(c != '<' && c != '>') {
-            j--;
-            break;
+            continue;
         }
+        mask |= 1 << (length - 1 - index);
         
-        //OR a 1 if testing against all ones (<), and a zero for all zeros (>)
-        mask |= (c == '>') << j;
-    } while(++j < end);
+        //OR a 1 if testing against ones (>), and a 0 for zeros (<)
+        excl_mask |= (c == '>') << (length - 1 - index);
+    } while(++index < length);
 
-    return mask;
+    return std::pair<T, T>(excl_mask, mask);
 }
 
 /* 
- * x means 1 or 0
- * < means can't all be unset
- * > means can't all be set
+ * - x means 1 or 0
+ * - < means can't all be unset
+ * - > means can't all be set
  * i.e. << can be 01, 10, 11, but not 00
- * and >> can be 00, 01, 10, but not 11
- * Only 12 bits are needed to decode a 32-bit ARM instruction
- * bits 27-20 (8) + bits 7-4 (4).
+ * and >> can be 00, 01, 10, but not 11.
+ * Even seperated angle brackets act together.
  * TODO: Add tests for this
  */
 template<typename T, typename = std::enable_if<std::is_integral<T>::value>, size_t _count>
@@ -43,11 +44,14 @@ auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
         size_t length = std::min(sizeof(T) * 8, std::strlen(patterns[i]));
         const char *pattern = patterns[i];
         bool match = true;
+        bool excl_mask_used = false;
 
         for(size_t j = 0; j < length; j++) {
             u8 bit = (value >> (length - 1 - j)) & 0x1;
-            T mask, temp = value;
-            size_t _j = j;
+            std::pair<T, T> mask;
+            T temp = value;
+
+            std::cout << "j: " << j << " char: " << pattern[j] << "\n";
 
             switch(pattern[j]) {
                 case 'x' : continue;
@@ -59,16 +63,27 @@ auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
 
                 case '<' :
                 case '>' :
+                    if(excl_mask_used) break;
+                    
                     mask = generate_exclusion_mask<T>(pattern, j, length);
-                    temp &= ((1 << (j - _j + 1)) - 1) << (length - 1 - _j); //Mask out all bits not being tested
-                    match = ((temp & mask) != mask || mask == 0) && ((temp & ~mask) != 0); //Test if the bits match the pattern, with some bitwise magic
+
+                    std::cout << "       Pattern:     " << pattern << "\n";
+                    std::cout << "         Value: " << std::bitset<sizeof(T) * 8>(value) << "\n";
+                    std::cout << "Exclusion Mask: " << std::bitset<sizeof(T) * 8>(mask.first) << "\n";
+                    std::cout << "          Mask: " << std::bitset<sizeof(T) * 8>(mask.second) << "\n";
+
+                    //Mask out all bits not being tested
+                    temp &= mask.second;
+                    //Test if the bits match the pattern, with some bitwise magic
+                    match = ((temp & mask.first) != mask.first || mask.first == 0) || ((temp & ~mask.first) != 0);
+                    excl_mask_used = true;
                 break;
             }
 
-            if(!match) { break; }
+            if(!match) break;
         }
 
-        if(match) { return i; }
+        if(match) return i;
     }
 
     return _count;

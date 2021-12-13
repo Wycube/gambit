@@ -1,34 +1,46 @@
 #pragma once
 
+#include "common/Types.hpp"
+
 #include <string>
 
 
 namespace emu {
 
-const std::string THUMB_ENCODINGS[] = {
-    "000>>xxx", //Move Shifted Register
-
-    //Add/Subtract Register
-    "000110xx", //Register
-    "000111xx", //Immediate
-
-    "001xxxxx", //Add/Subtract/Compare/Move Immediate
-    "010000xx", //Data-Processing Register
-    "010001>>", //Hi Register Operations
-    "01000111", //Branch/Exchange
-    "01001xxx", //PC-Relative Load
-    "0101xxxx", //Load/Store Register Offset
-    "011xxxxx", //Load/Store Word/Byte Immediate Offset
-    "1000xxxx", //Load/Store Halfword Immediate Offset
-    "1001xxxx", //SP-Relative Load/Store
-    "1010xxxx", //Load Address
-    "10110000", //Adjust Stack Pointer
-    "1011x10x", //Push/Pop Registers
-    "1100xxxx", //Load/Store Multiple
-    "1101<<<x", //Condition Branch
-    "11011111", //Software Interrupt
-    "11100xxx", //Unconditional Branch
-    "1111xxxx"  //Long Branch with Link
+enum ThumbInstructionType {
+    MOVE_SHIFTED_REGISTER,
+    ADD_SUBTRACT,
+    PROCESS_IMMEDIATE,
+    ALU_OPERATION,
+    HI_REGISTER_OPERATION,
+    BRANCH_EXCHANGE,
+    PC_RELATIVE_LOAD,
+    LOAD_STORE_RELATIVE,
+    LOAD_STORE_SIGN_EXTEND,
+    LOAD_STORE_IMMEDIATE,
+    LOAD_STORE_HALFWORD,
+    SP_RELATIVE_LOAD_STORE,
+    LOAD_ADDRESS,
+    ADJUST_STACK_POINTER,
+    PUSH_POP_REGISTERS,
+    LOAD_STORE_MULTIPLE,
+    CONDITIONAL_BRANCH,
+    SOFTWARE_INTERRUPT,
+    BRANCH_UNCONDITIONAL,
+    LONG_BRANCH_LINK,
+    UNDEFINED
 };
+
+struct ThumbInstruction {
+    u16 instruction;
+    ThumbInstructionType type;
+    std::string disassembly;
+};
+
+
+extern const char *THUMB_ENCODINGS[];
+
+auto thumbDetermineType(u16 instruction) -> ThumbInstructionType;
+auto thumbDecodeInstruction(u16 instruction) -> ThumbInstruction;
 
 } //namespace emu

@@ -26,7 +26,7 @@ enum ConditionCode : u8 {
     UNPREDICTABLE = 15 //Unpredictable on ARMv4
 };
 
-enum InstructionType {
+enum ArmInstructionType {
     DATA_PROCESSING,
     MULTIPLY,
     MULTIPLY_LONG,
@@ -45,15 +45,15 @@ enum InstructionType {
 
 struct ArmInstruction {
     u32 instruction;
-    std::string dissasembly;
+    ArmInstructionType type;
     ConditionCode condition;
-    InstructionType type;
+    std::string dissasembly;
 };
 
 
 extern const char *ARM_ENCODINGS[];
 
-auto determineType(u32 instruction) -> InstructionType;
-auto decodeInstruction(u32 instruction) -> ArmInstruction;
+auto armDetermineType(u32 instruction) -> ArmInstructionType;
+auto armDecodeInstruction(u32 instruction) -> ArmInstruction;
 
 } //namespace emu
