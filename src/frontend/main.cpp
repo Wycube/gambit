@@ -16,6 +16,10 @@ void print_instr(u32 instruction) {
     std::cout << "Disassembly: " << decoded.dissasembly << "\n";
 }
 
+double square(double x) {
+    return x * x;
+}
+
 int main() {
     std::mt19937 rand;
     std::uniform_int_distribution<u32> dist(0, std::numeric_limits<u32>::max());

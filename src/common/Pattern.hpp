@@ -41,7 +41,13 @@ auto generate_exclusion_mask(const char *pattern, size_t index, const size_t len
 template<typename T, typename = std::enable_if<std::is_integral<T>::value>, size_t _count>
 auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
     for(size_t i = 0; i < _count; i++) {
-        size_t length = std::min(sizeof(T) * 8, std::strlen(patterns[i]));
+        size_t length = std::strlen(patterns[i]);
+        
+        //Skip if pattern is bigger than the number of bits in T
+        if(length > sizeof(T) * 8) {
+            continue;
+        }
+
         const char *pattern = patterns[i];
         bool match = true;
         bool excl_mask_used = false;
