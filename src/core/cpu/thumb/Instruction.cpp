@@ -11,7 +11,7 @@ const char *THUMB_ENCODINGS[] = {
     "000>>xxx", //Move Shifted Register
     "00011xxx", //Add/Subtract Register (Register and Immediate)
     "001xxxxx", //Add/Subtract/Compare/Move Immediate
-    "010000xx", //Data-Processing Register
+    "010000xx", //ALU Operation
     "010001>>", //Hi Register Operations
     "01000111", //Branch/Exchange
     "01001xxx", //PC-Relative Load
@@ -24,7 +24,7 @@ const char *THUMB_ENCODINGS[] = {
     "10110000", //Adjust Stack Pointer
     "1011x10x", //Push/Pop Registers
     "1100xxxx", //Load/Store Multiple
-    "1101>>>x", //Condition Branch
+    "1101>>>x", //Conditional Branch
     "11011111", //Software Interrupt
     "11100xxx", //Unconditional Branch
     "1111xxxx"  //Long Branch with Link

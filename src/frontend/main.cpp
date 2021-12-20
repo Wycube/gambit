@@ -13,7 +13,7 @@ void print_instr(u32 instruction) {
     std::cout << "Instruction: " << std::bitset<32>(instruction) << "\n";
     emu::ArmInstruction decoded = emu::armDecodeInstruction(instruction);
 
-    std::cout << "Disassembly: " << decoded.dissasembly << "\n";
+    std::cout << "Disassembly: " << decoded.disassembly << "\n";
 }
 
 double square(double x) {
@@ -55,5 +55,5 @@ int main() {
 
     u32 value = 0x1F07BFAD;
     emu::ArmInstruction instr = emu::armDecodeInstruction(value);
-    std::cout << instr.dissasembly << "\n";
+    std::cout << instr.disassembly << "\n";
 }

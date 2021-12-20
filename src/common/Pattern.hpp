@@ -35,8 +35,7 @@ auto generate_exclusion_mask(const char *pattern, size_t index, const size_t len
  * - > means can't all be set
  * i.e. << can be 01, 10, 11, but not 00
  * and >> can be 00, 01, 10, but not 11.
- * Even seperated angle brackets act together.
- * TODO: Add tests for this
+ * Seperated angle brackets act together.
  */
 template<typename T, typename = std::enable_if<std::is_integral<T>::value>, size_t _count>
 auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {

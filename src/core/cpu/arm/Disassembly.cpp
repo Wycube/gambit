@@ -8,6 +8,7 @@
 // - Some instructions have PC relative addressing, they will need the PC, or instruction address, to be passed in.
 // - Use a formatting library like {fmt}
 // - Add some extra syntax like {r0-r3} for ldm/stm, or ldmia as ldm
+// - Use something better than an assert to handle errors
 
 namespace emu {
 
@@ -76,23 +77,23 @@ auto disassembleDataProcessing(u32 instruction) -> std::string {
     u8 rn = (instruction >> 16) & 0xF;
     u8 rd = (instruction >> 12) & 0xF;
 
-    std::string diss;
-    diss += OPCODE_MNEMONICS[opcode]; 
-    diss += CONDITION_EXTENSIONS[condition];
+    std::string disassembly;
+    disassembly += OPCODE_MNEMONICS[opcode]; 
+    disassembly += CONDITION_EXTENSIONS[condition];
 
     if(opcode < 8 || opcode == 12 || opcode == 14) {
         //<Rd>, <Rn>
-        diss += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
-        diss += " r" + std::to_string(rd);
-        diss += ", r" + std::to_string(rn);
+        disassembly += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
+        disassembly += " r" + std::to_string(rd);
+        disassembly += ", r" + std::to_string(rn);
     } else if(opcode > 7 && opcode < 12) {
         //<Rn>
         //Doesn't use the S-bit, should be one
-        diss += " r" + std::to_string(rn);
+        disassembly += " r" + std::to_string(rn);
     } else if(opcode == 13 || opcode == 15) {
         //<Rd>
-        diss += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
-        diss += " r" + std::to_string(rd);
+        disassembly += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
+        disassembly += " r" + std::to_string(rd);
     }
 
     //Check the I (immediate) bit and the 4th bit, that determines immediate shift or register shift.
@@ -100,15 +101,15 @@ auto disassembleDataProcessing(u32 instruction) -> std::string {
 
     //Shift operand is first 12 bits
     switch(addressing_mode) {
-        case 0 : diss += ", " + immediate(instruction & 0xFFF);
+        case 0 : disassembly += ", " + immediate(instruction & 0xFFF);
         break;
-        case 1 : diss += ", " + immediateShift(instruction & 0xFFF);
+        case 1 : disassembly += ", " + immediateShift(instruction & 0xFFF);
         break;
-        case 2 : diss += ", " + registerShift(instruction & 0xFFF);
+        case 2 : disassembly += ", " + registerShift(instruction & 0xFFF);
         break;
     }
 
-    return diss;
+    return disassembly;
 }
 
 
@@ -122,16 +123,16 @@ auto disassembleMultiply(u32 instruction) -> std::string {
     u8 rm = instruction & 0xF;
     bool accumulate = (instruction >> 21) & 0x1;
 
-    std::string diss;
-    diss += accumulate ? "mla" : "mul"; //Accumulate bit
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
-    diss += " r" + std::to_string(rd);
-    diss += ", r" + std::to_string(rm);
-    diss += ", r" + std::to_string(rs);
-    diss += accumulate ? ", r" + std::to_string(rn) : "";
+    std::string disassembly;
+    disassembly += accumulate ? "mla" : "mul"; //Accumulate bit
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
+    disassembly += " r" + std::to_string(rd);
+    disassembly += ", r" + std::to_string(rm);
+    disassembly += ", r" + std::to_string(rs);
+    disassembly += accumulate ? ", r" + std::to_string(rn) : "";
 
-    return diss;
+    return disassembly;
 }
 
 //UMULL{<cond>}{S} <RdLo>, <RdHi>, <Rm>, <Rs>
@@ -145,17 +146,17 @@ auto disassembleMultiplyLong(u32 instruction) -> std::string {
     u8 rs = (instruction >> 8) & 0xF;
     u8 rm = instruction & 0xF;
 
-    std::string diss;
-    diss += (instruction >> 22) & 0x1 ? "s" : "u"; //Unsigned bit
-    diss += (instruction >> 21) & 0x1 ? "mlal" : "mull"; //Accumulate bit
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
-    diss += " r" + std::to_string(rd_lo);
-    diss += ", r" + std::to_string(rd_hi);
-    diss += ", r" + std::to_string(rm);
-    diss += ", r" + std::to_string(rs);
+    std::string disassembly;
+    disassembly += (instruction >> 22) & 0x1 ? "s" : "u"; //Unsigned bit
+    disassembly += (instruction >> 21) & 0x1 ? "mlal" : "mull"; //Accumulate bit
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += (instruction >> 20) & 0x1 ? "s" : ""; //Save to CPSR bit
+    disassembly += " r" + std::to_string(rd_lo);
+    disassembly += ", r" + std::to_string(rd_hi);
+    disassembly += ", r" + std::to_string(rm);
+    disassembly += ", r" + std::to_string(rs);
 
-    return diss;
+    return disassembly;
 }
 
 
@@ -166,14 +167,14 @@ auto disassembleDataSwap(u32 instruction) -> std::string {
     u8 rd = (instruction >> 12) & 0xF;
     u8 rm = instruction & 0xF;
 
-    std::string diss = "swp";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += (instruction >> 22) & 0x1 ? "b" : ""; //Byte bit
-    diss += " r" + std::to_string(rd);
-    diss += ", r" + std::to_string(rm);
-    diss += ", [r" + std::to_string(rn) + "]";
+    std::string disassembly = "swp";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += (instruction >> 22) & 0x1 ? "b" : ""; //Byte bit
+    disassembly += " r" + std::to_string(rd);
+    disassembly += ", r" + std::to_string(rm);
+    disassembly += ", [r" + std::to_string(rn) + "]";
 
-    return diss;
+    return disassembly;
 }
 
 
@@ -182,12 +183,13 @@ auto disassembleBranchExchange(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u8 rm = instruction & 0xF;
 
-    std::string diss = "bx";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += " r" + std::to_string(rm);
+    std::string disassembly = "bx";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += " r" + std::to_string(rm);
 
-    return diss;
+    return disassembly;
 }
+
 
 //[<Rn>, +/-<Rm>]
 //[<Rn>, +/-<Rm>]!  Pre-indexed
@@ -196,16 +198,16 @@ auto registerOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::string
     u8 rm = addr_mode & 0xF;
     std::string sign = u ? "+" : "-";
 
-    std::string diss = "[r" + std::to_string(rn);
+    std::string disassembly = "[r" + std::to_string(rn);
 
     if(p) {
-        diss += ", " + sign + "r" + std::to_string(rm) + "]";
-        diss += w ? "!" : "";
+        disassembly += ", " + sign + "r" + std::to_string(rm) + "]";
+        disassembly += w ? "!" : "";
     } else {
-        diss += "], " + sign + "r" + std::to_string(rm);
+        disassembly += "], " + sign + "r" + std::to_string(rm);
     }
 
-    return diss;
+    return disassembly;
 }
 
 //[<Rn>, #+/-<offset_8>]
@@ -215,16 +217,16 @@ auto immediateOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::strin
     u8 offset_8 = ((addr_mode >> 4) & 0xF0) | (addr_mode & 0xF);
     std::string sign = u ? "+" : "-";
 
-    std::string diss = "[r" + std::to_string(rn);
+    std::string disassembly = "[r" + std::to_string(rn);
 
     if(p) {
-        diss += ", #" + sign + "0x" + common::hex(offset_8) + "]";
-        diss += w ? "!" : "";
+        disassembly += ", #" + sign + "0x" + common::hex(offset_8) + "]";
+        disassembly += w ? "!" : "";
     } else {
-        diss += "], #" + sign + "0x" + common::hex(offset_8);
+        disassembly += "], #" + sign + "0x" + common::hex(offset_8);
     }
 
-    return diss;
+    return disassembly;
 }
 
 //LDR{<cond>}H|SH|SB <Rd>, <addressing_mode>
@@ -242,24 +244,24 @@ auto disassembleHalfwordTransfer(u32 instruction) -> std::string {
 
     assert(sh != 0);
 
-    std::string diss;
+    std::string disassembly;
     
     if(l) {
-        diss = "ldr";
-        diss += CONDITION_EXTENSIONS[condition];
-        diss += sh == 1 ? "h" : sh == 2 ? "sb" : "sh";
+        disassembly = "ldr";
+        disassembly += CONDITION_EXTENSIONS[condition];
+        disassembly += sh == 1 ? "h" : sh == 2 ? "sb" : "sh";
     } else {
         assert(sh == 1);
 
-        diss = "str";
-        diss += CONDITION_EXTENSIONS[condition];
-        diss += "h";
+        disassembly = "str";
+        disassembly += CONDITION_EXTENSIONS[condition];
+        disassembly += "h";
     }
 
-    diss += " r" + std::to_string(rd) + ", ";
-    diss += i ? immediateOffset(rn, instruction & 0xFFF, p, u, w) : registerOffset(rn, instruction & 0xFFF, p, u, w);
+    disassembly += " r" + std::to_string(rd) + ", ";
+    disassembly += i ? immediateOffset(rn, instruction & 0xFFF, p, u, w) : registerOffset(rn, instruction & 0xFFF, p, u, w);
 
-    return diss;
+    return disassembly;
 }
 
 
@@ -274,37 +276,37 @@ auto scaledRegisterOffset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::str
     u8 shift = (offset >> 5) & 0x3;
     u8 shift_imm = (offset >> 7) & 0x1F;
 
-    std::string diss;
-    diss = "[r" + std::to_string(rn);
-    diss += !p ? "]" : "";
-    diss += ", ";
-    diss += u ? '+' : '-';
-    diss += "r" + std::to_string(rm);
+    std::string disassembly;
+    disassembly = "[r" + std::to_string(rn);
+    disassembly += !p ? "]" : "";
+    disassembly += ", ";
+    disassembly += u ? '+' : '-';
+    disassembly += "r" + std::to_string(rm);
     
     if(shift != 0 || shift_imm != 0) {
-        diss += ", ";
-        diss += shift_imm != 0 ? SHIFT_MNEMONICS[shift] : "rrx";
-        if(shift_imm != 0) diss += " #0x" + common::hex(shift_imm);
+        disassembly += ", ";
+        disassembly += shift_imm != 0 ? SHIFT_MNEMONICS[shift] : "rrx";
+        if(shift_imm != 0) disassembly += " #0x" + common::hex(shift_imm);
     }
 
-    diss += p ? w ? "]!" : "]" : "";
+    disassembly += p ? w ? "]!" : "]" : "";
 
-    return diss;
+    return disassembly;
 }
 
 //[<Rn>, #+/-<offset_12>]
 //[<Rn>, #+/-<offset_12>]!  Pre-indexed
 //[<Rn>], #+/-<offset_12>   Post-indexed
 auto immediate12Offset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::string {
-    std::string diss;
-    diss += "[r" + std::to_string(rn);
-    diss += !p ? "]" : "";
-    diss += ", #";
-    diss += u ? '+' : '-';
-    diss += "0x" + common::hex(offset);
-    diss += p ? w ? "]!" : "]" : "";
+    std::string disassembly;
+    disassembly += "[r" + std::to_string(rn);
+    disassembly += !p ? "]" : "";
+    disassembly += ", #";
+    disassembly += u ? '+' : '-';
+    disassembly += "0x" + common::hex(offset);
+    disassembly += p ? w ? "]!" : "]" : "";
 
-    return diss;
+    return disassembly;
 }
 
 //LDR|STR{<cond>}{B}{T} <Rd>, <addressing_mode>
@@ -319,20 +321,15 @@ auto disassembleSingleTransfer(u32 instruction) -> std::string {
     bool w = (instruction >> 21) & 0x1;
     bool l = (instruction >> 20) & 0x1;
 
-    std::string diss;
-    diss = l ? "ldr" : "str";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += b ? "b" : "";
-    diss += !p && w ? "t" : "";
-    diss += " r" + std::to_string(rd);
-    diss += ", " + (i ? scaledRegisterOffset(rn, instruction & 0xFFF, p, u, w) : immediate12Offset(rn, instruction & 0xFFF, p, u, w));
+    std::string disassembly;
+    disassembly = l ? "ldr" : "str";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += b ? "b" : "";
+    disassembly += !p && w ? "t" : "";
+    disassembly += " r" + std::to_string(rd);
+    disassembly += ", " + (i ? scaledRegisterOffset(rn, instruction & 0xFFF, p, u, w) : immediate12Offset(rn, instruction & 0xFFF, p, u, w));
 
-    return diss;
-}
-
-
-auto disassembleUndefined(u32 instruction) -> std::string {
-    return "undefined";
+    return disassembly;
 }
 
 
@@ -352,13 +349,13 @@ auto disassembleBlockTransfer(u32 instruction) -> std::string {
         "da", "ia", "db", "ib"
     };
 
-    std::string diss;
-    diss = l ? "ldm" : "stm";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += ADDRESS_MODES[pu];
-    diss += " r" + std::to_string(rn);
-    diss += w ? "!" : "";
-    diss += ", {";
+    std::string disassembly;
+    disassembly = l ? "ldm" : "stm";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += ADDRESS_MODES[pu];
+    disassembly += " r" + std::to_string(rn);
+    disassembly += w ? "!" : "";
+    disassembly += ", {";
 
     //Generate a list of the registers based on the set bits
     for(int i = 0; i < 16; i++) {
@@ -366,15 +363,15 @@ auto disassembleBlockTransfer(u32 instruction) -> std::string {
 
         if(set) {
             //If there are 1s, or in this case registers in the list, add a comma
-            diss += (registers & ((1 << i) - 1)) != 0 ? ", " : "";
-            diss += "r" + std::to_string(i);
+            disassembly += (registers & ((1 << i) - 1)) != 0 ? ", " : "";
+            disassembly += "r" + std::to_string(i);
         }
     }
 
-    diss += "}";
-    diss += s ? "^" : "";
+    disassembly += "}";
+    disassembly += s ? "^" : "";
 
-    return diss;
+    return disassembly;
 }
 
 
@@ -386,13 +383,13 @@ auto disassembleBranch(u32 instruction) -> std::string {
     immediate |= (immediate >> 23) & 0x1 ? 0xFF000000 : 0; //Sign extend 24-bit to 32-bit
     immediate <<= 2;
 
-    std::string diss;
-    diss = "b";
-    diss += l ? "l" : "";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += " #0x" + common::hex(8 + immediate); //This would be PC + immediate or instruction_address + 8 + immediate
+    std::string disassembly;
+    disassembly = "b";
+    disassembly += l ? "l" : "";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += " #0x" + common::hex(8 + immediate); //This would be PC + immediate or instruction_address + 8 + immediate
 
-    return diss;
+    return disassembly;
 }
 
 
@@ -403,22 +400,22 @@ auto disassembleBranch(u32 instruction) -> std::string {
 auto addressMode5(u8 rn, u8 offset, bool p, bool u, bool w) -> std::string {
     u8 pw = (p << 1) | w;
 
-    std::string diff;
-    diff = "[r" + std::to_string(rn);
-    diff += !p ? "]" : "";
-    diff += ", ";
+    std::string disassembly;
+    disassembly = "[r" + std::to_string(rn);
+    disassembly += !p ? "]" : "";
+    disassembly += ", ";
     
     if(p && w) {
         //Shown as an integer in the range 0-255 surrounded by { }
-        diff += "{" + std::to_string(offset) + "}";
+        disassembly += "{" + std::to_string(offset) + "}";
     } else {
-        diff += "#";
-        diff += u ? '+' : '-';
-        diff += "0x" + common::hex(offset * 4); //In assembly the offset has to be a multiple of four from 0 - 255*4
-        diff += p ? w ? "]!" : "]" : "";
+        disassembly += "#";
+        disassembly += u ? '+' : '-';
+        disassembly += "0x" + common::hex(offset << 2); //In assembly the offset has to be a multiple of four from 0 - 255*4
+        disassembly += p ? w ? "]!" : "]" : "";
     }
 
-    return diff;
+    return disassembly;
 }
 
 //LDC|STC{<cond>}{L} <coproc>, <CRd>, <addressing_mode>
@@ -433,15 +430,15 @@ auto disassembleCoDataTransfer(u32 instruction) -> std::string {
     bool w = (instruction >> 21) & 0x1;
     bool l = (instruction >> 20) & 0x1;
 
-    std::string diss;
-    diss = l ? "ldc" : "stc";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += n ? "l" : "";
-    diss += " p" + std::to_string(cp_num);
-    diss += ", c" + std::to_string(crd);
-    diss += ", " + addressMode5(rn, instruction & 0xFF, p, u, w);
+    std::string disassembly;
+    disassembly = l ? "ldc" : "stc";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += n ? "l" : "";
+    disassembly += " p" + std::to_string(cp_num);
+    disassembly += ", c" + std::to_string(crd);
+    disassembly += ", " + addressMode5(rn, instruction & 0xFF, p, u, w);
 
-    return diss;
+    return disassembly;
 }
 
 //CDP{<cond>} <coproc>, <opcode_1>, <CRd>, <CRn>, <CRm>, <opcode_2>
@@ -454,17 +451,17 @@ auto disassembleCoDataOperation(u32 instruction) -> std::string {
     u8 opcode_2 = (instruction >> 5) & 0x7;
     u8 crm = instruction & 0xF;
 
-    std::string diss;
-    diss = "cdp";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += " p" + std::to_string(cp_num);
-    diss += ", #" + std::to_string(opcode_1);
-    diss += ", c" + std::to_string(crd);
-    diss += ", c" + std::to_string(crn);
-    diss += ", c" + std::to_string(crm);
-    diss += ", #" + std::to_string(opcode_2);
+    std::string disassembly;
+    disassembly = "cdp";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += " p" + std::to_string(cp_num);
+    disassembly += ", #" + std::to_string(opcode_1);
+    disassembly += ", c" + std::to_string(crd);
+    disassembly += ", c" + std::to_string(crn);
+    disassembly += ", c" + std::to_string(crm);
+    disassembly += ", #" + std::to_string(opcode_2);
 
-    return diss;
+    return disassembly;
 }
 
 //MRC|MCR{<cond>} <coproc>, <opcode_1>, <Rd>, <CRn>, <CRm>{, <opcode_2>}
@@ -478,17 +475,17 @@ auto disassembleCoRegisterTransfer(u32 instruction) -> std::string {
     u8 crm = instruction & 0xF;
     bool l = (instruction >> 20) & 0x1;
 
-    std::string diss;
-    diss = l ? "mrc" : "mcr";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += " p" + std::to_string(cp_num);
-    diss += ", #" + std::to_string(opcode_1);
-    diss += ", r" + std::to_string(rd);
-    diss += ", c" + std::to_string(crn);
-    diss += ", c" + std::to_string(crm);
-    diss += opcode_2 == 0 ? "" : ", #" + std::to_string(opcode_2);
+    std::string disassembly;
+    disassembly = l ? "mrc" : "mcr";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += " p" + std::to_string(cp_num);
+    disassembly += ", #" + std::to_string(opcode_1);
+    disassembly += ", r" + std::to_string(rd);
+    disassembly += ", c" + std::to_string(crn);
+    disassembly += ", c" + std::to_string(crm);
+    disassembly += opcode_2 == 0 ? "" : ", #" + std::to_string(opcode_2);
 
-    return diss;
+    return disassembly;
 }
 
 
@@ -497,12 +494,17 @@ auto disassembleSoftwareInterrupt(u32 instruction) -> std::string {
     u8 condition = instruction >> 28;
     u32 immed_24 = instruction & 0xFFFFFF;
 
-    std::string diss;
-    diss = "swi";
-    diss += CONDITION_EXTENSIONS[condition];
-    diss += " #" + std::to_string(immed_24);
+    std::string disassembly;
+    disassembly = "swi";
+    disassembly += CONDITION_EXTENSIONS[condition];
+    disassembly += " #" + std::to_string(immed_24);
 
-    return diss; 
+    return disassembly; 
+}
+
+
+auto disassembleUndefined(u32 instruction) -> std::string {
+    return "undefined";
 }
 
 } //namespace emu

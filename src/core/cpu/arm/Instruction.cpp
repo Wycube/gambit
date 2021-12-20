@@ -13,11 +13,11 @@ namespace emu {
  * be interpreted as a Branch and Exchange not a TEQ, so Branch and Exchange is put first.
  */
 const char *ARM_ENCODINGS[] = {
-    "00<xxxxx<<<>", //Data Processing
+    "000100100001", //Branch and Exchange
+    "00<xxxxx>xx>", //Data Processing
     "000000xx1001", //Multiply
     "00001xxx1001", //Multiply Long
     "00010x001001", //Single Data Swap
-    "000100100001", //Branch and Exchange
     "000xxxxx1<<1", //Halfword Data Transfer
     "01>xxxxxxxx>", //Single Data Transfer
     "100xxxxxxxxx", //Block Data Transfer
@@ -26,23 +26,6 @@ const char *ARM_ENCODINGS[] = {
     "1110xxxxxxx0", //Coprocessor Data Operation
     "1110xxxxxxx1", //Coprocessor Register Transfer
     "1111xxxxxxxx"  //Software Interrupt
-};
-
-static ArmInstructionType types[17] = {
-    BRANCH_AND_EXCHANGE,
-    DATA_PROCESSING, DATA_PROCESSING, DATA_PROCESSING,
-    MULTIPLY, 
-    MULTIPLY_LONG, 
-    SINGLE_DATA_SWAP, 
-    HALFWORD_DATA_TRANSFER, 
-    SINGLE_DATA_TRANSFER, SINGLE_DATA_TRANSFER,
-    BLOCK_DATA_TRANSFER,
-    BRANCH,
-    COPROCESSOR_DATA_TRANSFER,
-    COPROCESSOR_DATA_OPERATION,
-    COPROCESSOR_REGISTER_TRANSFER,
-    SOFTWARE_INTERRUPT,
-    UNDEFINED
 };
 
 auto armDetermineType(u32 instruction) -> ArmInstructionType {
@@ -71,8 +54,6 @@ auto armDecodeInstruction(u32 instruction) -> ArmInstruction {
         break;
         case SINGLE_DATA_TRANSFER : dissasembly = disassembleSingleTransfer(instruction);
         break;
-        case UNDEFINED : dissasembly = disassembleUndefined(instruction);
-        break;
         case BLOCK_DATA_TRANSFER : dissasembly = disassembleBlockTransfer(instruction);
         break;
         case BRANCH : dissasembly = disassembleBranch(instruction);
@@ -85,7 +66,8 @@ auto armDecodeInstruction(u32 instruction) -> ArmInstruction {
         break;
         case SOFTWARE_INTERRUPT : dissasembly = disassembleSoftwareInterrupt(instruction);
         break;
-        default: dissasembly = "Unknown";
+        case UNDEFINED : dissasembly = disassembleUndefined(instruction);
+        break;
     }
 
     return ArmInstruction{instruction, type, condition, dissasembly};

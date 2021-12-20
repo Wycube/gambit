@@ -27,11 +27,11 @@ enum ConditionCode : u8 {
 };
 
 enum ArmInstructionType {
+    BRANCH_AND_EXCHANGE,
     DATA_PROCESSING,
     MULTIPLY,
     MULTIPLY_LONG,
     SINGLE_DATA_SWAP,
-    BRANCH_AND_EXCHANGE,
     HALFWORD_DATA_TRANSFER,
     SINGLE_DATA_TRANSFER,
     BLOCK_DATA_TRANSFER,
@@ -47,7 +47,7 @@ struct ArmInstruction {
     u32 instruction;
     ArmInstructionType type;
     ConditionCode condition;
-    std::string dissasembly;
+    std::string disassembly;
 };
 
 

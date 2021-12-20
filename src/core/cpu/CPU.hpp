@@ -8,18 +8,18 @@
 namespace emu {
 
 enum PrivilegeMode {
-    USER       = 0x10,
-    FIQ        = 0x11,
-    IRQ        = 0x12,
-    SUPERVISOR = 0x13,
-    ABORT      = 0x17,
-    UNDEFINED  = 0x1B,
-    SYSTEM     = 0x1F
+    MODE_USER       = 0x10,
+    MODE_FIQ        = 0x11,
+    MODE_IRQ        = 0x12,
+    MODE_SUPERVISOR = 0x13,
+    MODE_ABORT      = 0x17,
+    MODE_UNDEFINED  = 0x1B,
+    MODE_SYSTEM     = 0x1F
 };
 
 enum ExecutionState {
-    ARM,
-    THUMB
+    EXEC_ARM,
+    EXEC_THUMB
 };
 
 
@@ -44,18 +44,5 @@ private:
 public:
 
 };
-
-
-struct Decoded {
-    u8 condition;
-    u8 next_bits;
-    std::string type;
-
-    std::string output;
-};
-
-auto determineType(u32 instruction) -> std::string;
-auto decodeInstructionARM(u32 instruction) -> Decoded;
-auto decodeInstructionTHUMB(u16 instruction) -> Decoded;
 
 } //namespace emu
