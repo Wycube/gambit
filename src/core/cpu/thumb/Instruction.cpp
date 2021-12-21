@@ -1,4 +1,5 @@
 #include "Instruction.hpp"
+#include "Disassembly.hpp"
 #include "common/Pattern.hpp"
 
 
@@ -12,8 +13,8 @@ const char *THUMB_ENCODINGS[] = {
     "00011xxx", //Add/Subtract Register (Register and Immediate)
     "001xxxxx", //Add/Subtract/Compare/Move Immediate
     "010000xx", //ALU Operation
-    "010001>>", //Hi Register Operations
-    "01000111", //Branch/Exchange
+    "010001>>", //Hi Register Operation
+    "01000111", //Branch and Exchange
     "01001xxx", //PC-Relative Load
     "0101xx0x", //Load/Store Register Offset
     "0101xx1x", //Load/Store Sign-Extended Byte/Halfword
@@ -37,7 +38,55 @@ auto thumbDetermineType(u16 instruction) -> ThumbInstructionType {
 }
 
 auto thumbDecodeInstruction(u16 instruction) -> ThumbInstruction {
+    ThumbInstructionType type = thumbDetermineType(instruction);
+    std::string disassembly;
 
+    switch(type) {
+        case MOVE_SHIFTED_REGISTER : disassembly = disassembleMoveShifted(instruction);
+        break;
+        case ADD_SUBTRACT : disassembly = disassembleAddSubtract(instruction);
+        break;
+        case PROCESS_IMMEDIATE : disassembly = disassembleProcessImmediate(instruction);
+        break;
+        case ALU_OPERATION : disassembly = disassembleALUOperation(instruction);
+        break;
+        case HI_REGISTER_OPERATION : disassembly = disassembleHiRegOperation(instruction);
+        break;
+        case BRANCH_EXCHANGE : disassembly = disassembleBranchExchange(instruction);
+        break;
+        case PC_RELATIVE_LOAD : disassembly = disassemblePCRelativeLoad(instruction);
+        break;
+        case LOAD_STORE_REGISTER : disassembly = disassembleLoadStoreRegister(instruction);
+        break;
+        case LOAD_STORE_SIGN_EXTEND : disassembly = disassembleLoadStoreSigned(instruction);
+        break;
+        case LOAD_STORE_IMMEDIATE : disassembly = disassembleLoadStoreImmediate(instruction);
+        break;
+        case LOAD_STORE_HALFWORD : disassembly = disassembleLoadStoreHalfword(instruction);
+        break;
+        case SP_RELATIVE_LOAD_STORE : disassembly = disassembleSPRelativeLoadStore(instruction);
+        break;
+        case LOAD_ADDRESS : disassembly = disassembleLoadAddress(instruction);
+        break;
+        case ADJUST_STACK_POINTER : disassembly = disassembleAdjustSP(instruction);
+        break;
+        case PUSH_POP_REGISTERS : disassembly = disassemblePushPopRegisters(instruction);
+        break;
+        case LOAD_STORE_MULTIPLE : disassembly = disassembleLoadStoreMultiple(instruction);
+        break;
+        case CONDITIONAL_BRANCH : disassembly = disassembleConditionalBranch(instruction);
+        break;
+        case SOFTWARE_INTERRUPT : disassembly = disassembleSoftwareInterrupt(instruction);
+        break;
+        case UNCONDITIONAL_BRANCH : disassembly = disassembleUnconditionalBranch(instruction);
+        break;
+        case LONG_BRANCH : disassembly = disassembleLongBranch(instruction);
+        break;
+        case UNDEFINED : disassembly = disassembleUndefined(instruction);
+        break;
+    }
+
+    return ThumbInstruction{instruction, type, disassembly};
 }
 
 } //namespace emu

@@ -22,7 +22,7 @@ auto disassembleMoveShifted(u16 instruction) -> std::string {
     disassembly = OPCODE_MNEMONICS[opcode];
     disassembly += " r" + std::to_string(rd);
     disassembly += ", r" + std::to_string(rm);
-    disassembly += ", #" + std::to_string(immed_5 == 0 ? 32 : immed_5);
+    disassembly += ", #0x" + common::hex(immed_5 == 0 ? 32 : immed_5);
 
     return disassembly;
 }
@@ -132,7 +132,7 @@ auto disassemblePCRelativeLoad(u16 instruction) -> std::string {
 }
 
 
-//LDR|STR{B} <Rd>, [<Rn>, <Rm>]
+//STR|LDR{B} <Rd>, [<Rn>, <Rm>]
 auto disassembleLoadStoreRegister(u16 instruction) -> std::string {
     bool l = (instruction >> 11) & 0x1;
     bool b = (instruction >> 10) & 0x1;
@@ -151,10 +151,10 @@ auto disassembleLoadStoreRegister(u16 instruction) -> std::string {
 }
 
 
-//STRH|LDRH|LDSB|LDSH <Rd>, [<Rn>, <Rm>]
+//STRH|LDRSB|LDRH|LDRSH <Rd>, [<Rn>, <Rm>]
 auto disassembleLoadStoreSigned(u16 instruction) -> std::string {
     static const char *MNEMONICS[] = {
-        "strh", "ldsb", "ldrh", "ldsh"
+        "strh", "ldrsb", "ldrh", "ldrsh"
     };
 
     u8 hs = (instruction >> 10) & 0x3;
@@ -172,11 +172,13 @@ auto disassembleLoadStoreSigned(u16 instruction) -> std::string {
 }
 
 
-//STR|LDR{B} <Rd>, [<Rn>, #<immed_5>]
+//STR|LDR <Rd>, [<Rn>, #<immed_5>*4]
+//STRB|LDRB <Rd>, [<Rn>, #<immed_5>]
 auto disassembleLoadStoreImmediate(u16 instruction) -> std::string {
     bool b = (instruction >> 12) & 0x1;
     bool l = (instruction >> 11) & 0x1;
     u8 immed_5 = (instruction >> 6) & 0x1F;
+    immed_5 <<= b ? 0 : 2;
     u8 rn = (instruction >> 3) & 0x7;
     u8 rd = instruction & 0x7;
 
@@ -185,7 +187,7 @@ auto disassembleLoadStoreImmediate(u16 instruction) -> std::string {
     disassembly += b ? "b" : "";
     disassembly += " r" + std::to_string(rd);
     disassembly += ", [r" + std::to_string(rn);
-    disassembly += ", #" + std::to_string(immed_5) + "]";
+    disassembly += ", #0x" + common::hex(immed_5) + "]";
 
     return disassembly;
 }
@@ -202,7 +204,7 @@ auto disassembleLoadStoreHalfword(u16 instruction) -> std::string {
     disassembly = l ? "ldrh" : "strh";
     disassembly += " r" + std::to_string(rd);
     disassembly += ", [r" + std::to_string(rn);
-    disassembly += ", #" + std::to_string(immed_5 << 1) + "]";
+    disassembly += ", #0x" + common::hex(immed_5 << 1) + "]";
 
     return disassembly;
 }
@@ -232,7 +234,8 @@ auto disassembleLoadAddress(u16 instruction) -> std::string {
     std::string disassembly;
     disassembly = "add";
     disassembly += " r" + std::to_string(rd);
-    disassembly += ", " + sp ? "sp" : "pc";
+    disassembly += ", ";
+    disassembly +=  sp ? "sp" : "pc";
     disassembly += ", #0x" + common::hex(immed_8 << 2);
 
     return disassembly;
@@ -246,8 +249,9 @@ auto disassembleAdjustSP(u16 instruction) -> std::string {
 
     std::string disassembly;
     disassembly = "add sp, ";
-    disassembly += "#" + s ? "-" : "";
-    disassembly += std::to_string(immed_7 << 2);
+    disassembly += "#";
+    disassembly += s ? "-" : "";
+    disassembly += "0x" + common::hex(immed_7 << 2);
 
     return disassembly;
 }
@@ -275,7 +279,7 @@ auto disassemblePushPopRegisters(u16 instruction) -> std::string {
         }
     }
 
-    disassembly += r ? l ? ", pc}" : ", lr}" : "";
+    disassembly += r ? l ? ", pc}" : ", lr}" : "}";
 
     return disassembly;
 }
@@ -288,9 +292,9 @@ auto disassembleLoadStoreMultiple(u16 instruction) -> std::string {
     u8 registers = instruction & 0xFF;
 
     std::string disassembly;
-    disassembly = l ? "stmia" : "ldmia";
-    disassembly += ", r" + std::to_string(rn) + "!";
-    disassembly += " {";
+    disassembly = l ? "ldmia" : "stmia";
+    disassembly += " r" + std::to_string(rn) + "!";
+    disassembly += ", {";
 
     //Generate a list of the registers based on the set bits
     for(int i = 0; i < 8; i++) {
@@ -309,8 +313,8 @@ auto disassembleLoadStoreMultiple(u16 instruction) -> std::string {
 }
 
 
-//B<cond> <target_address>
-auto disassembleUnconditionalBranch(u16 instruction) -> std::string {
+//B<cond> #<target_address>
+auto disassembleConditionalBranch(u16 instruction) -> std::string {
     static const char *CONDITION_CODES[] = {
         "eq", "ne", "cs", "cc", "mi", "pl", "vs", "vc",
         "hi", "ls", "ge", "lt", "gt", "le", "",   "nv"
@@ -320,11 +324,14 @@ auto disassembleUnconditionalBranch(u16 instruction) -> std::string {
     s32 immediate = instruction & 0xFF;
     immediate <<= 1;
     immediate |= (immediate >> 8) & 0x1 ? 0xFFFFFF00 : 0; //Sign extend 8-bit to 32-bit
+    immediate += 4; //Account for pipeline
 
     std::string disassembly;
     disassembly = "b";
     disassembly += CONDITION_CODES[condition];
-    disassembly += ", " + std::to_string(4 + immediate);
+    disassembly += " #";
+    disassembly += immediate < 0 ? "-" : "";
+    disassembly += "0x" + common::hex(immediate < 0 ? ~immediate + 1 : immediate);
 
     return disassembly;
 }
@@ -336,29 +343,33 @@ auto disassembleSoftwareInterrupt(u16 instruction) -> std::string {
 
     std::string disassembly;
     disassembly = "swi";
-    disassembly += " " + std::to_string(immed_8);
+    disassembly += " #" + std::to_string(immed_8);
 
     return disassembly;
 }
 
 
-//B <target_address>
+//B #<target_address>
 auto disassembleUnconditionalBranch(u16 instruction) -> std::string {
     s32 immediate = instruction & 0xFFF;
     immediate <<= 1;
-    immediate |= (immediate << 11) & 0x1 ? 0xFFFFF000 : 0; //Sign extend 11-bit to 32-bit
+    immediate |= (immediate >> 11) & 0x1 ? 0xFFFFF000 : 0; //Sign extend 11-bit to 32-bit
+    immediate += 4; //Account for pipeline
 
     std::string disassembly;
     disassembly = "b";
-    disassembly += " " + std::to_string(4 + immediate);
+    disassembly += " #";
+    disassembly += immediate < 0 ? "-" : "";
+    disassembly += "0x" + common::hex(immediate < 0 ? ~immediate + 1 : immediate);
 
     return disassembly;
 }
 
 
-//BL <target_address>
+//BL #<target_address>
 auto disassembleLongBranch(u16 instruction) -> std::string {
     //I don't really know what to do for this one yet
+    return "long branch";
 }
 
 
