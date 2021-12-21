@@ -32,7 +32,9 @@ int main() {
     //     print_instr(rand_instr);
     // }
 
-    printf("Version %s\n", common::GIT_DESC);
+    printf("Version: %s\n", common::GIT_DESC);
+    printf("Commit: %s\n", common::GIT_COMMIT);
+    printf("Branch: %s\n", common::GIT_BRANCH);
 
     //Test every data processing opcode
     // for(u8 i = 0; i < 16; i++) {
@@ -53,8 +55,4 @@ int main() {
     //     std::cout << std::bitset<5>(i) << " for ones  : " << ones << "\n";
     //     std::cout << std::bitset<5>(i) << " for zeros : " << zeros << "\n";
     // }
-
-    u32 value = 0x1F07BFAD;
-    emu::ThumbInstruction instr = emu::thumbDecodeInstruction(0b1011100000000000);
-    std::cout << instr.disassembly << "\n";
 }

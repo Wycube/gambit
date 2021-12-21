@@ -23,12 +23,23 @@ set(PROJECT_VERSION_MINOR 1)
 
 find_package(Git)
 if(GIT_FOUND)
+	# Git describe information
 	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} describe --always --long --dirty
 	OUTPUT_VARIABLE GIT_DESCRIBE 
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 	# Remove trailing information from output
 	string(REGEX REPLACE "(-0)?-g([0-9]|[a-f])+(-dirty)?" "" GIT_DESCRIBE "${GIT_DESCRIBE}")
+
+	# Git rev-parse current commit hash
+	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+	OUTPUT_VARIABLE GIT_COMMIT 
+	OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+	# Git branch current branch name
+	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} branch --show-current
+	OUTPUT_VARIABLE GIT_BRANCH 
+	OUTPUT_STRIP_TRAILING_WHITESPACE)
 else()
 	message(FATAL_ERROR "Git was not found")
 endif()
