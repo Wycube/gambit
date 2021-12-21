@@ -7,26 +7,26 @@
 
 namespace emu {
 
-auto disassembleMoveShifted(u16 instruction) -> std::string;
-auto disassembleAddSubtract(u16 instruction) -> std::string;
-auto disassembleProcessImmediate(u16 instruction) -> std::string;
-auto disassembleALUOperation(u16 instruction) -> std::string;
-auto disassembleHiRegOperation(u16 instruction) -> std::string;
-auto disassembleBranchExchange(u16 instruction) -> std::string;
-auto disassemblePCRelativeLoad(u16 instruction) -> std::string;
-auto disassembleLoadStoreRegister(u16 instruction) -> std::string;
-auto disassembleLoadStoreSigned(u16 instruction) -> std::string;
-auto disassembleLoadStoreImmediate(u16 instruction) -> std::string;
-auto disassembleLoadStoreHalfword(u16 instruction) -> std::string;
-auto disassembleSPRelativeLoadStore(u16 instruction) -> std::string;
-auto disassembleLoadAddress(u16 instruction) -> std::string;
-auto disassembleAdjustSP(u16 instruction) -> std::string;
-auto disassemblePushPopRegisters(u16 instruction) -> std::string;
-auto disassembleLoadStoreMultiple(u16 instruction) -> std::string;
-auto disassembleConditionalBranch(u16 instruction) -> std::string;
-auto disassembleSoftwareInterrupt(u16 instruction) -> std::string;
-auto disassembleUnconditionalBranch(u16 instruction) -> std::string;
-auto disassembleLongBranch(u16 instruction) -> std::string;
-auto disassembleUndefined(u16 instruction) -> std::string;
+auto thumbDisassembleMoveShifted(u16 instruction) -> std::string;
+auto thumbDisassembleAddSubtract(u16 instruction) -> std::string;
+auto thumbDisassembleProcessImmediate(u16 instruction) -> std::string;
+auto thumbDisassembleALUOperation(u16 instruction) -> std::string;
+auto thumbDisassembleHiRegOperation(u16 instruction) -> std::string;
+auto thumbDisassembleBranchExchange(u16 instruction) -> std::string;
+auto thumbDisassemblePCRelativeLoad(u16 instruction) -> std::string;
+auto thumbDisassembleLoadStoreRegister(u16 instruction) -> std::string;
+auto thumbDisassembleLoadStoreSigned(u16 instruction) -> std::string;
+auto thumbDisassembleLoadStoreImmediate(u16 instruction) -> std::string;
+auto thumbDisassembleLoadStoreHalfword(u16 instruction) -> std::string;
+auto thumbDisassembleSPRelativeLoadStore(u16 instruction) -> std::string;
+auto thumbDisassembleLoadAddress(u16 instruction) -> std::string;
+auto thumbDisassembleAdjustSP(u16 instruction) -> std::string;
+auto thumbDisassemblePushPopRegisters(u16 instruction) -> std::string;
+auto thumbDisassembleLoadStoreMultiple(u16 instruction) -> std::string;
+auto thumbDisassembleConditionalBranch(u16 instruction) -> std::string;
+auto thumbDisassembleSoftwareInterrupt(u16 instruction) -> std::string;
+auto thumbDisassembleUnconditionalBranch(u16 instruction) -> std::string;
+auto thumbDisassembleLongBranch(u16 instruction) -> std::string;
+auto thumbDisassembleUndefined(u16 instruction) -> std::string;
 
 }; //namespace emu

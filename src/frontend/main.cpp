@@ -1,4 +1,5 @@
 #include "core/cpu/arm/Instruction.hpp"
+#include "core/cpu/thumb/Instruction.hpp"
 #include "common/StringUtils.hpp"
 #include "common/Version.hpp"
 
@@ -54,6 +55,6 @@ int main() {
     // }
 
     u32 value = 0x1F07BFAD;
-    emu::ArmInstruction instr = emu::armDecodeInstruction(value);
+    emu::ThumbInstruction instr = emu::thumbDecodeInstruction(0b1011100000000000);
     std::cout << instr.disassembly << "\n";
 }

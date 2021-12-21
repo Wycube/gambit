@@ -7,7 +7,7 @@
 namespace emu {
 
 //LSL|LSR|ASR <Rd>, <Rm>, #<immed_5>
-auto disassembleMoveShifted(u16 instruction) -> std::string {
+auto thumbDisassembleMoveShifted(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "lsl", "lsr", "asr"
     };
@@ -30,7 +30,7 @@ auto disassembleMoveShifted(u16 instruction) -> std::string {
 
 //ADD|SUB <Rd>, <Rn>, #<immed_3>
 //ADD|SUB <Rd>, <Rn>, <Rm>
-auto disassembleAddSubtract(u16 instruction) -> std::string {
+auto thumbDisassembleAddSubtract(u16 instruction) -> std::string {
     bool i = (instruction >> 10) & 0x1;
     bool s = (instruction >> 9) & 0x1;
     u8 rm_immed = (instruction >> 6) & 0x7;
@@ -47,7 +47,7 @@ auto disassembleAddSubtract(u16 instruction) -> std::string {
 }
 
 //MOV|CMP|ADD|SUB <Rd/Rn>, #<immed_8>
-auto disassembleProcessImmediate(u16 instruction) -> std::string {
+auto thumbDisassembleProcessImmediate(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "mov", "cmp", "add", "sub"
     };
@@ -66,7 +66,7 @@ auto disassembleProcessImmediate(u16 instruction) -> std::string {
 
 
 //<opcode> <Rd/Rn>, <Rm>
-auto disassembleALUOperation(u16 instruction) -> std::string {
+auto thumbDisassembleALUOperation(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "and", "eor", "lsl", "lsr", "asr", "adc", "sbc", "ror",
         "tst", "neg", "cmp", "cmn", "orr", "mul", "bic", "mvn"
@@ -86,7 +86,7 @@ auto disassembleALUOperation(u16 instruction) -> std::string {
 
 
 //ADD|CMP|MOV <Rd/Rn>, <Rm>
-auto disassembleHiRegOperation(u16 instruction) -> std::string {
+auto thumbDisassembleHiRegOperation(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "add", "cmp", "mov"
     };
@@ -107,7 +107,7 @@ auto disassembleHiRegOperation(u16 instruction) -> std::string {
 
 
 //BLX <Rm>
-auto disassembleBranchExchange(u16 instruction) -> std::string {
+auto thumbDisassembleBranchExchange(u16 instruction) -> std::string {
     u8 rm = (instruction >> 3) & 0xF;
 
     std::string disassembly;
@@ -119,7 +119,7 @@ auto disassembleBranchExchange(u16 instruction) -> std::string {
 
 
 //LDR <Rd>, [PC, #<immed_8>*4]
-auto disassemblePCRelativeLoad(u16 instruction) -> std::string {
+auto thumbDisassemblePCRelativeLoad(u16 instruction) -> std::string {
     u8 rd = (instruction >> 8) & 0x7;
     u8 immed_8 = instruction & 0xFF;
 
@@ -133,7 +133,7 @@ auto disassemblePCRelativeLoad(u16 instruction) -> std::string {
 
 
 //STR|LDR{B} <Rd>, [<Rn>, <Rm>]
-auto disassembleLoadStoreRegister(u16 instruction) -> std::string {
+auto thumbDisassembleLoadStoreRegister(u16 instruction) -> std::string {
     bool l = (instruction >> 11) & 0x1;
     bool b = (instruction >> 10) & 0x1;
     u8 rm = (instruction >> 6) & 0x7;
@@ -152,7 +152,7 @@ auto disassembleLoadStoreRegister(u16 instruction) -> std::string {
 
 
 //STRH|LDRSB|LDRH|LDRSH <Rd>, [<Rn>, <Rm>]
-auto disassembleLoadStoreSigned(u16 instruction) -> std::string {
+auto thumbDisassembleLoadStoreSigned(u16 instruction) -> std::string {
     static const char *MNEMONICS[] = {
         "strh", "ldrsb", "ldrh", "ldrsh"
     };
@@ -174,7 +174,7 @@ auto disassembleLoadStoreSigned(u16 instruction) -> std::string {
 
 //STR|LDR <Rd>, [<Rn>, #<immed_5>*4]
 //STRB|LDRB <Rd>, [<Rn>, #<immed_5>]
-auto disassembleLoadStoreImmediate(u16 instruction) -> std::string {
+auto thumbDisassembleLoadStoreImmediate(u16 instruction) -> std::string {
     bool b = (instruction >> 12) & 0x1;
     bool l = (instruction >> 11) & 0x1;
     u8 immed_5 = (instruction >> 6) & 0x1F;
@@ -194,7 +194,7 @@ auto disassembleLoadStoreImmediate(u16 instruction) -> std::string {
 
 
 //STRH|LDRH <Rd>, [<Rn>, #<immed_5>*2]
-auto disassembleLoadStoreHalfword(u16 instruction) -> std::string {
+auto thumbDisassembleLoadStoreHalfword(u16 instruction) -> std::string {
     bool l = (instruction >> 11) & 0x1;
     u8 immed_5 = (instruction >> 6) & 0x1F;
     u8 rn = (instruction >> 3) & 0x7;
@@ -211,7 +211,7 @@ auto disassembleLoadStoreHalfword(u16 instruction) -> std::string {
 
 
 //STR|LDR <Rd>, [SP, #<immed_8>*4]
-auto disassembleSPRelativeLoadStore(u16 instruction) -> std::string {
+auto thumbDisassembleSPRelativeLoadStore(u16 instruction) -> std::string {
     bool l = (instruction >> 11) & 0x1;
     u8 rd = (instruction >> 8) & 0x7;
     u8 immed_8 = instruction & 0xFF;
@@ -226,7 +226,7 @@ auto disassembleSPRelativeLoadStore(u16 instruction) -> std::string {
 
 
 //ADD <Rd>, PC|SP, #<immed_8>*4
-auto disassembleLoadAddress(u16 instruction) -> std::string {
+auto thumbDisassembleLoadAddress(u16 instruction) -> std::string {
     bool sp = (instruction >> 11) & 0x1;
     u8 rd = (instruction >> 8) & 0x7;
     u8 immed_8 = instruction & 0xFF;
@@ -243,7 +243,7 @@ auto disassembleLoadAddress(u16 instruction) -> std::string {
 
 
 //ADD SP, #{-}<immed_7>*4
-auto disassembleAdjustSP(u16 instruction) -> std::string {
+auto thumbDisassembleAdjustSP(u16 instruction) -> std::string {
     bool s = (instruction >> 7) & 0x1;
     u8 immed_7 = instruction & 0x7F;
 
@@ -259,7 +259,7 @@ auto disassembleAdjustSP(u16 instruction) -> std::string {
 
 //PUSH <registers> - If the R bit is set then LR is in the register list
 //POP <registers>  - If the R bit is set then PC is in the register list
-auto disassemblePushPopRegisters(u16 instruction) -> std::string {
+auto thumbDisassemblePushPopRegisters(u16 instruction) -> std::string {
     bool l = (instruction >> 11) & 0x1;
     bool r = (instruction >> 8) & 0x1;
     u8 registers = instruction & 0xFF;
@@ -286,7 +286,7 @@ auto disassemblePushPopRegisters(u16 instruction) -> std::string {
 
 
 //STMIA|LDMIA <Rn>!, <registers>
-auto disassembleLoadStoreMultiple(u16 instruction) -> std::string {
+auto thumbDisassembleLoadStoreMultiple(u16 instruction) -> std::string {
     bool l = (instruction >> 11) & 0x1;
     u8 rn = (instruction >> 8) & 0x7;
     u8 registers = instruction & 0xFF;
@@ -314,7 +314,7 @@ auto disassembleLoadStoreMultiple(u16 instruction) -> std::string {
 
 
 //B<cond> #<target_address>
-auto disassembleConditionalBranch(u16 instruction) -> std::string {
+auto thumbDisassembleConditionalBranch(u16 instruction) -> std::string {
     static const char *CONDITION_CODES[] = {
         "eq", "ne", "cs", "cc", "mi", "pl", "vs", "vc",
         "hi", "ls", "ge", "lt", "gt", "le", "",   "nv"
@@ -338,7 +338,7 @@ auto disassembleConditionalBranch(u16 instruction) -> std::string {
 
 
 //SWI <immed_8>
-auto disassembleSoftwareInterrupt(u16 instruction) -> std::string {
+auto thumbDisassembleSoftwareInterrupt(u16 instruction) -> std::string {
     u8 immed_8 = instruction & 0xFF;
 
     std::string disassembly;
@@ -350,7 +350,7 @@ auto disassembleSoftwareInterrupt(u16 instruction) -> std::string {
 
 
 //B #<target_address>
-auto disassembleUnconditionalBranch(u16 instruction) -> std::string {
+auto thumbDisassembleUnconditionalBranch(u16 instruction) -> std::string {
     s32 immediate = instruction & 0xFFF;
     immediate <<= 1;
     immediate |= (immediate >> 11) & 0x1 ? 0xFFFFF000 : 0; //Sign extend 11-bit to 32-bit
@@ -367,13 +367,13 @@ auto disassembleUnconditionalBranch(u16 instruction) -> std::string {
 
 
 //BL #<target_address>
-auto disassembleLongBranch(u16 instruction) -> std::string {
+auto thumbDisassembleLongBranch(u16 instruction) -> std::string {
     //I don't really know what to do for this one yet
     return "long branch";
 }
 
 
-auto disassembleUndefined(u16 instruction) -> std::string {
+auto thumbDisassembleUndefined(u16 instruction) -> std::string {
     return "undefined";
 }
 

@@ -40,33 +40,33 @@ auto armDecodeInstruction(u32 instruction) -> ArmInstruction {
     std::string dissasembly;
 
     switch(type) {
-        case DATA_PROCESSING : dissasembly = disassembleDataProcessing(instruction);
+        case ARM_DATA_PROCESSING : dissasembly = armDisassembleDataProcessing(instruction);
         break;
-        case MULTIPLY : dissasembly = disassembleMultiply(instruction);
+        case ARM_MULTIPLY : dissasembly = armDisassembleMultiply(instruction);
         break;
-        case MULTIPLY_LONG : dissasembly = disassembleMultiplyLong(instruction);
+        case ARM_MULTIPLY_LONG : dissasembly = armDisassembleMultiplyLong(instruction);
         break;
-        case SINGLE_DATA_SWAP : dissasembly = disassembleDataSwap(instruction);
+        case ARM_SINGLE_DATA_SWAP : dissasembly = armDisassembleDataSwap(instruction);
         break;
-        case BRANCH_AND_EXCHANGE : dissasembly = disassembleBranchExchange(instruction);
+        case ARM_BRANCH_AND_EXCHANGE : dissasembly = armDisassembleBranchExchange(instruction);
         break;
-        case HALFWORD_DATA_TRANSFER : dissasembly = disassembleHalfwordTransfer(instruction);
+        case ARM_HALFWORD_DATA_TRANSFER : dissasembly = armDisassembleHalfwordTransfer(instruction);
         break;
-        case SINGLE_DATA_TRANSFER : dissasembly = disassembleSingleTransfer(instruction);
+        case ARM_SINGLE_DATA_TRANSFER : dissasembly = armDisassembleSingleTransfer(instruction);
         break;
-        case BLOCK_DATA_TRANSFER : dissasembly = disassembleBlockTransfer(instruction);
+        case ARM_BLOCK_DATA_TRANSFER : dissasembly = armDisassembleBlockTransfer(instruction);
         break;
-        case BRANCH : dissasembly = disassembleBranch(instruction);
+        case ARM_BRANCH : dissasembly = armDisassembleBranch(instruction);
         break;
-        case COPROCESSOR_DATA_TRANSFER : dissasembly = disassembleCoDataTransfer(instruction);
+        case ARM_COPROCESSOR_DATA_TRANSFER : dissasembly = armDisassembleCoDataTransfer(instruction);
         break;
-        case COPROCESSOR_DATA_OPERATION : dissasembly = disassembleCoDataOperation(instruction);
+        case ARM_COPROCESSOR_DATA_OPERATION : dissasembly = armDisassembleCoDataOperation(instruction);
         break;
-        case COPROCESSOR_REGISTER_TRANSFER : dissasembly = disassembleCoRegisterTransfer(instruction);
+        case ARM_COPROCESSOR_REGISTER_TRANSFER : dissasembly = armDisassembleCoRegisterTransfer(instruction);
         break;
-        case SOFTWARE_INTERRUPT : dissasembly = disassembleSoftwareInterrupt(instruction);
+        case ARM_SOFTWARE_INTERRUPT : dissasembly = armDisassembleSoftwareInterrupt(instruction);
         break;
-        case UNDEFINED : dissasembly = disassembleUndefined(instruction);
+        case ARM_UNDEFINED : dissasembly = armDisassembleUndefined(instruction);
         break;
     }
 
