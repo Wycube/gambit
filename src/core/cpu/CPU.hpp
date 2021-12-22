@@ -1,8 +1,7 @@
 #pragma once
 
+#include "core/mem/Bus.hpp"
 #include "common/Types.hpp"
-
-#include <string>
 
 
 namespace emu {
@@ -23,7 +22,8 @@ enum ExecutionState {
 };
 
 
-/* The CPU is an ARM7TDMI that uses the ARMv4 architecture and supports the ARM
+/* 
+ * The CPU is an ARM7TDMI that uses the ARMv4TM architecture and supports the ARM
  * and THUMB instruction sets.
  */
 class CPU {
@@ -41,8 +41,14 @@ private:
 
     u32 m_pipeline[2]; //Stores the instructions being decoded and executed
 
+    //Hardware
+    Bus *m_bus = nullptr;
+
 public:
 
+    void step();
+
+    void attachBus(Bus *bus);
 };
 
 } //namespace emu

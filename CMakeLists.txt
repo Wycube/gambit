@@ -53,6 +53,10 @@ if(BUILD_TESTS)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/src/tests)
 endif()
 
+# Add fmtlib
+include_directories(${PROJECT_SOURCE_DIR}/lib/fmt/include)
+add_subdirectory(${PROJECT_SOURCE_DIR}/lib/fmt)
+
 # Add frontend and emulator library
 add_subdirectory(${PROJECT_SOURCE_DIR}/src/common)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src/core)
