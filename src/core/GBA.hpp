@@ -18,6 +18,7 @@ public:
 
     GBA();
 
+    void step();
     void loadROM(std::vector<u8> &rom);
 };
 

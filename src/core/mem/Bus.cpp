@@ -12,7 +12,7 @@ auto Bus::read8(u32 address) -> u8 {
         return m_mem.wram1[address - 0x02000000];
     } else if(address <= 0x03007FFF) {
         return m_mem.wram2[address - 0x03000000];
-    } else if(address <= 0x08000000) {
+    } else if(address >= 0x08000000) {
         return m_pak.read8(address - 0x08000000);
     }
 
@@ -31,8 +31,17 @@ void Bus::write8(u32 address, u8 value) {
     }
 }
 
+auto Bus::read32(u32 address) -> u32 {
+    u32 value = read8(address);
+    value |= read8(address + 1) << 8;
+    value |= read8(address + 2) << 16;
+    value |= read8(address + 3) << 24;
+
+    return value;
+}
+
 void Bus::loadROM(std::vector<u8> &rom) {
-    
+    m_pak.loadROM(rom);
 }
 
 } //namespace emu

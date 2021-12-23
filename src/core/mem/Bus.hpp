@@ -24,6 +24,7 @@ public:
 
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
+    auto read32(u32 address) -> u32;
 
     void loadROM(std::vector<u8> &rom);
 };
