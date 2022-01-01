@@ -114,7 +114,7 @@ const lest::test thumb_disassembly_tests[] = {
 
     CASE("Conditional Branch Instructions") {
         EXPECT(emu::thumbDisassembleConditionalBranch(0xD100) == "bne #0x4");
-        EXPECT(emu::thumbDisassembleConditionalBranch(0xD3CF) == "bcc #-0x5e");
+        EXPECT(emu::thumbDisassembleConditionalBranch(0xD3CF) == "bcc #0xffffffa2");
         EXPECT(emu::thumbDisassembleConditionalBranch(0xDB66) == "blt #0xd0");
     },
 
@@ -124,7 +124,7 @@ const lest::test thumb_disassembly_tests[] = {
     },
 
     CASE("Unconditional Branch Instructions") {
-        EXPECT(emu::thumbDisassembleUnconditionalBranch(0xE4EB) == "b #-0x626");
+        EXPECT(emu::thumbDisassembleUnconditionalBranch(0xE4EB) == "b #0xfffff9da");
         EXPECT(emu::thumbDisassembleUnconditionalBranch(0xE3FD) == "b #0x7fe");
     },
 

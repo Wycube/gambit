@@ -61,4 +61,8 @@ inline auto to_lower(const std::string &text) -> std::string {
     return lower_case;
 }
 
+inline auto is_printable(char c) -> bool {
+    return c >= 32 && c <= 126;
+}
+
 } //namespace common

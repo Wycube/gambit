@@ -38,9 +38,7 @@ struct ThumbInstruction {
 };
 
 
-extern const char *THUMB_ENCODINGS[];
-
 auto thumbDetermineType(u16 instruction) -> ThumbInstructionType;
-auto thumbDecodeInstruction(u16 instruction) -> ThumbInstruction;
+auto thumbDecodeInstruction(u16 instruction, u32 address = 0) -> ThumbInstruction;
 
 } //namespace emu

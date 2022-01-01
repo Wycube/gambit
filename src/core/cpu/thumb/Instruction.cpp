@@ -8,7 +8,7 @@ namespace emu {
 /*
  * Only 8 bits are needed to decode a 16-bit THUMB instruction: bits 15-8 (8).
  */
-const char *THUMB_ENCODINGS[] = {
+constexpr char THUMB_ENCODINGS[][9] = {
     "000>>xxx", //Move Shifted Register
     "00011xxx", //Add/Subtract Register (Register and Immediate)
     "001xxxxx", //Add/Subtract/Compare/Move Immediate
@@ -34,57 +34,12 @@ const char *THUMB_ENCODINGS[] = {
 auto thumbDetermineType(u16 instruction) -> ThumbInstructionType {
     u8 decoding_bits = instruction >> 8;
 
-    return static_cast<ThumbInstructionType>(common::match_bits(decoding_bits, THUMB_ENCODINGS));
+    return static_cast<ThumbInstructionType>(common::const_match_bits<20, 9, THUMB_ENCODINGS>(decoding_bits));
 }
 
-auto thumbDecodeInstruction(u16 instruction) -> ThumbInstruction {
+auto thumbDecodeInstruction(u16 instruction, u32 address) -> ThumbInstruction {
     ThumbInstructionType type = thumbDetermineType(instruction);
-    std::string disassembly;
-
-    switch(type) {
-        case THUMB_MOVE_SHIFTED_REGISTER : disassembly = thumbDisassembleMoveShifted(instruction);
-        break;
-        case THUMB_ADD_SUBTRACT : disassembly = thumbDisassembleAddSubtract(instruction);
-        break;
-        case THUMB_PROCESS_IMMEDIATE : disassembly = thumbDisassembleProcessImmediate(instruction);
-        break;
-        case THUMB_ALU_OPERATION : disassembly = thumbDisassembleALUOperation(instruction);
-        break;
-        case THUMB_HI_REGISTER_OPERATION : disassembly = thumbDisassembleHiRegOperation(instruction);
-        break;
-        case THUMB_BRANCH_EXCHANGE : disassembly = thumbDisassembleBranchExchange(instruction);
-        break;
-        case THUMB_PC_RELATIVE_LOAD : disassembly = thumbDisassemblePCRelativeLoad(instruction);
-        break;
-        case THUMB_LOAD_STORE_REGISTER : disassembly = thumbDisassembleLoadStoreRegister(instruction);
-        break;
-        case THUMB_LOAD_STORE_SIGN_EXTEND : disassembly = thumbDisassembleLoadStoreSigned(instruction);
-        break;
-        case THUMB_LOAD_STORE_IMMEDIATE : disassembly = thumbDisassembleLoadStoreImmediate(instruction);
-        break;
-        case THUMB_LOAD_STORE_HALFWORD : disassembly = thumbDisassembleLoadStoreHalfword(instruction);
-        break;
-        case THUMB_SP_RELATIVE_LOAD_STORE : disassembly = thumbDisassembleSPRelativeLoadStore(instruction);
-        break;
-        case THUMB_LOAD_ADDRESS : disassembly = thumbDisassembleLoadAddress(instruction);
-        break;
-        case THUMB_ADJUST_STACK_POINTER : disassembly = thumbDisassembleAdjustSP(instruction);
-        break;
-        case THUMB_PUSH_POP_REGISTERS : disassembly = thumbDisassemblePushPopRegisters(instruction);
-        break;
-        case THUMB_LOAD_STORE_MULTIPLE : disassembly = thumbDisassembleLoadStoreMultiple(instruction);
-        break;
-        case THUMB_CONDITIONAL_BRANCH : disassembly = thumbDisassembleConditionalBranch(instruction);
-        break;
-        case THUMB_SOFTWARE_INTERRUPT : disassembly = thumbDisassembleSoftwareInterrupt(instruction);
-        break;
-        case THUMB_UNCONDITIONAL_BRANCH : disassembly = thumbDisassembleUnconditionalBranch(instruction);
-        break;
-        case THUMB_LONG_BRANCH : disassembly = thumbDisassembleLongBranch(instruction);
-        break;
-        case THUMB_UNDEFINED : disassembly = thumbDisassembleUndefined(instruction);
-        break;
-    }
+    std::string disassembly = thumbDisassemblyFuncs[type](instruction, address);
 
     return ThumbInstruction{instruction, type, disassembly};
 }

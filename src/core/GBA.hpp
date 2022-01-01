@@ -14,12 +14,16 @@ private:
     CPU m_cpu;
     Bus m_bus;
 
+    dbg::Debugger m_debugger;
+
 public:
 
     GBA();
 
     void step();
-    void loadROM(std::vector<u8> &rom);
+    void loadROM(const std::vector<u8> &rom);
+
+    auto getDebugger() -> dbg::Debugger&;
 };
 
 } //namespace emu

@@ -51,9 +51,7 @@ struct ArmInstruction {
 };
 
 
-extern const char *ARM_ENCODINGS[];
-
 auto armDetermineType(u32 instruction) -> ArmInstructionType;
-auto armDecodeInstruction(u32 instruction) -> ArmInstruction;
+auto armDecodeInstruction(u32 instruction, u32 address = 0) -> ArmInstruction;
 
 } //namespace emu

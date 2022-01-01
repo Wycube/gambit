@@ -16,6 +16,11 @@ using s64 = std::int64_t;
 //Memory Sizes
 
 //KibiByte
-constexpr auto operator""_KiB(size_t value) -> size_t {
-    return 1024 * value;
+inline constexpr auto operator""_KiB(size_t value) -> size_t {
+    return value * 1024;
+}
+
+//MebiByte
+inline constexpr auto operator""_MiB(size_t value) -> size_t {
+    return value * 1024 * 1024;
 }

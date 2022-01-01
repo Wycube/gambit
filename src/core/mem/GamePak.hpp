@@ -17,7 +17,7 @@ public:
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
 
-    void loadROM(std::vector<u8> &rom);
+    void loadROM(const std::vector<u8> &rom);
 };
 
 } //namespace emu

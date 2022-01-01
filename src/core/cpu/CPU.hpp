@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/mem/Bus.hpp"
+#include "core/debug/Debugger.hpp"
 #include "common/Types.hpp"
 
 
@@ -21,6 +22,13 @@ enum ExecutionState {
     EXEC_THUMB
 };
 
+enum Flag {
+    FLAG_NEGATIVE = 1 << 31, 
+    FLAG_ZERO = 1 << 30, 
+    FLAG_CARRY = 1 << 29, 
+    FLAG_OVERFLOW = 1 << 28
+};
+
 
 /* 
  * The CPU is an ARM7TDMI that uses the ARMv4TM architecture and supports the ARM
@@ -39,11 +47,23 @@ private:
 
     u32 m_pipeline[2]; //Stores the instructions being decoded and executed
     PrivilegeMode m_mode;
+    ExecutionState m_exec;
 
     //Hardware
     Bus &m_bus;
 
     auto get_register(u8 reg) -> u32&;
+    auto get_reg(u8 reg) -> u32;
+    void set_reg(u8 reg, u32 value);
+    auto get_flag(Flag flag) -> bool;
+    void set_flag(Flag flag, bool set);
+    auto passed(u8 condition) -> bool;
+
+    //Arm instruction handlers
+    #include "arm/Handlers.inl"
+
+    void execute_arm(u32 instruction);
+    void execute_thumb(u16 instruction);
 
 public:
 
@@ -51,6 +71,8 @@ public:
 
     void step();
     void loadPipeline();
+
+    void attachDebugger(dbg::Debugger &debugger);
 };
 
 } //namespace emu

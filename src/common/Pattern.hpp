@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Types.hpp"
+#include "Log.hpp"
 
 #include <type_traits>
+#include <array>
 #include <cstring>
-#include <iostream>
-#include <bitset>
 
 
 namespace common {
@@ -81,6 +81,77 @@ auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
         }
 
         if(match) return i;
+    }
+
+    return _count;
+}
+
+
+//Bit Pattern Matching via generating certain bitmasks at compile-time
+
+template<typename T, typename = std::enable_if<std::is_integral<T>::value>>
+struct PatternMask {
+    T exclusion_bits, exclusion_mask, constant_mask, result;
+
+    constexpr PatternMask() : exclusion_bits(0), exclusion_mask(0), constant_mask(0), result(0) { }
+};
+
+template<typename T, typename = std::enable_if<std::is_integral<T>::value>, size_t _length>
+constexpr auto generate_pattern_mask(const char (&pattern)[_length]) -> PatternMask<T> {
+    //Patterns cannot be bigger than the size of the integral type
+    static_assert(sizeof(T) * 8 >= _length - 1);
+
+    PatternMask<T> masks;
+    
+    for(size_t i = 0; i < _length - 1; i++) {
+        char c = pattern[i];
+        
+        switch(c) {
+            case 'x' : continue;
+
+            case '0' :
+            case '1' : 
+                masks.constant_mask |= (1 << (_length - 2 - i));
+                masks.result |= ((c == '1') << (_length - 2 - i));
+                break;
+
+            case '<' :
+            case '>' :
+                masks.exclusion_bits |= (1 << (_length - 2 - i));
+                masks.exclusion_mask |= ((c == '>') << (_length - 2 - i));
+                break;
+        }
+    }
+
+    return masks;
+}
+
+template<size_t _count, size_t _length, const char patterns[_count][_length], typename T, typename = std::enable_if<std::is_integral<T>::value>>
+constexpr auto generate_multiple_masks() -> std::array<PatternMask<T>, _count> {
+    std::array<PatternMask<T>, _count> pattern_masks;
+
+    for(size_t i = 0; i < _count; i++) {
+        pattern_masks[i] = generate_pattern_mask<T>(patterns[i]);
+    }
+
+    return pattern_masks;
+}
+
+template<size_t _count, size_t _length, const char patterns[_count][_length], typename T, typename = std::enable_if<std::is_integral<T>::value>>
+auto const_match_bits(T value) -> size_t {
+    static constexpr std::array<PatternMask<T>, _count> pattern_masks = generate_multiple_masks<_count, _length, patterns, T>();
+
+    for(size_t i = 0; i < _count; i++) {
+        const PatternMask<T> &pattern = pattern_masks[i];
+        T excl_bits = value & pattern.exclusion_bits;
+
+        if((value & pattern.constant_mask) == pattern.result) {
+            if(pattern.exclusion_bits != 0 && (excl_bits ^ pattern.exclusion_mask) == 0) {
+                continue;
+            }
+
+            return i;
+        }
     }
 
     return _count;

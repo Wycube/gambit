@@ -1,5 +1,9 @@
 #pragma once
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmicrosoft-enum-value"
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+
 #include <fmt/format.h>
 
 
@@ -35,7 +39,9 @@ void log_debug(const std::string &message, LogLevel level, const char *file, con
 #define LOGD_WARNING(message, ...) DEBUG_LOG(common::log::WARNING, message, ##__VA_ARGS__)
 #define LOG_ERROR(message, ...)    LOG_MESSAGE(common::log::ERROR, message, ##__VA_ARGS__)
 #define LOGD_ERROR(message, ...)   DEBUG_LOG(common::log::ERROR, message, ##__VA_ARGS__)
-#define LOG_FATAL(message, ...)    LOG_MESSAGE(common::log::FATAL, message, ##__VA_ARGS__)
-#define LOGD_FATAL(message, ...)   DEBUG_LOG(common::log::FATAL, message, ##__VA_ARGS__)
+#define LOG_FATAL(message, ...)    LOG_MESSAGE(common::log::FATAL, message, ##__VA_ARGS__); std::exit(-1)
+#define LOGD_FATAL(message, ...)   DEBUG_LOG(common::log::FATAL, message, ##__VA_ARGS__); std::exit(-1)
 
 } //namespace common
+
+#pragma clang diagnostic pop

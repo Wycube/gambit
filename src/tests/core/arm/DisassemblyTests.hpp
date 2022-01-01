@@ -7,6 +7,11 @@
 
 
 const lest::test arm_disassembly_tests[] = {
+    CASE("Branch and Exchange Instructions") {
+        EXPECT(emu::armDisassembleBranchExchange(0xE12FFF11) == "bx r1");
+        EXPECT(emu::armDisassembleBranchExchange(0xB12FFF1C) == "bxlt r12");
+    },
+
     CASE("Data Processing Instructions") {
         EXPECT(emu::armDisassembleDataProcessing(0x02012101) == "andeq r2, r1, #0x40000000");
         EXPECT(emu::armDisassembleDataProcessing(0x10330004) == "eornes r0, r3, r4");
@@ -49,11 +54,6 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::armDisassembleDataSwap(0x610FA092) == "swpvs r10, r2, [r15]");
         EXPECT(emu::armDisassembleDataSwap(0xC14C3099) == "swpgtb r3, r9, [r12]");
         EXPECT(emu::armDisassembleDataSwap(0xE1401098) == "swpb r1, r8, [r0]");
-    },
-
-    CASE("Branch and Exchange Instructions") {
-        EXPECT(emu::armDisassembleBranchExchange(0xE12FFF11) == "bx r1");
-        EXPECT(emu::armDisassembleBranchExchange(0xB12FFF1C) == "bxlt r12");
     },
 
     CASE("Halfword Data Transfer Instructions") {
