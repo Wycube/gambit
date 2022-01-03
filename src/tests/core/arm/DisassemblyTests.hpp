@@ -13,7 +13,11 @@ const lest::test arm_disassembly_tests[] = {
     },
 
     CASE("PSR Transfer Instructions") {
-        EXPECT(false);
+        EXPECT(emu::armDisassemblePSRTransfer(0xE10F8000) == "mrs r8, cpsr");
+        EXPECT(emu::armDisassemblePSRTransfer(0x314F0000) == "mrscc r0, spsr");
+        EXPECT(emu::armDisassemblePSRTransfer(0xC128F00F) == "msrgt cpsr_f, r15");
+        EXPECT(emu::armDisassemblePSRTransfer(0xE323F35E) == "msr cpsr_cx, #0x78000001");
+        EXPECT(emu::armDisassemblePSRTransfer(0x836FFE77) == "msrhi spsr_cxsf, #0x770");
     },
 
     CASE("Data Processing Instructions") {

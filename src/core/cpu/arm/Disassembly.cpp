@@ -72,7 +72,8 @@ auto armDisassemblePSRTransfer(u32 instruction, u32 address) -> std::string {
     disassembly += CONDITION_EXTENSIONS[condition];
 
     if(s) {
-        u32 immediate = common::ror(instruction & 0xFF, (instruction >> 8) & 0xF);
+        u8 shift_imm = (instruction >> 8) & 0xF;
+        u32 immediate = common::ror(instruction & 0xFF, shift_imm << 1);
 
         disassembly += r ? " spsr_" : " cpsr_";
         disassembly += fields & 0x1 ? "c" : "";

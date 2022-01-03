@@ -16,7 +16,7 @@
 
 const lest::test arm_decode_tests[] = {
     ARM_DECODE_CASE("Branch and Exchange", 0xB12FFF1C, emu::LT, emu::ARM_BRANCH_AND_EXCHANGE, "bxlt r12"),
-    //ARM_DECODE_CASE("PSR Transfer", ),
+    ARM_DECODE_CASE("PSR Transfer", 0x836FFE77, emu::HI, emu::ARM_PSR_TRANSFER, "msrhi spsr_cxsf, #0x770"),
     ARM_DECODE_CASE("Data Procesing", 0x70E73250, emu::VC, emu::ARM_DATA_PROCESSING, "rscvc r3, r7, r0, asr r2"),
     ARM_DECODE_CASE("Multiply", 0xE0090B9F, emu::AL, emu::ARM_MULTIPLY, "mul r9, r15, r11"),
     ARM_DECODE_CASE("Multiply Long", 0x10FCAF9D, emu::NE, emu::ARM_MULTIPLY_LONG, "smlalnes r10, r12, r13, r15"),
