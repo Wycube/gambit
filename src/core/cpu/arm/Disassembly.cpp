@@ -1,5 +1,6 @@
 #include "Disassembly.hpp"
 #include "common/StringUtils.hpp"
+#include "common/Operations.hpp"
 
 #include <cassert>
 
@@ -10,8 +11,9 @@
 
 namespace emu {
 
-std::string (*armDisassemblyFuncs[14])(u32, u32) = {
+std::string (*armDisassemblyFuncs[15])(u32, u32) = {
     armDisassembleBranchExchange,
+    armDisassemblePSRTransfer,
     armDisassembleDataProcessing,
     armDisassembleMultiply,
     armDisassembleMultiplyLong,
@@ -48,6 +50,42 @@ auto armDisassembleBranchExchange(u32 instruction, u32 address) -> std::string {
     std::string disassembly = "bx";
     disassembly += CONDITION_EXTENSIONS[condition];
     disassembly += " r" + std::to_string(rm);
+
+    return disassembly;
+}
+
+
+//MRS{<cond>} <Rd>, CPSR|SPSR
+//MSR{<cond>} (CPSR|SPSR)_<fields>, #<immediate>
+//MSR{<cond>} (CPSR|SPSR)_<fields>, <Rm>
+auto armDisassemblePSRTransfer(u32 instruction, u32 address) -> std::string {
+    u8 condition = instruction >> 28;
+    bool i = (instruction >> 25) & 0x1;
+    bool r = (instruction >> 22) & 0x1;
+    bool s = (instruction >> 21) & 0x1;
+    u8 fields = (instruction >> 16) & 0xF;
+    u8 rd = (instruction >> 12) & 0xF;
+
+    std::string disassembly;
+
+    disassembly = s ? "msr" : "mrs";
+    disassembly += CONDITION_EXTENSIONS[condition];
+
+    if(s) {
+        u32 immediate = common::ror(instruction & 0xFF, (instruction >> 8) & 0xF);
+
+        disassembly += r ? " spsr_" : " cpsr_";
+        disassembly += fields & 0x1 ? "c" : "";
+        disassembly += (fields >> 1) & 0x1 ? "x" : "";
+        disassembly += (fields >> 2) & 0x1 ? "s" : "";
+        disassembly += (fields >> 3) & 0x1 ? "f" : "";
+        disassembly += ", ";
+        disassembly += i ? "#0x" + common::hex(immediate) : "r" + std::to_string(instruction & 0xF);
+    } else {
+        disassembly += " r" + std::to_string(rd);
+        disassembly += ", "; 
+        disassembly += r ? "spsr" : "cpsr";
+    }
 
     return disassembly;
 }

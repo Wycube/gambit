@@ -7,7 +7,7 @@
 namespace emu {
 
 void CPU::armUnimplemented(u32 instruction) {
-    ArmInstruction decoded = armDecodeInstruction(instruction);
+    ArmInstruction decoded = armDecodeInstruction(instruction, m_pc - 8);
 
     LOG_ERROR("Unimplemented ARM Instruction: (PC:{:08X} Type:{}) {}", m_pc - 8, decoded.type, decoded.disassembly);
 }
@@ -211,6 +211,7 @@ void CPU::armSingleTransfer(u32 instruction) {
 
         if(rd == 15) {
             m_pc = value & 0xFFFFFFFC;
+            loadPipeline();
         } else {
             set_reg(rd, value);
         }

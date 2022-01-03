@@ -12,6 +12,10 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::armDisassembleBranchExchange(0xB12FFF1C) == "bxlt r12");
     },
 
+    CASE("PSR Transfer Instructions") {
+        EXPECT(false);
+    },
+
     CASE("Data Processing Instructions") {
         EXPECT(emu::armDisassembleDataProcessing(0x02012101) == "andeq r2, r1, #0x40000000");
         EXPECT(emu::armDisassembleDataProcessing(0x10330004) == "eornes r0, r3, r4");

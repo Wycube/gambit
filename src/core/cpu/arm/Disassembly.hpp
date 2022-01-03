@@ -5,10 +5,11 @@
 
 namespace emu {
 
-extern std::string (*armDisassemblyFuncs[14])(u32, u32);
+extern std::string (*armDisassemblyFuncs[15])(u32, u32);
 
 
 auto armDisassembleBranchExchange(u32 instruction, u32 address = 0) -> std::string;
+auto armDisassemblePSRTransfer(u32 instruction, u32 address = 0) -> std::string;
 
 auto registerShift(u16 shift_operand) -> std::string;
 auto immediateShift(u16 shift_operand) -> std::string;

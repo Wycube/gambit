@@ -9,11 +9,11 @@ namespace emu {
 
 /* 
  * Only 12 bits are needed to decode a 32-bit ARM instruction: bits 27-20 (8) + bits 7-4 (4).
- * There is some ambiguity between BX and a Data Processing instruction, but it should
- * be interpreted as a Branch and Exchange not a TEQ, so Branch and Exchange is put first.
  */
-constexpr char ARM_ENCODINGS[][13] = {
+constexpr char ARM_ENCODINGS[15][13] = {
     "000100100001", //Branch and Exchange
+    "00010xx00000", //PSR Transfer
+    "00110x10xxxx", //PSR Transfer Immediate
     "00<xxxxx>xx>", //Data Processing
     "000000xx1001", //Multiply
     "00001xxx1001", //Multiply Long
@@ -30,8 +30,10 @@ constexpr char ARM_ENCODINGS[][13] = {
 
 auto armDetermineType(u32 instruction) -> ArmInstructionType {
     u16 decoding_bits = (((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF));
+    size_t index = common::const_match_bits<15, 13, ARM_ENCODINGS>(decoding_bits);
+    if(index >= 2) index--; //Adjust for the two PSR Transfer patterns
 
-    return static_cast<ArmInstructionType>(common::const_match_bits<13, 13, ARM_ENCODINGS>(decoding_bits));
+    return static_cast<ArmInstructionType>(index);
 }
 
 auto armDecodeInstruction(u32 instruction, u32 address) -> ArmInstruction {

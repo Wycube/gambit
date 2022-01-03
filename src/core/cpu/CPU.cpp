@@ -98,6 +98,7 @@ void CPU::execute_arm(u32 instruction) {
 
     switch(type) {
         case ARM_BRANCH_AND_EXCHANGE : armUnimplemented(instruction); break;
+        case ARM_PSR_TRANSFER : armUnimplemented(instruction); break;
         case ARM_DATA_PROCESSING : armDataProcessing(instruction); break;
         case ARM_MULTIPLY : armUnimplemented(instruction); break;
         case ARM_MULTIPLY_LONG : armUnimplemented(instruction); break;

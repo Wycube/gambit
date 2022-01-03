@@ -8,7 +8,7 @@ namespace emu {
 /*
  * Only 8 bits are needed to decode a 16-bit THUMB instruction: bits 15-8 (8).
  */
-constexpr char THUMB_ENCODINGS[][9] = {
+constexpr char THUMB_ENCODINGS[20][9] = {
     "000>>xxx", //Move Shifted Register
     "00011xxx", //Add/Subtract Register (Register and Immediate)
     "001xxxxx", //Add/Subtract/Compare/Move Immediate

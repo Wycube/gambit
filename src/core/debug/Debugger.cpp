@@ -40,13 +40,13 @@ auto Debugger::readByte(u32 address) -> u8 {
 }
 
 auto Debugger::armDisassembleAt(u32 address) -> std::string {
-    ArmInstruction decoded = armDecodeInstruction(m_bus.read32(address));
+    ArmInstruction decoded = armDecodeInstruction(m_bus.read32(address), address);
 
     return decoded.disassembly;
 }
 
 auto Debugger::thumbDisassembleAt(u32 address) -> std::string {
-    ThumbInstruction decoded = thumbDecodeInstruction(m_bus.read16(address));
+    ThumbInstruction decoded = thumbDecodeInstruction(m_bus.read16(address), address);
 
     return decoded.disassembly;
 }

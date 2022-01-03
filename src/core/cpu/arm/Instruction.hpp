@@ -23,11 +23,12 @@ enum ConditionCode : u8 {
     GT = 12, //Signed Greater than
     LE = 13, //Signed Less than or Equal
     AL = 14, //Always (unconditional)
-    UNPREDICTABLE = 15 //Unpredictable on ARMv4
+    NV = 15  //Unpredictable on ARMv4
 };
 
 enum ArmInstructionType {
     ARM_BRANCH_AND_EXCHANGE,
+    ARM_PSR_TRANSFER,
     ARM_DATA_PROCESSING,
     ARM_MULTIPLY,
     ARM_MULTIPLY_LONG,
