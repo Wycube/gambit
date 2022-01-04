@@ -34,5 +34,4 @@ const lest::test thumb_decode_tests[] = {
     THUMB_DECODE_CASE("Software Interrupt", 0xDF19, emu::THUMB_SOFTWARE_INTERRUPT, "swi #25"),
     THUMB_DECODE_CASE("Unconditional Branch", 0xE4EB, emu::THUMB_UNCONDITIONAL_BRANCH, "b #-0x626"),
     //Long Branch Link Test
-    THUMB_DECODE_CASE("Undefined", 0xB800, emu::THUMB_UNDEFINED, "undefined")
 };

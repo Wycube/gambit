@@ -28,7 +28,7 @@ enum ThumbInstructionType {
     THUMB_SOFTWARE_INTERRUPT,
     THUMB_UNCONDITIONAL_BRANCH,
     THUMB_LONG_BRANCH,
-    THUMB_UNDEFINED
+    THUMB_INVALID
 };
 
 struct ThumbInstruction {

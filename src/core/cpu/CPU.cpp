@@ -105,13 +105,14 @@ void CPU::execute_arm(u32 instruction) {
         case ARM_SINGLE_DATA_SWAP : armUnimplemented(instruction); break;
         case ARM_HALFWORD_DATA_TRANSFER : armUnimplemented(instruction); break;
         case ARM_SINGLE_DATA_TRANSFER : armSingleTransfer(instruction); break;
+        case ARM_UNDEFINED : armUnimplemented(instruction); break;
         case ARM_BLOCK_DATA_TRANSFER : armUnimplemented(instruction); break;
         case ARM_BRANCH : armBranch(instruction); break;
         case ARM_COPROCESSOR_DATA_TRANSFER : armUnimplemented(instruction); break;
         case ARM_COPROCESSOR_DATA_OPERATION : armUnimplemented(instruction); break;
         case ARM_COPROCESSOR_REGISTER_TRANSFER : armUnimplemented(instruction); break;
         case ARM_SOFTWARE_INTERRUPT : armUnimplemented(instruction); break;
-        case ARM_UNDEFINED : armUnimplemented(instruction); break;
+        case ARM_INVALID : armUnimplemented(instruction); break;
     }
 }
 

@@ -130,8 +130,7 @@ const lest::test thumb_disassembly_tests[] = {
 
     //Long Branch Link Tests will go here
 
-    CASE("Undefined Instructions") {
-        EXPECT(emu::thumbDisassembleUndefined(0xBEEF) == "undefined");
-        EXPECT(emu::thumbDisassembleUndefined(0xADD0) == "undefined");
+    CASE("Invalid Instructions") {
+        EXPECT(emu::thumbDisassembleInvalid(0xADD0) == "Invalid Instruction");
     }
 };

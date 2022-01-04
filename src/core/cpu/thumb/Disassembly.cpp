@@ -27,7 +27,7 @@ std::string (*thumbDisassemblyFuncs[21])(u16, u32) = {
     thumbDisassembleSoftwareInterrupt,
     thumbDisassembleUnconditionalBranch,
     thumbDisassembleLongBranch,
-    thumbDisassembleUndefined
+    thumbDisassembleInvalid
 };
 
 
@@ -394,8 +394,8 @@ auto thumbDisassembleLongBranch(u16 instruction, u32 address) -> std::string {
 }
 
 
-auto thumbDisassembleUndefined(u16 instruction, u32 address) -> std::string {
-    return "undefined";
+auto thumbDisassembleInvalid(u16 instruction, u32 address) -> std::string {
+    return "Invalid Instruction";
 }
 
 } //namespace emu

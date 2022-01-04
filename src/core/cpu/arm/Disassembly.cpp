@@ -11,7 +11,7 @@
 
 namespace emu {
 
-std::string (*armDisassemblyFuncs[15])(u32, u32) = {
+std::string (*armDisassemblyFuncs[16])(u32, u32) = {
     armDisassembleBranchExchange,
     armDisassemblePSRTransfer,
     armDisassembleDataProcessing,
@@ -20,13 +20,14 @@ std::string (*armDisassemblyFuncs[15])(u32, u32) = {
     armDisassembleDataSwap,
     armDisassembleHalfwordTransfer,
     armDisassembleSingleTransfer,
+    armDisassembleUndefined,
     armDisassembleBlockTransfer,
     armDisassembleBranch,
     armDisassembleCoDataTransfer,
     armDisassembleCoDataOperation,
     armDisassembleCoRegisterTransfer,
     armDisassembleSoftwareInterrupt,
-    armDisassembleUndefined
+    armDisassembleInvalid
 };
 
 
@@ -388,6 +389,11 @@ auto armDisassembleSingleTransfer(u32 instruction, u32 address) -> std::string {
 }
 
 
+auto armDisassembleUndefined(u32 instruction, u32 address) -> std::string {
+    return "undefined";
+}
+
+
 //LDM|STM{<cond>}<addressing_mode> <Rn>{!}, <registers>{^}
 //<addressing_mode> = IA/IB/DA/DB
 auto armDisassembleBlockTransfer(u32 instruction, u32 address) -> std::string {
@@ -556,8 +562,9 @@ auto armDisassembleSoftwareInterrupt(u32 instruction, u32 address) -> std::strin
 }
 
 
-auto armDisassembleUndefined(u32 instruction, u32 address) -> std::string {
-    return "undefined";
+auto armDisassembleInvalid(u32 instruction, u32 address) -> std::string {
+    return "Invalid Instruction";
 }
+
 
 } //namespace emu

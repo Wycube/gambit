@@ -5,7 +5,7 @@
 
 namespace emu {
 
-extern std::string (*armDisassemblyFuncs[15])(u32, u32);
+extern std::string (*armDisassemblyFuncs[16])(u32, u32);
 
 
 auto armDisassembleBranchExchange(u32 instruction, u32 address = 0) -> std::string;
@@ -28,6 +28,7 @@ auto scaledRegisterOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::
 auto immediate12Offset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::string;
 auto armDisassembleSingleTransfer(u32 instruction, u32 address = 0) -> std::string;
 
+auto armDisassembleUndefined(u32 instruction, u32 address = 0) -> std::string;
 auto armDisassembleBlockTransfer(u32 instruction, u32 address = 0) -> std::string;
 auto armDisassembleBranch(u32 instruction, u32 address = 0) -> std::string;
 
@@ -37,6 +38,6 @@ auto armDisassembleCoDataOperation(u32 instruction, u32 address = 0) -> std::str
 auto armDisassembleCoRegisterTransfer(u32 instruction, u32 address = 0) -> std::string;
 
 auto armDisassembleSoftwareInterrupt(u32 instruction, u32 address = 0) -> std::string;
-auto armDisassembleUndefined(u32 instruction, u32 address = 0) -> std::string;
+auto armDisassembleInvalid(u32 instruction, u32 address = 0) -> std::string;
 
 } //namespace emu

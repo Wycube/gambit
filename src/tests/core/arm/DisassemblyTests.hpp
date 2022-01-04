@@ -92,6 +92,11 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::armDisassembleSingleTransfer(0xE6F10062) == "ldrbt r0, [r1], +r2, rrx");
     },
 
+    CASE("Undefined Instructions") {
+        EXPECT(emu::armDisassembleUndefined(0x06000010) == "undefined");
+        EXPECT(emu::armDisassembleUndefined(0x66A38F9C) == "undefined");
+    },
+
     CASE("Block Data Transfer Instructions") {
         EXPECT(emu::armDisassembleBlockTransfer(0xE89502A8) == "ldmia r5, {r3, r5, r7, r9}");
         EXPECT(emu::armDisassembleBlockTransfer(0xE9A29020) == "stmib r2!, {r5, r12, r15}");
@@ -114,8 +119,7 @@ const lest::test arm_disassembly_tests[] = {
         EXPECT(emu::armDisassembleSoftwareInterrupt(0x1F07BFAD) == "swine #507821");
     },
 
-    CASE("Undefined Instructions") {
-        EXPECT(emu::armDisassembleUndefined(0x06000010) == "undefined");
-        EXPECT(emu::armDisassembleUndefined(0x66A38F9C) == "undefined");
+    CASE("Invalid Instructions") {
+        EXPECT(emu::armDisassembleInvalid(0xDEADBEEF) == "Invalid Instruction");
     }
 };

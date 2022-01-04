@@ -10,7 +10,7 @@ namespace emu {
 /* 
  * Only 12 bits are needed to decode a 32-bit ARM instruction: bits 27-20 (8) + bits 7-4 (4).
  */
-constexpr char ARM_ENCODINGS[15][13] = {
+constexpr char ARM_ENCODINGS[16][13] = {
     "000100100001", //Branch and Exchange
     "00010xx00000", //PSR Transfer
     "00110x10xxxx", //PSR Transfer Immediate
@@ -20,6 +20,7 @@ constexpr char ARM_ENCODINGS[15][13] = {
     "00010x001001", //Single Data Swap
     "000xxxxx1<<1", //Halfword Data Transfer
     "01>xxxxxxxx>", //Single Data Transfer
+    "011xxxxxxxx1", //Undefined
     "100xxxxxxxxx", //Block Data Transfer
     "101xxxxxxxxx", //Branch
     "110xxxxxxxxx", //Coprocessor Data Transfer
@@ -30,7 +31,7 @@ constexpr char ARM_ENCODINGS[15][13] = {
 
 auto armDetermineType(u32 instruction) -> ArmInstructionType {
     u16 decoding_bits = (((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF));
-    size_t index = common::const_match_bits<15, 13, ARM_ENCODINGS>(decoding_bits);
+    size_t index = common::const_match_bits<16, 13, ARM_ENCODINGS>(decoding_bits);
     if(index >= 2) index--; //Adjust for the two PSR Transfer patterns
 
     return static_cast<ArmInstructionType>(index);
