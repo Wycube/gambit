@@ -36,17 +36,17 @@ auto Debugger::getCPUSavedStatus() -> u32 {
 }
 
 auto Debugger::readByte(u32 address) -> u8 {
-    return m_bus.read8(address);
+    return m_bus.debugRead8(address);
 }
 
 auto Debugger::armDisassembleAt(u32 address) -> std::string {
-    ArmInstruction decoded = armDecodeInstruction(m_bus.read32(address), address);
+    ArmInstruction decoded = armDecodeInstruction(m_bus.debugRead32(address), address);
 
     return decoded.disassembly;
 }
 
 auto Debugger::thumbDisassembleAt(u32 address) -> std::string {
-    ThumbInstruction decoded = thumbDecodeInstruction(m_bus.read16(address), address);
+    ThumbInstruction decoded = thumbDecodeInstruction(m_bus.debugRead16(address), address);
 
     return decoded.disassembly;
 }

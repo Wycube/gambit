@@ -9,6 +9,7 @@ namespace emu {
 CPU::CPU(Bus &bus) : m_bus(bus) {
     m_mode = MODE_SYSTEM;
     m_exec = EXEC_ARM;
+    m_regs[13] = 0x03007F00;
     m_pc = 0x08000000;
 }
 
@@ -97,7 +98,7 @@ void CPU::execute_arm(u32 instruction) {
     ArmInstructionType type = armDetermineType(instruction);
 
     switch(type) {
-        case ARM_BRANCH_AND_EXCHANGE : armUnimplemented(instruction); break;
+        case ARM_BRANCH_AND_EXCHANGE : armBranchExchange(instruction); break;
         case ARM_PSR_TRANSFER : armUnimplemented(instruction); break;
         case ARM_DATA_PROCESSING : armDataProcessing(instruction); break;
         case ARM_MULTIPLY : armUnimplemented(instruction); break;
@@ -117,7 +118,12 @@ void CPU::execute_arm(u32 instruction) {
 }
 
 void CPU::execute_thumb(u16 instruction) {
-    LOG_FATAL("Thumb not implemented yet!");
+    ThumbInstructionType type = thumbDetermineType(instruction);
+
+    switch(type) {
+        case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
+        default: thumbUnimplemented(instruction);
+    }
 }
 
 void CPU::step() {
@@ -125,7 +131,7 @@ void CPU::step() {
         u32 instruction = m_pipeline[0];
 
         m_pipeline[0] = m_pipeline[1];
-        m_pipeline[1] = m_bus.read32(m_pc + 4);
+        m_pipeline[1] = m_bus.read32(m_pc + 4, NON_SEQUENTIAL);
         m_pc += 4;
 
         ArmInstruction decoded = armDecodeInstruction(instruction, m_pc - 8);
@@ -136,23 +142,24 @@ void CPU::step() {
         u16 instruction = m_pipeline[0];
 
         m_pipeline[0] = m_pipeline[1];
-        m_pipeline[1] = m_bus.read16(m_pc + 2);
+        m_pipeline[1] = m_bus.read16(m_pc + 2, NON_SEQUENTIAL);
         m_pc += 2;
 
         ThumbInstruction decoded = thumbDecodeInstruction(instruction);
 
         LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_pc - 4, instruction, decoded.disassembly);
+        execute_thumb(instruction);
     }
 }
 
 void CPU::loadPipeline() {
     if(m_exec == EXEC_ARM) {
-        m_pipeline[0] = m_bus.read32(m_pc);
-        m_pipeline[1] = m_bus.read32(m_pc + 4);
+        m_pipeline[0] = m_bus.read32(m_pc, NON_SEQUENTIAL);
+        m_pipeline[1] = m_bus.read32(m_pc + 4, SEQUENTIAL);
         m_pc += 4;
     } else if(m_exec == EXEC_THUMB) {
-        m_pipeline[0] = m_bus.read16(m_pc);
-        m_pipeline[1] = m_bus.read16(m_pc + 2);
+        m_pipeline[0] = m_bus.read16(m_pc, NON_SEQUENTIAL);
+        m_pipeline[1] = m_bus.read16(m_pc + 2, SEQUENTIAL);
         m_pc += 2;
     }
 }

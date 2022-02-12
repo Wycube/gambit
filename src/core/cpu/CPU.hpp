@@ -62,6 +62,9 @@ private:
     //Arm instruction handlers
     #include "arm/Handlers.inl"
 
+    //Thumb instruction handlers
+    #include "thumb/Handlers.inl"
+
     void execute_arm(u32 instruction);
     void execute_thumb(u16 instruction);
 

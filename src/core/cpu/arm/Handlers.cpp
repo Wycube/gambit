@@ -1,7 +1,7 @@
 #include "core/cpu/CPU.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
-#include "common/Operations.hpp"
+#include "common/Bits.hpp"
 
 
 namespace emu {
@@ -10,6 +10,21 @@ void CPU::armUnimplemented(u32 instruction) {
     ArmInstruction decoded = armDecodeInstruction(instruction, m_pc - 8);
 
     LOG_ERROR("Unimplemented ARM Instruction: (PC:{:08X} Type:{}) {}", m_pc - 8, decoded.type, decoded.disassembly);
+}
+
+void CPU::armBranchExchange(u32 instruction) {
+    u8 condition = instruction >> 28;
+
+    if(!passed(condition)) {
+        return;
+    }
+
+    u32 rm = get_reg(instruction & 0xF);
+
+    m_exec = rm & 0x1 ? EXEC_THUMB : EXEC_ARM;
+    m_cpsr = (m_cpsr & ~(1 << 5)) | ((rm & 0x1) << 5);
+    m_pc = rm & 0xFFFFFFFE;
+    loadPipeline();
 }
 
 auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
@@ -204,9 +219,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         u32 value;
 
         if(b) {
-            value = m_bus.read8(address);
+            value = m_bus.read8(address, NON_SEQUENTIAL);
         } else {
-            value = common::ror(m_bus.read32(address), address & 0x3);
+            value = common::ror(m_bus.read32(address, NON_SEQUENTIAL), address & 0x3);
         }
 
         if(rd == 15) {
@@ -217,9 +232,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         }
     } else {
         if(b) {
-            m_bus.write8(address, get_reg(rd) & 0xFF);
+            m_bus.write8(address, get_reg(rd) & 0xFF, NON_SEQUENTIAL);
         } else {
-            m_bus.write32(address & ~0x3, get_reg(rd));
+            m_bus.write32(address & ~0x3, get_reg(rd), NON_SEQUENTIAL);
         }
     }
 }
