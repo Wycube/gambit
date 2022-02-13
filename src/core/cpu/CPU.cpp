@@ -87,7 +87,7 @@ auto CPU::passed(u8 condition) -> bool {
         break;
         case 0xE : passed = true; //AL
         break;
-        case 0xF : passed = false; //NV (reserved on armv4)
+        case 0xF : passed = false; //NV (reserved on armv4T)
         break;
     }
 
@@ -121,6 +121,8 @@ void CPU::execute_thumb(u16 instruction) {
     ThumbInstructionType type = thumbDetermineType(instruction);
 
     switch(type) {
+        case THUMB_PROCESS_IMMEDIATE : thumbProcessImmediate(instruction); break;
+        case THUMB_HI_REGISTER_OPERATION : thumbHiRegisterOp(instruction); break;
         case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
         default: thumbUnimplemented(instruction);
     }

@@ -44,9 +44,9 @@ const lest::test thumb_disassembly_tests[] = {
     },
 
     CASE("Hi Register Operation Instructions") {
-        EXPECT(emu::thumbDisassembleHiRegOperation(0x4479) == "add r1, r15");
-        EXPECT(emu::thumbDisassembleHiRegOperation(0x4548) == "cmp r0, r9");
-        EXPECT(emu::thumbDisassembleHiRegOperation(0x4665) == "mov r5, r12");
+        EXPECT(emu::thumbDisassembleHiRegisterOp(0x4479) == "add r1, r15");
+        EXPECT(emu::thumbDisassembleHiRegisterOp(0x4548) == "cmp r0, r9");
+        EXPECT(emu::thumbDisassembleHiRegisterOp(0x4665) == "mov r5, r12");
     },
 
     CASE("Branch and Exchange Instructions") {

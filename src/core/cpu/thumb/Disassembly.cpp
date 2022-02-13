@@ -11,7 +11,7 @@ std::string (*thumbDisassemblyFuncs[21])(u16, u32) = {
     thumbDisassembleAddSubtract,
     thumbDisassembleProcessImmediate,
     thumbDisassembleALUOperation,
-    thumbDisassembleHiRegOperation,
+    thumbDisassembleHiRegisterOp,
     thumbDisassembleBranchExchange,
     thumbDisassemblePCRelativeLoad,
     thumbDisassembleLoadStoreRegister,
@@ -111,7 +111,7 @@ auto thumbDisassembleALUOperation(u16 instruction, u32 address) -> std::string {
 
 
 //ADD|CMP|MOV <Rd/Rn>, <Rm>
-auto thumbDisassembleHiRegOperation(u16 instruction, u32 address) -> std::string {
+auto thumbDisassembleHiRegisterOp(u16 instruction, u32 address) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "add", "cmp", "mov"
     };
