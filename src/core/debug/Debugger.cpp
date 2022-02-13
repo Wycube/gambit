@@ -35,8 +35,16 @@ auto Debugger::getCPUSavedStatus() -> u32 {
     return *m_cpu_cpsr;
 }
 
-auto Debugger::readByte(u32 address) -> u8 {
+auto Debugger::read8(u32 address) -> u8 {
     return m_bus.debugRead8(address);
+}
+
+auto Debugger::read16(u32 address) -> u16 {
+    return m_bus.debugRead16(address);
+}
+
+auto Debugger::read32(u32 address) -> u32 {
+    return m_bus.debugRead32(address);
 }
 
 auto Debugger::armDisassembleAt(u32 address) -> std::string {

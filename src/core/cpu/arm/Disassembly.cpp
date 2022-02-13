@@ -404,7 +404,7 @@ auto armDisassembleBlockTransfer(u32 instruction, u32 address) -> std::string {
     bool w = (instruction >> 21) & 0x1;
     bool l = (instruction >> 20) & 0x1;
     u16 registers = instruction & 0xFFFF;
-    assert(registers != 0); //Unpredictable
+    //assert(registers != 0); //Unpredictable
 
     static const char *ADDRESS_MODES[4] = {
         "da", "ia", "db", "ib"

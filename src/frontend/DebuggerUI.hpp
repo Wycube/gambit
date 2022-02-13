@@ -16,6 +16,9 @@ private:
     emu::dbg::Debugger &m_debugger;
     emu::GBA &m_gba;
 
+    //Disassembly
+    bool m_to_current = true;
+
     //Memory Viewer
     int m_memory_region = 0;
     const char *m_regions = "BIOS\0EWRAM\0IWRAM\0Cartridge ROM\0";
@@ -39,6 +42,7 @@ public:
             //if(ImGui::BeginChild("##DebuggerControlRegion_Child", ImVec2(0, 0), false, flags)) {
                 if(ImGui::Button("Step CPU")) {
                     m_gba.step();
+                    m_to_current = true;
                 }
 
             //}
@@ -49,17 +53,23 @@ public:
                 ImGui::BeginTabBar("##Debugger_TabBar");
 
                 if(ImGui::BeginTabItem("CPU")) {
+                    ImGui::BeginChild("##CPUState_Child");
                     drawCPUState();
+                    ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
                 
                 if(ImGui::BeginTabItem("Disassembly")) {
+                    ImGui::BeginChild("##Disassembly_Child");
                     drawDisassembly();
+                    ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
                 
                 if(ImGui::BeginTabItem("Memory Viewer")) {
+                    ImGui::BeginChild("##MemoryViewer_Child");
                     drawMemoryViewer();
+                    ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
 
@@ -117,41 +127,42 @@ public:
     }
 
     void drawDisassembly() {
-        ImGui::BeginTable("##Disassembly_Table", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersH);
+        ImGui::BeginTable("##Disassembly_Table", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg);
         
-        for(int i = -11; i <= 11; i++) {
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
+        //THUMB or ARM
+        bool thumb = (m_debugger.getCPUCurrentStatus() >> 5) & 1;
+        u8 instr_size = thumb ? 2 : 4;
 
-            ImGui::Text("%08X ", m_debugger.getCPURegister(15) + i * 4);
+        ImGuiListClipper clipper(m_region_sizes[3] / instr_size);
+        
+        while(clipper.Step()) {
+            for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
 
-            ImGui::TableNextColumn();
+                u32 address = m_region_start[3] + i * instr_size;
+                ImGui::Text("%08X ", address);
 
-            if(i == 0) {
-                ImGui::PushStyleColor(ImGuiCol_Button, {0.7f, 0.0f, 0.0f, 1.0f});
-            } else if(i == -1) {
-                ImGui::PushStyleColor(ImGuiCol_Button, {0.0f, 0.7f, 0.0f, 1.0f});
-            } else if(i == -2) {
-                ImGui::PushStyleColor(ImGuiCol_Button, {0.0f, 0.0f, 0.7f, 1.0f});
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Button, {0.0f, 0.0f, 0.0f, 0.0f});
+                ImGui::TableNextColumn();
+
+                if(address == m_debugger.getCPURegister(15)) { 
+                    //Fetch
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
+                } else if(address == m_debugger.getCPURegister(15) - instr_size) {
+                    //Decode
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
+                } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
+                    //Execute
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
+                }
+
+                ImGui::Text("%s", (thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address)).c_str());
             }
+        }
 
-            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-            ImGui::Button(m_debugger.armDisassembleAt(m_debugger.getCPURegister(15) + i * 4).c_str());
-            ImGui::PopItemFlag();
-            ImGui::PopStyleColor();
-
-            if(i == 0) {
-                ImGui::TableNextColumn();
-                ImGui::Text("(Fetch)");
-            } else if(i == -1) {
-                ImGui::TableNextColumn();
-                ImGui::Text("(Decode)");
-            } else if(i == -2) {
-                ImGui::TableNextColumn();
-                ImGui::Text("(Execute)");
-            }
+        if(m_to_current) {
+            ImGui::SetScrollY(((m_debugger.getCPURegister(15) - m_region_start[3]) / instr_size - 10) * clipper.ItemsHeight);
+            m_to_current = false;
         }
 
         ImGui::EndTable();
@@ -192,7 +203,7 @@ public:
                     }
 
                     ImGui::SameLine();
-                    ImGui::Text("%02X", m_debugger.readByte(region_start + line_address + j));
+                    ImGui::Text("%02X", m_debugger.read8(region_start + line_address + j));
                 }
 
                 ImGui::TableNextColumn();
@@ -202,7 +213,7 @@ public:
                         break;
                     }
 
-                    char c = static_cast<char>(m_debugger.readByte(region_start + line_address + j));
+                    char c = static_cast<char>(m_debugger.read8(region_start + line_address + j));
                     ascii += common::is_printable(c) ? c : '.';
                 }
                 ImGui::Text(" %-16s", ascii.c_str());

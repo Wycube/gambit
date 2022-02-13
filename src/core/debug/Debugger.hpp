@@ -30,7 +30,9 @@ public:
     auto getCPUCurrentStatus() -> u32;
     auto getCPUSavedStatus() -> u32;
 
-    auto readByte(u32 address) -> u8;
+    auto read8(u32 address) -> u8;
+    auto read16(u32 address) -> u16;
+    auto read32(u32 address) -> u32;
 
     auto armDisassembleAt(u32 address) -> std::string;
     auto thumbDisassembleAt(u32 address) -> std::string;

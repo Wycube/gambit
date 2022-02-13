@@ -46,6 +46,14 @@ auto Bus::debugRead8(u32 address) -> u8 {
     return 0xFF;
 }
 
+auto Bus::debugRead16(u32 address) -> u16 {
+    return debugRead8(address) | (debugRead8(address + 1) << 8);
+}
+
+auto Bus::debugRead32(u32 address) -> u32 {
+    return debugRead8(address) | (debugRead8(address + 1) << 8) | (debugRead8(address + 2) << 16) | (debugRead8(address + 3) << 24);
+}
+
 void Bus::debugWrite8(u32 address, u8 value) {
     address &= 0x0FFFFFFF;
     u32 sub_address = address & 0xFFFFFF;
@@ -83,17 +91,9 @@ void Bus::debugWrite8(u32 address, u8 value) {
     }
 }
 
-auto Bus::debugRead16(u32 address) -> u16 {
-    return debugRead8(address) | (debugRead8(address + 1) << 8);
-}
-
 void Bus::debugWrite16(u32 address, u16 value) {
     debugWrite8(address, value & 0xFF);
     debugWrite8(address + 1, (value >> 8) & 0xFF);
-}
-
-auto Bus::debugRead32(u32 address) -> u32 {
-    return debugRead8(address) | (debugRead8(address + 1) << 8) | (debugRead8(address + 2) << 16) | (debugRead8(address + 3) << 24);
 }
 
 void Bus::debugWrite32(u32 address, u32 value) {
@@ -119,6 +119,14 @@ auto Bus::read8(u32 address, AccessType access) -> u8 {
     return 0xFF;
 }
 
+auto Bus::read16(u32 address, AccessType access) -> u16 {
+    return read8(address, access) | (read8(address + 1, access) << 8);
+}
+
+auto Bus::read32(u32 address, AccessType access) -> u32 {
+    return read8(address, access) | (read8(address + 1, access) << 8) | (read8(address + 2, access) << 16) | (read8(address + 3, access) << 24);
+}
+
 void Bus::write8(u32 address, u8 value, AccessType access) {
     address &= 0x0FFFFFFF;
 
@@ -131,17 +139,9 @@ void Bus::write8(u32 address, u8 value, AccessType access) {
     }
 }
 
-auto Bus::read16(u32 address, AccessType access) -> u16 {
-    return read8(address, access) | (read8(address + 1, access) << 8);
-}
-
 void Bus::write16(u32 address, u16 value, AccessType access) {
     write8(address, value & 0xFF, access);
     write8(address + 1, (value >> 8) & 0xFF, access);
-}
-
-auto Bus::read32(u32 address, AccessType access) -> u32 {
-    return read8(address, access) | (read8(address + 1, access) << 8) | (read8(address + 2, access) << 16) | (read8(address + 3, access) << 24);
 }
 
 void Bus::write32(u32 address, u32 value, AccessType access) {

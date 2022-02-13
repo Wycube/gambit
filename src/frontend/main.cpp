@@ -101,7 +101,6 @@ int main(int argc, char *argv[]) {
         ImGui::EndMainMenuBar();
 
         debug_ui.draw(&show_debug);
-        debug_ui.drawCPUState();
 
         ImGui::Render();
         glClear(GL_COLOR_BUFFER_BIT);
