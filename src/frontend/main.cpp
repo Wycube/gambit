@@ -73,7 +73,6 @@ int main(int argc, char *argv[]) {
 
     emu::GBA gba;
     gba.loadROM(rom);
-    gba.step();
 
     emu::dbg::Debugger &debugger = gba.getDebugger();
 

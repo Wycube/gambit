@@ -27,6 +27,59 @@ void CPU::armBranchExchange(u32 instruction) {
     loadPipeline();
 }
 
+void CPU::armPSRTransfer(u32 instruction) {
+    u8 condition = instruction >> 28;
+    
+    if(!passed(condition)) {
+        return;
+    }
+    
+    bool r = (instruction >> 22) & 0x1;
+    bool s = (instruction >> 21) & 0x1;
+    u8 fields = (instruction >> 16) & 0xF;
+
+    if(s) {
+        bool i = (instruction >> 25) & 0x1;
+        u32 operand = 0;
+
+        if(i) {
+            u8 shift_imm = (instruction >> 8) & 0xF;
+            operand = common::ror(instruction & 0xFF, shift_imm << 1);
+        } else {
+            operand = get_reg(instruction & 0xF);
+        }
+
+        u32 psr = r ? m_spsr : m_cpsr;
+
+        if(fields & 1) {
+            psr &= ~0x7F;
+            psr |= operand & 0x7F;
+        }
+        if((fields >> 1) & 1) {
+            psr &= ~(0x7F << 8);
+            psr |= operand & (0x7F << 8);
+        }
+        if((fields >> 2) & 1) {
+            psr &= ~(0x7F << 16);
+            psr |= operand & (0x7F << 16);
+        }
+        if((fields >> 3) & 1) {
+            psr &= ~(0x7F << 24);
+            psr |= operand & (0x7F << 24);
+        }
+
+        if(r) {
+            m_spsr = psr;
+        } else {
+            m_cpsr = psr;
+        }
+    } else {
+        u8 rd = (instruction >> 12) & 0xF;
+        //TODO: When executed in User Mode, spsr is the same as cpsr
+        set_reg(rd, r ? m_spsr : m_cpsr);
+    }
+}
+
 auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
     bool i = (instruction >> 25) & 0x1;
 
@@ -72,7 +125,7 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
 }
 
 void CPU::armDataProcessing(u32 instruction) {
-    u8 condition = instruction >> 24;
+    u8 condition = instruction >> 28;
 
     if(!passed(condition)) {
         return;
@@ -84,7 +137,6 @@ void CPU::armDataProcessing(u32 instruction) {
     std::pair shifter_out = addressMode1(instruction);
     u32 shifter_operand = shifter_out.first;
     u32 alu_out;
-
 
     //Do the operation with the registers
     switch(opcode) {
@@ -253,7 +305,7 @@ void CPU::armBranch(u32 instruction) {
 
     //Store next instruction's address in the link register
     if(l) {
-        get_register(14) = m_pc - 4;
+        set_reg(14, m_pc - 4);
     }
 
     m_pc += immediate;

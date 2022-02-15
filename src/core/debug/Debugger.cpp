@@ -32,7 +32,7 @@ auto Debugger::getCPUCurrentStatus() -> u32 {
 }
 
 auto Debugger::getCPUSavedStatus() -> u32 {
-    return *m_cpu_cpsr;
+    return *m_cpu_spsr;
 }
 
 auto Debugger::read8(u32 address) -> u8 {
