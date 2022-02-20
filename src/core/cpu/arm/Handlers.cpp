@@ -51,15 +51,15 @@ void CPU::armPSRTransfer(u32 instruction) {
 
         u32 psr = r ? m_spsr : m_cpsr;
 
-        if(fields & 1) {
+        if((fields & 1) && privileged()) {
             psr &= ~0x7F;
             psr |= operand & 0x7F;
         }
-        if((fields >> 1) & 1) {
+        if(((fields >> 1) & 1) && privileged()) {
             psr &= ~(0x7F << 8);
             psr |= operand & (0x7F << 8);
         }
-        if((fields >> 2) & 1) {
+        if(((fields >> 2) & 1) && privileged()) {
             psr &= ~(0x7F << 16);
             psr |= operand & (0x7F << 16);
         }

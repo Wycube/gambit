@@ -7,7 +7,7 @@
 namespace emu {
 
 CPU::CPU(Bus &bus) : m_bus(bus) {
-    m_mode = MODE_SYSTEM;
+    m_cpsr = MODE_SYSTEM;
     m_exec = EXEC_ARM;
     m_regs[13] = 0x03007F00;
     m_pc = 0x08000000;
@@ -24,7 +24,9 @@ auto CPU::get_register(u8 reg) -> u32& {
         return m_pc;
     }
 
-    switch(m_mode) {
+    u8 mode = m_cpsr & 0x1F;
+
+    switch(mode) {
         case MODE_USER :
         case MODE_SYSTEM : return m_regs[reg];
         case MODE_FIQ : return (reg < 13 ? m_fiq_regs[reg - 8] : m_banked_regs[reg - 13]);
@@ -32,6 +34,7 @@ auto CPU::get_register(u8 reg) -> u32& {
         case MODE_SUPERVISOR : return (reg < 13 ? m_regs[reg] : m_banked_regs[reg - 9]);
         case MODE_ABORT : return (reg < 13 ? m_regs[reg] : m_banked_regs[reg - 7]);
         case MODE_UNDEFINED : return (reg < 13 ? m_regs[reg] : m_banked_regs[reg - 5]);
+        default : LOG_FATAL("Mode {:05X}, is not a valid mode!", mode);
     }
 }
 
@@ -92,6 +95,21 @@ auto CPU::passed(u8 condition) -> bool {
     }
 
     return passed;
+}
+
+//Returns true if the CPU is currently in a privileged mode, and false otherwise (User is the only non-privileged mode though).
+auto CPU::privileged() -> bool {
+    u8 mode = m_cpsr & 0x1F;
+    
+    switch(mode) {
+        case emu::MODE_FIQ :
+        case emu::MODE_IRQ :
+        case emu::MODE_SUPERVISOR :
+        case emu::MODE_ABORT :
+        case emu::MODE_UNDEFINED :
+        case emu::MODE_SYSTEM : return true;
+        default : return false;
+    }
 }
 
 void CPU::execute_arm(u32 instruction) {

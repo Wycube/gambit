@@ -46,7 +46,7 @@ private:
     u32 m_spsr; //Saved Program Status Register
 
     u32 m_pipeline[2]; //Stores the instructions being decoded and executed
-    PrivilegeMode m_mode;
+    // PrivilegeMode m_mode;
     ExecutionState m_exec;
 
     //Hardware
@@ -58,6 +58,7 @@ private:
     auto get_flag(Flag flag) -> bool;
     void set_flag(Flag flag, bool set);
     auto passed(u8 condition) -> bool;
+    auto privileged() -> bool;
 
     //Arm instruction handlers
     #include "arm/Handlers.inl"

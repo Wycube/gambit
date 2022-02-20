@@ -10,6 +10,20 @@
 #include <cmath>
 
 
+auto get_mode_str(u8 mode_bits) -> std::string {
+    switch(mode_bits) {
+        case emu::MODE_USER : return "User";
+        case emu::MODE_FIQ : return "FIQ";
+        case emu::MODE_IRQ : return "IRQ";
+        case emu::MODE_SUPERVISOR : return "Supervisor (SWI)";
+        case emu::MODE_ABORT : return "Abort";
+        case emu::MODE_UNDEFINED : return "Undefined";
+        case emu::MODE_SYSTEM : return "System";
+        default : return "Invalid";
+    }
+}
+
+
 class DebuggerUI {
 private:
 
@@ -96,20 +110,24 @@ public:
         static const emu::Flag FLAGS[4] = {emu::FLAG_ZERO, emu::FLAG_NEGATIVE, emu::FLAG_CARRY, emu::FLAG_OVERFLOW};
         
         ImGui::Separator();
+        ImGui::Text("Current Execution Mode: %s", (m_debugger.getCPUCurrentStatus() >> 5) & 0x1 ? "THUMB" : "ARM");
+        
+        int mode = (m_debugger.getCPUCurrentStatus() & 0x1F);
+        ImGui::Text("Current Privilege Mode: %s", get_mode_str(mode).c_str());
+        
         ImGui::Text("CPSR: %08X", m_debugger.getCPUCurrentStatus());
-        ImGui::BeginTable("##CPSR_Table", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit);
+        ImGui::BeginTable("##CPSR_Table", 32, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame);
         ImGui::TableNextRow();
-        for(auto name : FLAG_NAMES) {
+        for(int i = 31; i >= 0; i--) {
             ImGui::TableNextColumn();
-            ImGui::Text("%s", name);
+            ImGui::Text("%i", i);
         }
         ImGui::TableNextRow();
-        for(auto flag : {emu::FLAG_ZERO, emu::FLAG_NEGATIVE, emu::FLAG_CARRY, emu::FLAG_OVERFLOW}) {
+        for(int i = 31; i >= 0; i--) {
             ImGui::TableNextColumn();
-            ImGui::Text("%i", (m_debugger.getCPUCurrentStatus() >> flag) & 0x1);
+            ImGui::Text("%i", (m_debugger.getCPUCurrentStatus() >> i) & 0x1);
         }
         ImGui::EndTable();
-        ImGui::Text("Current Mode: %s", (m_debugger.getCPUCurrentStatus() >> 5) & 0x1 ? "THUMB" : "ARM");
 
         ImGui::Text("SPSR: %08X", m_debugger.getCPUSavedStatus());
         ImGui::BeginTable("##SPSR_Table", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit);
