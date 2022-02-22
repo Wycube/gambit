@@ -103,7 +103,7 @@ void Bus::debugWrite32(u32 address, u32 value) {
     debugWrite8(address + 3, (value >> 24) & 0xFF);
 }
 
-auto Bus::read8(u32 address, AccessType access) -> u8 {
+auto Bus::read8(u32 address) -> u8 {
     address &= 0x0FFFFFFF;
 
     if(address <= 0x00003FFF) {
@@ -119,15 +119,15 @@ auto Bus::read8(u32 address, AccessType access) -> u8 {
     return 0xFF;
 }
 
-auto Bus::read16(u32 address, AccessType access) -> u16 {
-    return read8(address, access) | (read8(address + 1, access) << 8);
+auto Bus::read16(u32 address) -> u16 {
+    return read8(address) | (read8(address + 1) << 8);
 }
 
-auto Bus::read32(u32 address, AccessType access) -> u32 {
-    return read8(address, access) | (read8(address + 1, access) << 8) | (read8(address + 2, access) << 16) | (read8(address + 3, access) << 24);
+auto Bus::read32(u32 address) -> u32 {
+    return read8(address) | (read8(address + 1) << 8) | (read8(address + 2) << 16) | (read8(address + 3) << 24);
 }
 
-void Bus::write8(u32 address, u8 value, AccessType access) {
+void Bus::write8(u32 address, u8 value) {
     address &= 0x0FFFFFFF;
 
     if(address <= 0x00003FFF) {
@@ -139,16 +139,16 @@ void Bus::write8(u32 address, u8 value, AccessType access) {
     }
 }
 
-void Bus::write16(u32 address, u16 value, AccessType access) {
-    write8(address, value & 0xFF, access);
-    write8(address + 1, (value >> 8) & 0xFF, access);
+void Bus::write16(u32 address, u16 value) {
+    write8(address, value & 0xFF);
+    write8(address + 1, (value >> 8) & 0xFF);
 }
 
-void Bus::write32(u32 address, u32 value, AccessType access) {
-    write8(address, value & 0xFF, access);
-    write8(address + 1, (value >> 8) & 0xFF, access);
-    write8(address + 2, (value >> 16) & 0xFF, access);
-    write8(address + 3, (value >> 24) & 0xFF, access);
+void Bus::write32(u32 address, u32 value) {
+    write8(address, value & 0xFF);
+    write8(address + 1, (value >> 8) & 0xFF);
+    write8(address + 2, (value >> 16) & 0xFF);
+    write8(address + 3, (value >> 24) & 0xFF);
 }
 
 void Bus::loadROM(const std::vector<u8> &rom) {

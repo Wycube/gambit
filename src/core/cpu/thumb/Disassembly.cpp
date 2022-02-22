@@ -43,7 +43,6 @@ auto thumbDisassembleMoveShifted(u16 instruction, u32 address) -> std::string {
     u8 rd = instruction & 0x7;
 
     std::string disassembly;
-
     disassembly = OPCODE_MNEMONICS[opcode];
     disassembly += " r" + std::to_string(rd);
     disassembly += ", r" + std::to_string(rm);

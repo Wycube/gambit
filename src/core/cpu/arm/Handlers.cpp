@@ -271,9 +271,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         u32 value;
 
         if(b) {
-            value = m_bus.read8(address, NON_SEQUENTIAL);
+            value = m_bus.read8(address);
         } else {
-            value = common::ror(m_bus.read32(address, NON_SEQUENTIAL), address & 0x3);
+            value = common::ror(m_bus.read32(address), address & 0x3);
         }
 
         if(rd == 15) {
@@ -284,9 +284,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         }
     } else {
         if(b) {
-            m_bus.write8(address, get_reg(rd) & 0xFF, NON_SEQUENTIAL);
+            m_bus.write8(address, get_reg(rd) & 0xFF);
         } else {
-            m_bus.write32(address & ~0x3, get_reg(rd), NON_SEQUENTIAL);
+            m_bus.write32(address & ~0x3, get_reg(rd));
         }
     }
 }

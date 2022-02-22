@@ -8,18 +8,12 @@
 
 namespace emu {
 
-/* Maybe Later
-struct Page {
-    u8 *data; //If nullptr, it's not a fast page
-    enum Permissions {
-        READ_ONLY, WRITE_ONLY, READ_WRITE
-    } permissions;
-};
-*/
+//TODO:
+// - Sequential and Non-Sequential Accesses
 
-enum AccessType {
-    NON_SEQUENTIAL, SEQUENTIAL
-};
+// enum AccessType {
+//     NON_SEQUENTIAL, SEQUENTIAL
+// };
 
 class Bus {
 private:
@@ -45,12 +39,12 @@ public:
     void debugWrite16(u32 address, u16 value);
     void debugWrite32(u32 address, u32 value);
 
-    auto read8(u32 address, AccessType access) -> u8;
-    auto read16(u32 address, AccessType access) -> u16; 
-    auto read32(u32 address, AccessType access) -> u32;
-    void write8(u32 address, u8 value, AccessType access);
-    void write16(u32 address, u16 value, AccessType access);
-    void write32(u32 address, u32 value, AccessType access);
+    auto read8(u32 address) -> u8;
+    auto read16(u32 address) -> u16; 
+    auto read32(u32 address) -> u32;
+    void write8(u32 address, u8 value);
+    void write16(u32 address, u16 value);
+    void write32(u32 address, u32 value);
 
     void loadROM(const std::vector<u8> &rom);
 };

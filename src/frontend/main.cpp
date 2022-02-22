@@ -80,6 +80,8 @@ int main(int argc, char *argv[]) {
 
     DebuggerUI debug_ui(debugger, gba);
     bool show_debug = true;
+    
+    bool show_about = false;
 
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -94,12 +96,32 @@ int main(int argc, char *argv[]) {
             if(ImGui::MenuItem("Debugger")) {
                 show_debug = true;
             }
+
+            ImGui::EndMenu();
+        }
+
+        if(ImGui::BeginMenu("Help")) {
+            if(ImGui::MenuItem("About")) {
+                show_about = true;
+            }
+
             ImGui::EndMenu();
         }
 
         ImGui::EndMainMenuBar();
 
         debug_ui.draw(&show_debug);
+
+        if(show_about && ImGui::Begin("About", &show_about)) {
+            ImGui::Text("Game Boy Advance Emulator,");
+            ImGui::Text("Copyright (c) Wycube");
+            ImGui::Separator();
+            ImGui::Text("Version: %s", common::GIT_DESC);
+            ImGui::Text("Commit: %s", common::GIT_COMMIT);
+            ImGui::Text("Branch: %s", common::GIT_BRANCH);
+
+            ImGui::End();
+        }
 
         ImGui::Render();
         glClear(GL_COLOR_BUFFER_BIT);

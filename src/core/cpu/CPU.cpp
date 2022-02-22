@@ -129,9 +129,13 @@ void CPU::execute_thumb(u16 instruction) {
     ThumbInstructionType type = thumbDetermineType(instruction);
 
     switch(type) {
+        case THUMB_MOVE_SHIFTED_REGISTER : thumbMoveShifted(instruction); break;
+        case THUMB_ADD_SUBTRACT : thumbAddSubtract(instruction); break;
         case THUMB_PROCESS_IMMEDIATE : thumbProcessImmediate(instruction); break;
         case THUMB_HI_REGISTER_OPERATION : thumbHiRegisterOp(instruction); break;
+        case THUMB_PC_RELATIVE_LOAD : thumbPCRelativeLoad(instruction); break;
         case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
+        case THUMB_CONDITIONAL_BRANCH : thumbConditionalBranch(instruction); break;
         default: thumbUnimplemented(instruction);
     }
 }
@@ -141,7 +145,7 @@ void CPU::step() {
         u32 instruction = m_pipeline[0];
 
         m_pipeline[0] = m_pipeline[1];
-        m_pipeline[1] = m_bus.read32(m_pc + 4, NON_SEQUENTIAL);
+        m_pipeline[1] = m_bus.read32(m_pc + 4);
         m_pc += 4;
 
         ArmInstruction decoded = armDecodeInstruction(instruction, m_pc - 8);
@@ -152,7 +156,7 @@ void CPU::step() {
         u16 instruction = m_pipeline[0];
 
         m_pipeline[0] = m_pipeline[1];
-        m_pipeline[1] = m_bus.read16(m_pc + 2, NON_SEQUENTIAL);
+        m_pipeline[1] = m_bus.read16(m_pc + 2);
         m_pc += 2;
 
         ThumbInstruction decoded = thumbDecodeInstruction(instruction);
@@ -164,12 +168,12 @@ void CPU::step() {
 
 void CPU::loadPipeline() {
     if(m_exec == EXEC_ARM) {
-        m_pipeline[0] = m_bus.read32(m_pc, NON_SEQUENTIAL);
-        m_pipeline[1] = m_bus.read32(m_pc + 4, SEQUENTIAL);
+        m_pipeline[0] = m_bus.read32(m_pc);
+        m_pipeline[1] = m_bus.read32(m_pc + 4);
         m_pc += 4;
     } else if(m_exec == EXEC_THUMB) {
-        m_pipeline[0] = m_bus.read16(m_pc, NON_SEQUENTIAL);
-        m_pipeline[1] = m_bus.read16(m_pc + 2, SEQUENTIAL);
+        m_pipeline[0] = m_bus.read16(m_pc);
+        m_pipeline[1] = m_bus.read16(m_pc + 2);
         m_pc += 2;
     }
 }
