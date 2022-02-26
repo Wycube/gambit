@@ -174,7 +174,14 @@ public:
                     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
                 }
 
-                ImGui::Text("%s", (thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address)).c_str());
+                //Instruction in hexadecimal
+                u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
+                ImGui::Text(fmt::format("%0{}X ", thumb ? 4 : 8).c_str(), bytes);
+
+                //Actual disassembly
+                ImGui::TableNextColumn();
+                std::string disassembled = thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address);
+                ImGui::Text("%s", disassembled.c_str());
             }
         }
 
