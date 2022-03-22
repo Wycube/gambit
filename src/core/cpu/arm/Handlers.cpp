@@ -44,7 +44,7 @@ void CPU::armPSRTransfer(u32 instruction) {
 
         if(i) {
             u8 shift_imm = (instruction >> 8) & 0xF;
-            operand = common::ror(instruction & 0xFF, shift_imm << 1);
+            operand = bits::ror(instruction & 0xFF, shift_imm << 1);
         } else {
             operand = get_reg(instruction & 0xF);
         }
@@ -86,7 +86,7 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
     if(i) {
         u8 rotate_imm = (instruction >> 8) & 0xF;
         u8 immed_8 = instruction & 0xFF;
-        u32 result = common::ror(immed_8, rotate_imm * 2);
+        u32 result = bits::ror(immed_8, rotate_imm * 2);
 
         bool shifter_carry_out = rotate_imm == 0 ? get_flag(FLAG_CARRY) : result >> 31;
 
@@ -111,10 +111,10 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
                 case 1 : result = shift_imm == 0 ? 0 : rm >> shift_imm; //LSR
                     shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
                 break;
-                case 2 : result = shift_imm == 0 ? ~(rm >> 31) + 1 : common::asr(rm, shift_imm); //ASR
+                case 2 : result = shift_imm == 0 ? ~(rm >> 31) + 1 : bits::asr(rm, shift_imm); //ASR
                     shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
                 break;
-                case 3 : result = shift_imm == 0 ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : common::ror(rm, shift_imm); //RRX and ROR
+                case 3 : result = shift_imm == 0 ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : bits::ror(rm, shift_imm); //RRX and ROR
                     shifter_carry_out = shift_imm == 0 ? rm & 0x1 : (rm >> (shift_imm - 1)) & 0x1;
                 break;
             }
@@ -210,6 +210,58 @@ void CPU::armDataProcessing(u32 instruction) {
     }
 }
 
+void CPU::armHalfwordTransfer(u32 instruction) {
+    u8 condition = bits::get<28, 4>(instruction);
+
+    if(!passed(condition)) {
+        return;
+    }
+
+    u8 rn = bits::get<16, 4>(instruction); //(instruction >> 16) & 0xF;
+    u8 rd = bits::get<12, 4>(instruction); //(instruction >> 12) & 0xF;
+    bool p = bits::get<24, 1>(instruction); //(instruction >> 24) & 0x1;
+    bool u = bits::get<23, 1>(instruction); //(instruction >> 23) & 0x1;
+    bool i = bits::get<22, 4>(instruction); //(instruction >> 22) & 0x1;
+    bool w = bits::get<21, 4>(instruction); //(instruction >> 21) & 0x1;
+    bool l = bits::get<20, 4>(instruction); //(instruction >> 20) & 0x1;
+    u8 sh = bits::get<5, 2>(instruction); //(instruction >> 5) & 0x3;
+
+    bool wback = p || !w;
+ 
+    u32 offset = 0;
+    if(i) {
+        offset = (bits::get<8, 4>(instruction) << 4) | (bits::get<0, 4>(instruction));
+    } else {
+        offset = get_reg(bits::get<0, 4>(instruction));
+    }
+
+    u32 offset_address = u ? get_reg(rn) + offset : get_reg(rn) - offset;
+    u32 address = p ? offset_address : get_reg(rn);
+    
+    u16 data = 0;
+    if(sh != 2) {
+        if(bits::get<0, 1>(address) == 0) {
+            data = l ? m_bus.read16(address) : get_reg(rd);
+        } else {
+            //TODO: Figure out what UNPREDICTABLE does here
+        }
+    } else {
+        //Should not happen with a store
+        data = m_bus.read8(address);
+    }
+
+    if(l && wback) set_reg(rn, offset_address);
+
+    if(l) {
+        u32 extended = sh == 2 ? bits::sign_extend8(data) : sh == 3 ? bits::sign_extend16(data) : data;
+        set_reg(rd, extended);
+    } else {
+        m_bus.write16(address, data);
+    }
+
+    if(!l && wback) set_reg(rn, offset_address);
+}
+
 auto CPU::addressMode2(u8 rn, u16 addr_mode, bool i, bool p, bool u, bool w) -> u32 {
     u32 address;
     u32 offset;
@@ -226,9 +278,9 @@ auto CPU::addressMode2(u8 rn, u16 addr_mode, bool i, bool p, bool u, bool w) -> 
             break;
             case 0x1 : offset = shift_imm == 0 ? 0 : rm >> shift_imm; //LSR
             break;
-            case 0x2 : offset = shift_imm == 0 ? ~(rm >> 31) + 1 : common::asr(rm, shift_imm); //ASR
+            case 0x2 : offset = shift_imm == 0 ? ~(rm >> 31) + 1 : bits::asr(rm, shift_imm); //ASR
             break;
-            case 0x3 : offset = shift_imm == 0 ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : common::ror(rm, shift_imm); //RRX and ROR
+            case 0x3 : offset = shift_imm == 0 ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : bits::ror(rm, shift_imm); //RRX and ROR
             break;
         }
     }
@@ -273,7 +325,7 @@ void CPU::armSingleTransfer(u32 instruction) {
         if(b) {
             value = m_bus.read8(address);
         } else {
-            value = common::ror(m_bus.read32(address), address & 0x3);
+            value = bits::ror(m_bus.read32(address), address & 0x3);
         }
 
         if(rd == 15) {

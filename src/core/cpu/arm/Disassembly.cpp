@@ -74,7 +74,7 @@ auto armDisassemblePSRTransfer(u32 instruction, u32 address) -> std::string {
 
     if(s) {
         u8 shift_imm = (instruction >> 8) & 0xF;
-        u32 immediate = common::ror(instruction & 0xFF, shift_imm << 1);
+        u32 immediate = bits::ror(instruction & 0xFF, shift_imm << 1);
 
         disassembly += r ? " spsr_" : " cpsr_";
         disassembly += fields & 0x1 ? "c" : "";
@@ -293,8 +293,8 @@ auto armDisassembleHalfwordTransfer(u32 instruction, u32 address) -> std::string
     u8 rd = (instruction >> 12) & 0xF;
     bool p = (instruction >> 24) & 0x1;
     bool u = (instruction >> 23) & 0x1;
+    bool i = (instruction >> 22) & 0x1;
     bool w = (instruction >> 21) & 0x1;
-    bool i = ((instruction >> 21) & 0x2) | ((instruction >> 22) & 0x1);
     bool l = (instruction >> 20) & 0x1;
     u8 sh = (instruction >> 5) & 0x3;
 

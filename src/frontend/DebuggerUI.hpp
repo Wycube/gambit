@@ -130,16 +130,16 @@ public:
         ImGui::EndTable();
 
         ImGui::Text("SPSR: %08X", m_debugger.getCPUSavedStatus());
-        ImGui::BeginTable("##SPSR_Table", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit);
+        ImGui::BeginTable("##SPSR_Table", 32, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame);
         ImGui::TableNextRow();
-        for(auto name : FLAG_NAMES) {
+        for(int i = 31; i >= 0; i--) {
             ImGui::TableNextColumn();
-            ImGui::Text("%s", name);
+            ImGui::Text("%i", i);
         }
         ImGui::TableNextRow();
-        for(auto flag : {emu::FLAG_ZERO, emu::FLAG_NEGATIVE, emu::FLAG_CARRY, emu::FLAG_OVERFLOW}) {
+        for(int i = 31; i >= 0; i--) {
             ImGui::TableNextColumn();
-            ImGui::Text("%i", (m_debugger.getCPUSavedStatus() >> flag) & 0x1);
+            ImGui::Text("%i", (m_debugger.getCPUSavedStatus() >> i) & 0x1);
         }
         ImGui::EndTable();
     }

@@ -143,7 +143,7 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
         LOG_ERROR("Pop registers not implemented for THUMB yet!");
     } else {
         //Push
-        u32 address = m_regs[13] - 4 * (common::popcount_16(registers) + r);
+        u32 address = m_regs[13] - 4 * (bits::popcount_16(registers) + r);
 
         for(int i = 0; i < 8; i++) {
             if((registers >> i) & 1) {
@@ -159,7 +159,7 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
             address += 4;
         }
 
-        m_regs[13] = m_regs[13] - 4 * (common::popcount_16(registers) + r);
+        m_regs[13] = m_regs[13] - 4 * (bits::popcount_16(registers) + r);
     }
 }
 

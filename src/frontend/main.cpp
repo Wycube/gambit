@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
 
         if(show_about && ImGui::Begin("About", &show_about)) {
             ImGui::Text("Game Boy Advance Emulator,");
-            ImGui::Text("Copyright (c) Wycube");
+            ImGui::Text("Copyright (c) 2021 Wycube");
             ImGui::Separator();
             ImGui::Text("Version: %s", common::GIT_DESC);
             ImGui::Text("Commit: %s", common::GIT_COMMIT);
