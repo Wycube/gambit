@@ -35,6 +35,10 @@ auto Debugger::getCPUSavedStatus() -> u32 {
     return *m_cpu_spsr;
 }
 
+auto Debugger::romSize() -> u32 {
+    return m_bus.romSize();
+}
+
 auto Debugger::read8(u32 address) -> u8 {
     return m_bus.debugRead8(address);
 }

@@ -86,6 +86,10 @@ int main(int argc, char *argv[]) {
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
+        if(debug_ui.running()) {
+            gba.step();
+        }
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

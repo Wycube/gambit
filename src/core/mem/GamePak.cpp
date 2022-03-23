@@ -13,6 +13,10 @@ void GamePak::write8(u32 address, u8 value) {
     //RAM
 }
 
+auto GamePak::size() -> u32 {
+    return m_rom.size();
+}
+
 void GamePak::loadROM(const std::vector<u8> &rom) {
     m_rom = rom;
 }

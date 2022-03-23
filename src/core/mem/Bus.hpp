@@ -11,10 +11,6 @@ namespace emu {
 //TODO:
 // - Sequential and Non-Sequential Accesses
 
-// enum AccessType {
-//     NON_SEQUENTIAL, SEQUENTIAL
-// };
-
 class Bus {
 private:
 
@@ -31,14 +27,6 @@ public:
 
     Bus();
 
-    //For Debugger
-    auto debugRead8(u32 address) -> u8;
-    auto debugRead16(u32 address) -> u16;
-    auto debugRead32(u32 address) -> u32;
-    void debugWrite8(u32 address, u8 value);
-    void debugWrite16(u32 address, u16 value);
-    void debugWrite32(u32 address, u32 value);
-
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16; 
     auto read32(u32 address) -> u32;
@@ -46,7 +34,16 @@ public:
     void write16(u32 address, u16 value);
     void write32(u32 address, u32 value);
 
+    auto romSize() -> u32;
     void loadROM(const std::vector<u8> &rom);
+
+    //For Debugger
+    auto debugRead8(u32 address) -> u8;
+    auto debugRead16(u32 address) -> u16;
+    auto debugRead32(u32 address) -> u32;
+    void debugWrite8(u32 address, u8 value);
+    void debugWrite16(u32 address, u16 value);
+    void debugWrite32(u32 address, u32 value);
 };
 
 } //namespace emu

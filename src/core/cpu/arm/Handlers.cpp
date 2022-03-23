@@ -217,14 +217,14 @@ void CPU::armHalfwordTransfer(u32 instruction) {
         return;
     }
 
-    u8 rn = bits::get<16, 4>(instruction); //(instruction >> 16) & 0xF;
-    u8 rd = bits::get<12, 4>(instruction); //(instruction >> 12) & 0xF;
-    bool p = bits::get<24, 1>(instruction); //(instruction >> 24) & 0x1;
-    bool u = bits::get<23, 1>(instruction); //(instruction >> 23) & 0x1;
-    bool i = bits::get<22, 4>(instruction); //(instruction >> 22) & 0x1;
-    bool w = bits::get<21, 4>(instruction); //(instruction >> 21) & 0x1;
-    bool l = bits::get<20, 4>(instruction); //(instruction >> 20) & 0x1;
-    u8 sh = bits::get<5, 2>(instruction); //(instruction >> 5) & 0x3;
+    u8 rn = bits::get<16, 4>(instruction);
+    u8 rd = bits::get<12, 4>(instruction);
+    bool p = bits::get<24, 1>(instruction);
+    bool u = bits::get<23, 1>(instruction);
+    bool i = bits::get<22, 4>(instruction);
+    bool w = bits::get<21, 4>(instruction);
+    bool l = bits::get<20, 4>(instruction);
+    u8 sh = bits::get<5, 2>(instruction);
 
     bool wback = p || !w;
  

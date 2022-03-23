@@ -30,6 +30,7 @@ public:
     auto getCPUCurrentStatus() -> u32;
     auto getCPUSavedStatus() -> u32;
 
+    auto romSize() -> u32;
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16;
     auto read32(u32 address) -> u32;

@@ -39,9 +39,17 @@ private:
     u32 m_region_sizes[4] = {16_KiB, 256_KiB, 32_KiB, 16_MiB};
     u32 m_region_start[4] = {0, 0x02000000, 0x03000000, 0x08000000};
 
+    bool m_running = false;
+
 public:
 
-    DebuggerUI(emu::dbg::Debugger &debugger, emu::GBA &gba) : m_debugger(debugger), m_gba(gba) { }
+    DebuggerUI(emu::dbg::Debugger &debugger, emu::GBA &gba) : m_debugger(debugger), m_gba(gba) {
+        m_region_sizes[3] = m_debugger.romSize();
+    }
+
+    auto running() -> bool {
+        return m_running;
+    }
 
     void draw(bool *show = nullptr) {
         if(!*show) {
@@ -54,9 +62,23 @@ public:
 
             ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_ChildWindow;
             //if(ImGui::BeginChild("##DebuggerControlRegion_Child", ImVec2(0, 0), false, flags)) {
-                if(ImGui::Button("Step CPU")) {
+                if(m_running) {
+                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                }
+
+                if(ImGui::Button("Step")) {
                     m_gba.step();
                     m_to_current = true;
+                }
+
+                if(m_running) {
+                    ImGui::PopItemFlag();
+                }
+
+                ImGui::SameLine();
+
+                if((!m_running && ImGui::Button("Run")) || (m_running && ImGui::Button("Pause"))) {
+                    m_running = !m_running;
                 }
 
             //}
