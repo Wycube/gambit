@@ -1,7 +1,9 @@
 #pragma once
 
-#include "core/cpu/CPU.hpp"
+#include "core/Scheduler.hpp"
+#include "core/ppu/PPU.hpp"
 #include "core/mem/Bus.hpp"
+#include "core/cpu/CPU.hpp"
 
 #include <vector>
 
@@ -11,8 +13,10 @@ namespace emu {
 class GBA {
 private:
 
-    CPU m_cpu;
+    Scheduler m_scheduler;
+    PPU m_ppu;
     Bus m_bus;
+    CPU m_cpu;
 
     dbg::Debugger m_debugger;
 
@@ -22,6 +26,7 @@ public:
 
     void step();
     void loadROM(const std::vector<u8> &rom);
+    auto getGamePak() -> GamePak&;
 
     auto getDebugger() -> dbg::Debugger&;
 };

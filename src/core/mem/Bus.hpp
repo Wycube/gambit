@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GamePak.hpp"
+#include "core/Scheduler.hpp"
 #include "common/Types.hpp"
 
 #include <vector>
@@ -10,6 +11,9 @@ namespace emu {
 
 //TODO:
 // - Sequential and Non-Sequential Accesses
+// enum AccessType {
+//     SEQUENTIAL, NON_SEQUENTIAL
+// };
 
 class Bus {
 private:
@@ -22,10 +26,15 @@ private:
     } m_mem;
 
     GamePak m_pak;
+    Scheduler &m_scheduler;
+
+    void wait(u32 cycles); //For waitstates
+    auto read_byte(u32 address) -> u8;
+    void write_byte(u32 address, u8 value);
 
 public:
 
-    Bus();
+    Bus(Scheduler &scheduler);
 
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16; 
@@ -33,8 +42,9 @@ public:
     void write8(u32 address, u8 value);
     void write16(u32 address, u16 value);
     void write32(u32 address, u32 value);
+    void cycle();
 
-    auto romSize() -> u32;
+    auto getLoadedPak() -> GamePak&;
     void loadROM(const std::vector<u8> &rom);
 
     //For Debugger

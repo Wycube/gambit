@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
 
     DebuggerUI debug_ui(debugger, gba);
     bool show_debug = true;
-    
     bool show_about = false;
+    bool show_pak_info = false;
 
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -104,6 +104,14 @@ int main(int argc, char *argv[]) {
             ImGui::EndMenu();
         }
 
+        if(ImGui::BeginMenu("Info")) {
+            if(ImGui::MenuItem("Game Info")) {
+                show_pak_info = true;
+            }
+
+            ImGui::EndMenu();
+        }
+
         if(ImGui::BeginMenu("Help")) {
             if(ImGui::MenuItem("About")) {
                 show_about = true;
@@ -115,6 +123,13 @@ int main(int argc, char *argv[]) {
         ImGui::EndMainMenuBar();
 
         debug_ui.draw(&show_debug);
+
+        if(show_pak_info && ImGui::Begin("Pak Info", &show_pak_info)) {
+            ImGui::Text("Name: %s", argv[1]);
+            ImGui::Text("Size: %u bytes", gba.getGamePak().size());
+
+            ImGui::End();
+        }
 
         if(show_about && ImGui::Begin("About", &show_about)) {
             ImGui::Text("Game Boy Advance Emulator,");

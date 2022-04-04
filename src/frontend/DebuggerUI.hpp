@@ -44,7 +44,7 @@ private:
 public:
 
     DebuggerUI(emu::dbg::Debugger &debugger, emu::GBA &gba) : m_debugger(debugger), m_gba(gba) {
-        m_region_sizes[3] = m_debugger.romSize();
+        m_region_sizes[3] = m_gba.getGamePak().size();
     }
 
     auto running() -> bool {

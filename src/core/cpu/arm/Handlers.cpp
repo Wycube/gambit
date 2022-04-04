@@ -179,6 +179,7 @@ void CPU::armDataProcessing(u32 instruction) {
 
         if(s && ((instruction >> 12) & 0xF) == 15) {
             m_cpsr = m_spsr;
+            loadPipeline();
         }
     }
 

@@ -3,11 +3,15 @@
 
 namespace emu {
 
-Bus::Bus() {
+Bus::Bus(Scheduler &scheduler) : m_scheduler(scheduler) {
     memset(&m_mem, 0, sizeof(m_mem));
 }
 
-auto Bus::read8(u32 address) -> u8 {
+void Bus::wait(u32 cycles) {
+    m_scheduler.step(cycles);
+}
+
+auto Bus::read_byte(u32 address) -> u8 {
     address &= 0x0FFFFFFF;
 
     if(address <= 0x00003FFF) {
@@ -23,15 +27,7 @@ auto Bus::read8(u32 address) -> u8 {
     return 0xFF;
 }
 
-auto Bus::read16(u32 address) -> u16 {
-    return read8(address) | (read8(address + 1) << 8);
-}
-
-auto Bus::read32(u32 address) -> u32 {
-    return read8(address) | (read8(address + 1) << 8) | (read8(address + 2) << 16) | (read8(address + 3) << 24);
-}
-
-void Bus::write8(u32 address, u8 value) {
+void Bus::write_byte(u32 address, u8 value) {
     address &= 0x0FFFFFFF;
 
     if(address <= 0x00003FFF) {
@@ -43,20 +39,52 @@ void Bus::write8(u32 address, u8 value) {
     }
 }
 
+auto Bus::read8(u32 address) -> u8 {
+    cycle();
+
+    return read_byte(address);
+}
+
+auto Bus::read16(u32 address) -> u16 {
+    cycle();
+
+    return read_byte(address) | (read_byte(address + 1) << 8);
+}
+
+auto Bus::read32(u32 address) -> u32 {
+    cycle();
+    
+    return read_byte(address) | (read_byte(address + 1) << 8) | (read_byte(address + 2) << 16) | (read_byte(address + 3) << 24);
+}
+
+void Bus::write8(u32 address, u8 value) {
+    cycle();
+    
+    write_byte(address, value);
+}
+
 void Bus::write16(u32 address, u16 value) {
-    write8(address, value & 0xFF);
-    write8(address + 1, (value >> 8) & 0xFF);
+    cycle();
+    
+    write_byte(address, value & 0xFF);
+    write_byte(address + 1, (value >> 8) & 0xFF);
 }
 
 void Bus::write32(u32 address, u32 value) {
-    write8(address, value & 0xFF);
-    write8(address + 1, (value >> 8) & 0xFF);
-    write8(address + 2, (value >> 16) & 0xFF);
-    write8(address + 3, (value >> 24) & 0xFF);
+    cycle();
+
+    write_byte(address, value & 0xFF);
+    write_byte(address + 1, (value >> 8) & 0xFF);
+    write_byte(address + 2, (value >> 16) & 0xFF);
+    write_byte(address + 3, (value >> 24) & 0xFF);
 }
 
-auto Bus::romSize() -> u32 {
-    return m_pak.size();
+void Bus::cycle() {
+    m_scheduler.step(1);
+}
+
+auto Bus::getLoadedPak() -> GamePak& {
+    return m_pak;
 }
 
 void Bus::loadROM(const std::vector<u8> &rom) {

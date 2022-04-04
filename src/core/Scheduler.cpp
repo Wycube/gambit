@@ -1,0 +1,35 @@
+#include "Scheduler.hpp"
+#include "common/Log.hpp"
+
+#include <algorithm>
+
+
+namespace emu {
+
+Scheduler::Scheduler() { }
+
+void Scheduler::addEvent(EventFunc callback, u32 cycles_from_now) {
+    m_events.push_back(Event{callback, m_current_timestamp + cycles_from_now});
+    std::sort(m_events.begin(), m_events.end(), [](const Event &a, const Event &b) {
+        return a.scheduled_timestamp >= b.scheduled_timestamp;
+    });
+}
+
+void Scheduler::step(u32 cycles) {
+    //TODO: Check for overflow, possible elsewhere
+    m_current_timestamp += cycles;
+    bool events_to_run = true;
+
+    LOG_DEBUG("Scheduler ticked {} cycles", cycles);
+
+    while(events_to_run) {
+        if(m_events.size() > 0 && m_events.back().scheduled_timestamp <= m_current_timestamp) {
+            m_events.back().callback(m_current_timestamp, m_current_timestamp - m_events.back().scheduled_timestamp);
+            m_events.pop_back();
+        } else {
+            events_to_run = false;
+        }
+    }
+}
+
+} //namespace emu
