@@ -100,12 +100,7 @@ int main(int argc, char *argv[]) {
             if(ImGui::MenuItem("Debugger")) {
                 show_debug = true;
             }
-
-            ImGui::EndMenu();
-        }
-
-        if(ImGui::BeginMenu("Info")) {
-            if(ImGui::MenuItem("Game Info")) {
+            if(ImGui::MenuItem("Cart Info")) {
                 show_pak_info = true;
             }
 

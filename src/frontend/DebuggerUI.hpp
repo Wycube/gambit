@@ -35,16 +35,16 @@ private:
 
     //Memory Viewer
     int m_memory_region = 0;
-    const char *m_regions = "BIOS\0EWRAM\0IWRAM\0Cartridge ROM\0";
-    u32 m_region_sizes[4] = {16_KiB, 256_KiB, 32_KiB, 16_MiB};
-    u32 m_region_start[4] = {0, 0x02000000, 0x03000000, 0x08000000};
+    const char *m_regions = "BIOS\0EWRAM\0IWRAM\0Palette RAM\0VRAM\0OAM\0Cartridge ROM\0";
+    u32 m_region_sizes[7] = {16_KiB, 256_KiB, 32_KiB, 1_KiB, 96_KiB, 1_KiB, 16_MiB};
+    u32 m_region_start[7] = {0, 0x02000000, 0x03000000, 0x05000000, 0x06000000, 0x07000000, 0x08000000};
 
     bool m_running = false;
 
 public:
 
     DebuggerUI(emu::dbg::Debugger &debugger, emu::GBA &gba) : m_debugger(debugger), m_gba(gba) {
-        m_region_sizes[3] = m_gba.getGamePak().size();
+        m_region_sizes[6] = m_gba.getGamePak().size();
     }
 
     auto running() -> bool {
@@ -180,7 +180,7 @@ public:
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
 
-                u32 address = m_region_start[3] + i * instr_size;
+                u32 address = m_region_start[6] + i * instr_size;
                 ImGui::Text("%08X ", address);
 
                 ImGui::TableNextColumn();

@@ -2,6 +2,7 @@
 
 #include "GamePak.hpp"
 #include "core/Scheduler.hpp"
+#include "core/ppu/PPU.hpp"
 #include "common/Types.hpp"
 
 #include <vector>
@@ -27,6 +28,7 @@ private:
 
     GamePak m_pak;
     Scheduler &m_scheduler;
+    PPU &m_ppu;
 
     void wait(u32 cycles); //For waitstates
     auto read_byte(u32 address) -> u8;
@@ -34,7 +36,7 @@ private:
 
 public:
 
-    Bus(Scheduler &scheduler);
+    Bus(Scheduler &scheduler, PPU &ppu);
 
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16; 
