@@ -7,6 +7,7 @@ namespace emu {
 PPU::PPU(Scheduler &scheduler) : m_scheduler(scheduler) {
     m_scheduler.addEvent([this](u32 a, u32 b) { run(a, b); }, 4);
     m_state = DRAWING;
+    m_dot = 0;
     m_line = 0;
 }
 
@@ -15,6 +16,10 @@ void PPU::run(u32 current, u32 late) {
 
     if(m_state != VBLANK && m_line >= 160) {
         m_state = VBLANK;
+
+        for(int i = 0; i < sizeof(m_framebuffer); i++) {
+            //m_framebuffer[i] = m_vram[i]; //Take the 16-bit, mode 3, color and turn it into a 24-bit color value
+        }
     } else if(m_state == VBLANK && m_line >= 228) {
         m_state = DRAWING;
         m_line = 0;

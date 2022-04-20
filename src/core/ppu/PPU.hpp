@@ -23,6 +23,8 @@ private:
     u8 m_vram[96_KiB]; 
     u8 m_oam[1_KiB]; 
 
+    u32 m_framebuffer[240 * 160];
+
     Scheduler &m_scheduler;
 
 public:

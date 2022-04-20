@@ -130,12 +130,13 @@ auto thumbDisassembleHiRegisterOp(u16 instruction, u32 address) -> std::string {
 }
 
 
-//BLX <Rm>
+//BX|BLX <Rm>
 auto thumbDisassembleBranchExchange(u16 instruction, u32 address) -> std::string {
+    bool link = (instruction >> 7) & 0x1;
     u8 rm = (instruction >> 3) & 0xF;
 
     std::string disassembly;
-    disassembly = "blx";
+    disassembly = link ? "blx" : "bx";
     disassembly += " r" + std::to_string(rm);
 
     return disassembly;

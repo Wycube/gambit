@@ -52,20 +52,20 @@ void CPU::armPSRTransfer(u32 instruction) {
         u32 psr = r ? m_spsr : m_cpsr;
 
         if((fields & 1) && privileged()) {
-            psr &= ~0x7F;
-            psr |= operand & 0x7F;
+            psr &= ~0xFF;
+            psr |= operand & 0xFF;
         }
         if(((fields >> 1) & 1) && privileged()) {
-            psr &= ~(0x7F << 8);
-            psr |= operand & (0x7F << 8);
+            psr &= ~(0xFF << 8);
+            psr |= operand & (0xFF << 8);
         }
         if(((fields >> 2) & 1) && privileged()) {
-            psr &= ~(0x7F << 16);
-            psr |= operand & (0x7F << 16);
+            psr &= ~(0xFF << 16);
+            psr |= operand & (0xFF << 16);
         }
         if((fields >> 3) & 1) {
-            psr &= ~(0x7F << 24);
-            psr |= operand & (0x7F << 24);
+            psr &= ~(0xFF << 24);
+            psr |= operand & (0xFF << 24);
         }
 
         if(r) {
@@ -222,9 +222,9 @@ void CPU::armHalfwordTransfer(u32 instruction) {
     u8 rd = bits::get<12, 4>(instruction);
     bool p = bits::get<24, 1>(instruction);
     bool u = bits::get<23, 1>(instruction);
-    bool i = bits::get<22, 4>(instruction);
-    bool w = bits::get<21, 4>(instruction);
-    bool l = bits::get<20, 4>(instruction);
+    bool i = bits::get<22, 1>(instruction);
+    bool w = bits::get<21, 1>(instruction);
+    bool l = bits::get<20, 1>(instruction);
     u8 sh = bits::get<5, 2>(instruction);
 
     bool wback = p || !w;
@@ -245,6 +245,7 @@ void CPU::armHalfwordTransfer(u32 instruction) {
             data = l ? m_bus.read16(address) : get_reg(rd);
         } else {
             //TODO: Figure out what UNPREDICTABLE does here
+            LOG_ERROR("Unpredictable behavior: Address not aligned in halfwordStore");
         }
     } else {
         //Should not happen with a store

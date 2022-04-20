@@ -125,12 +125,47 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
     }
 }
 
+void CPU::thumbBranchExchange(u16 instruction) {
+    bool link = bits::get<7, 1>(instruction);
+    u8 rm = bits::get<3, 4>(instruction);
+
+    if(link && rm == 15) {
+        LOG_FATAL("Using r15 with BLX is not allowed!");
+    }
+
+    u32 address = get_reg(rm);
+
+    //Store address of next instruction, plus the thumb-bit (equivilent to +1), in the Link-Register
+    if(link) {
+        set_reg(14, get_reg(15) - 1);
+    }
+
+    if(bits::get<0, 1>(address) == 0) {
+        //Word align the address and switch to ARM mode
+        set_reg(15, address & ~2);
+        m_exec = EXEC_ARM;
+        loadPipeline();
+    } else {
+        //Halfword align the address
+        set_reg(15, address & ~1);
+        loadPipeline();
+    }
+}
+
 void CPU::thumbPCRelativeLoad(u16 instruction) {
     u8 rd = (instruction >> 8) & 0x7;
     u8 immed_8 = instruction & 0xFF;
 
     u32 address = ((m_pc & ~0x3) << 2) + (immed_8 * 4);
     set_reg(rd, m_bus.read32(address));
+}
+
+void CPU::thumbLoadAddress(u16 instruction) {
+    bool sp = bits::get<11, 1>(instruction); //(instruction >> 11) & 0x1;
+    u8 rd = bits::get<8, 3>(instruction); //(instruction >> 8) & 0x7;
+    u8 immed_8 = bits::get<0, 8>(instruction); //instruction & 0xFF;
+
+    set_reg(rd, get_reg(sp ? 13 : 15) + immed_8);
 }
 
 void CPU::thumbPushPopRegisters(u16 instruction) {

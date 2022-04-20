@@ -9,6 +9,7 @@ namespace emu {
 CPU::CPU(Bus &bus) : m_bus(bus) {
     m_cpsr = MODE_SYSTEM;
     m_exec = EXEC_ARM;
+    memset(m_regs, 0, sizeof(m_regs));
     m_regs[13] = 0x03007F00;
     m_pc = 0x08000000;
 }
@@ -78,7 +79,7 @@ auto CPU::passed(u8 condition) -> bool {
         break;
         case 0x8 : passed = get_flag(FLAG_CARRY) && !get_flag(FLAG_ZERO); //HI
         break;
-        case 0x9 : passed = !get_flag(FLAG_CARRY) && get_flag(FLAG_ZERO); //LO
+        case 0x9 : passed = !get_flag(FLAG_CARRY) || get_flag(FLAG_ZERO); //LO
         break;
         case 0xA : passed = get_flag(FLAG_NEGATIVE) == get_flag(FLAG_OVERFLOW); //GE
         break;
@@ -86,7 +87,7 @@ auto CPU::passed(u8 condition) -> bool {
         break;
         case 0xC : passed = !get_flag(FLAG_ZERO) && (get_flag(FLAG_NEGATIVE) == get_flag(FLAG_OVERFLOW)); //GT
         break;
-        case 0xD : passed = get_flag(FLAG_ZERO) && (get_flag(FLAG_NEGATIVE) != get_flag(FLAG_OVERFLOW)); //LE
+        case 0xD : passed = get_flag(FLAG_ZERO) || (get_flag(FLAG_NEGATIVE) != get_flag(FLAG_OVERFLOW)); //LE
         break;
         case 0xE : passed = true; //AL
         break;
@@ -134,7 +135,9 @@ void CPU::execute_thumb(u16 instruction) {
         case THUMB_ADD_SUBTRACT : thumbAddSubtract(instruction); break;
         case THUMB_PROCESS_IMMEDIATE : thumbProcessImmediate(instruction); break;
         case THUMB_HI_REGISTER_OPERATION : thumbHiRegisterOp(instruction); break;
+        case THUMB_BRANCH_EXCHANGE : thumbBranchExchange(instruction); break;
         case THUMB_PC_RELATIVE_LOAD : thumbPCRelativeLoad(instruction); break;
+        case THUMB_LOAD_ADDRESS : thumbLoadAddress(instruction); break;
         case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
         case THUMB_CONDITIONAL_BRANCH : thumbConditionalBranch(instruction); break;
         default: thumbUnimplemented(instruction);

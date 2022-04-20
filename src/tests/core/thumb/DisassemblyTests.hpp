@@ -50,8 +50,10 @@ const lest::test thumb_disassembly_tests[] = {
     },
 
     CASE("Branch and Exchange Instructions") {
-        EXPECT(emu::thumbDisassembleBranchExchange(0x47A0) == "blx r4");
         EXPECT(emu::thumbDisassembleBranchExchange(0x4790) == "blx r2");
+        EXPECT(emu::thumbDisassembleBranchExchange(0x47E0) == "blx r12");
+        EXPECT(emu::thumbDisassembleBranchExchange(0x4720) == "bx r4");
+        EXPECT(emu::thumbDisassembleBranchExchange(0x4700) == "bx r0");
     },
 
     CASE("PC-Relative Load Instructions") {

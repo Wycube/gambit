@@ -7,7 +7,7 @@
 
 namespace common {
 
-inline auto hex(u32 value) -> std::string {
+inline auto hex(u32 value, bool capital = false) -> std::string {
     //Check the last seven nibbles to see if any can be removed (they are zero)
     u8 start = 7;
     for(int i = 7; i > 0; i--) {
@@ -20,10 +20,11 @@ inline auto hex(u32 value) -> std::string {
 
     //Loop through the one nibble at a time and translate to a hex digit
     std::string hex;
+    char a = capital ? 'A' : 'a';
     
     for(int i = start; i >= 0; i--) {
         u8 digit = (value >> i * 4) & 0xF;
-        hex += digit >= 10 ? 'a' + (digit - 10) : '0' + digit;
+        hex += digit >= 10 ? a + (digit - 10) : '0' + digit;
     }
 
     return hex;
