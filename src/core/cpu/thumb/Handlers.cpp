@@ -9,7 +9,7 @@ namespace emu {
 void CPU::thumbUnimplemented(u16 instruction) {
     ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_pc - 4);
 
-    LOG_ERROR("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", m_pc - 4, decoded.type, decoded.disassembly);
+    LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", m_pc - 4, decoded.type, decoded.disassembly);
 }
 
 void CPU::thumbMoveShifted(u16 instruction) {

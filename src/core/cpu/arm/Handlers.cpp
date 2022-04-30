@@ -9,7 +9,7 @@ namespace emu {
 void CPU::armUnimplemented(u32 instruction) {
     ArmInstruction decoded = armDecodeInstruction(instruction, m_pc - 8);
 
-    LOG_ERROR("Unimplemented ARM Instruction: (PC:{:08X} Type:{}) {}", m_pc - 8, decoded.type, decoded.disassembly);
+    LOG_FATAL("Unimplemented ARM Instruction: (PC:{:08X} Type:{}) {}", m_pc - 8, decoded.type, decoded.disassembly);
 }
 
 void CPU::armBranchExchange(u32 instruction) {
@@ -23,7 +23,7 @@ void CPU::armBranchExchange(u32 instruction) {
 
     m_exec = rm & 0x1 ? EXEC_THUMB : EXEC_ARM;
     m_cpsr = (m_cpsr & ~(1 << 5)) | ((rm & 0x1) << 5);
-    m_pc = rm & 0xFFFFFFFE;
+    m_pc = rm & (m_exec == EXEC_THUMB ? ~1 : ~3); //Align the address
     loadPipeline();
 }
 
@@ -93,36 +93,38 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
         return std::pair(result, shifter_carry_out);
     } else {
         bool r = (instruction >> 4) & 0x1;
-        u32 &rm = get_register(instruction & 0xF);
+        u64 rm = get_reg(instruction & 0xF);
 
-        if(r) {
-            LOG_ERROR("Shift by Register not implemented yet!");
-            return std::pair(0, false);
-        } else {
-            u8 shift_imm = (instruction >> 7) & 0x1F;
-            u8 op = (instruction >> 5) & 0x3;
-            u32 result;
-            bool shifter_carry_out;
-
-            switch(op) {
-                case 0 : result = rm << shift_imm; //LSL
-                    shifter_carry_out = shift_imm == 0 ? get_flag(FLAG_CARRY) : (rm >> (32 - shift_imm)) & 0x1;
-                break;
-                case 1 : result = shift_imm == 0 ? 0 : rm >> shift_imm; //LSR
-                    shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
-                break;
-                case 2 : result = shift_imm == 0 ? ~(rm >> 31) + 1 : bits::asr(rm, shift_imm); //ASR
-                    shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
-                break;
-                case 3 : result = shift_imm == 0 ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : bits::ror(rm, shift_imm); //RRX and ROR
-                    shifter_carry_out = shift_imm == 0 ? rm & 0x1 : (rm >> (shift_imm - 1)) & 0x1;
-                break;
-            }
-
-            return std::pair(result, shifter_carry_out);
+        //Specific case for shift by register (probably some kind of pipelining during the shift)
+        if(r && (instruction & 0xF) == 15) {
+            rm += 4;
         }
+
+        u8 op = (instruction >> 5) & 0x3;
+        u8 shift_imm = r ? get_reg((instruction >> 8) & 0xF) & 0xFF : (instruction >> 7) & 0x1F;
+        u64 result;
+        bool shifter_carry_out;
+
+        switch(op) {
+            case 0 : result = rm << shift_imm; //LSL
+                shifter_carry_out = shift_imm == 0 ? get_flag(FLAG_CARRY) : (rm >> (32 - shift_imm)) & 0x1;
+            break;
+            case 1 : result = shift_imm == 0 && !r ? 0 : rm >> shift_imm; //LSR
+                shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
+            break;
+            case 2 : result = shift_imm == 0 && !r ? ~(rm >> 31) + 1 : bits::asr(rm, shift_imm); //ASR
+                shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
+            break;
+            case 3 : result = shift_imm == 0 && !r ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : bits::ror(rm, shift_imm); //RRX and ROR
+                shifter_carry_out = shift_imm == 0 ? rm & 0x1 : (result >> 31) & 0x1; //(rm >> (shift_imm - 1)) & 0x1;
+            break;
+        }
+
+        return std::pair(result & 0xFFFFFFFF, shifter_carry_out);
     }
 }
+
+//TODO: Refactor these functions
 
 void CPU::armDataProcessing(u32 instruction) {
     u8 condition = instruction >> 28;
@@ -133,42 +135,49 @@ void CPU::armDataProcessing(u32 instruction) {
 
     u8 opcode = (instruction >> 21) & 0xF;
     bool s = (instruction >> 20) & 0x1;
-    u32 rn = get_reg((instruction >> 16) & 0xF);
+    u8 rn = (instruction >> 16) & 0xF;
+    u32 operand_1 = get_reg(rn);
+
+    //Special case for PC as rn
+    if(rn == 15 && !((instruction >> 25) & 0x1) && (instruction >> 4) & 0x1) {
+        operand_1 += 4;
+    }
+
     std::pair shifter_out = addressMode1(instruction);
     u32 shifter_operand = shifter_out.first;
     u32 alu_out;
 
     //Do the operation with the registers
     switch(opcode) {
-        case 0x0 : alu_out = rn & shifter_operand; //AND
+        case 0x0 : alu_out = operand_1 & shifter_operand; //AND
         break;
-        case 0x1 : alu_out = rn & shifter_operand; //EOR
+        case 0x1 : alu_out = operand_1 ^ shifter_operand; //EOR
         break;
-        case 0x2 : alu_out = rn - shifter_operand; //SUB
+        case 0x2 : alu_out = operand_1 - shifter_operand; //SUB
         break;
-        case 0x3 : alu_out = shifter_operand - rn; //RSB
+        case 0x3 : alu_out = shifter_operand - operand_1; //RSB
         break;
-        case 0x4 : alu_out = rn + shifter_operand; //ADD
+        case 0x4 : alu_out = operand_1 + shifter_operand; //ADD
         break;
-        case 0x5 : alu_out = rn + shifter_operand + get_flag(FLAG_CARRY); //ADC
+        case 0x5 : alu_out = operand_1 + shifter_operand + get_flag(FLAG_CARRY); //ADC
         break;
-        case 0x6 : alu_out = rn - shifter_operand - !get_flag(FLAG_CARRY); //SBC
+        case 0x6 : alu_out = operand_1 - shifter_operand - !get_flag(FLAG_CARRY); //SBC
         break;
-        case 0x7 : alu_out = shifter_operand - rn - !get_flag(FLAG_CARRY); //RSC
+        case 0x7 : alu_out = shifter_operand - operand_1 - !get_flag(FLAG_CARRY); //RSC
         break;
-        case 0x8 : alu_out = rn & shifter_operand; //TST
+        case 0x8 : alu_out = operand_1 & shifter_operand; //TST
         break;
-        case 0x9 : alu_out = rn ^ shifter_operand; //TEQ
+        case 0x9 : alu_out = operand_1 ^ shifter_operand; //TEQ
         break;
-        case 0xA : alu_out = rn - shifter_operand; //CMP
+        case 0xA : alu_out = operand_1 - shifter_operand; //CMP
         break;
-        case 0xB : alu_out = rn + shifter_operand; //CMN
+        case 0xB : alu_out = operand_1 + shifter_operand; //CMN
         break;
-        case 0xC : alu_out = rn | shifter_operand; //ORR
+        case 0xC : alu_out = operand_1 | shifter_operand; //ORR
         break;
         case 0xD : alu_out = shifter_operand; //MOV
         break;
-        case 0xE : alu_out = rn & ~shifter_operand; //BIC
+        case 0xE : alu_out = operand_1 & ~shifter_operand; //BIC
         break;
         case 0xF : alu_out = ~shifter_operand; //MVN
         break;
@@ -177,8 +186,8 @@ void CPU::armDataProcessing(u32 instruction) {
     if(opcode < 0x8 || opcode > 0xB) {
         set_reg((instruction >> 12) & 0xF, alu_out);
 
-        if(s && ((instruction >> 12) & 0xF) == 15) {
-            m_cpsr = m_spsr;
+        if(((instruction >> 12) & 0xF) == 15) {
+            if(s) { m_cpsr = m_spsr; }
             loadPipeline();
         }
     }
@@ -197,18 +206,21 @@ void CPU::armDataProcessing(u32 instruction) {
             bool carry;
 
             if(subtract) {
-                carry = alu_out > (reverse ? shifter_operand : rn) - (use_carry ? get_flag(FLAG_CARRY) : 0);
+               carry = (u64)(reverse ? shifter_operand : operand_1) >= (u64)(reverse ? operand_1 : shifter_operand) + (u64)(use_carry ? !get_flag(FLAG_CARRY) : 0);
             } else {
-                carry = alu_out < rn + (use_carry ? get_flag(FLAG_CARRY) : 0);
+                carry = (u64)alu_out < (u64)operand_1 + (u64)(use_carry ? get_flag(FLAG_CARRY) : 0);
             }
             set_flag(FLAG_CARRY, carry);
 
-            bool rn_neg = (reverse ? shifter_operand & 0x80000000 : rn & 0x80000000);
+            bool op_1_neg = (reverse ? shifter_operand & 0x80000000 : operand_1 & 0x80000000);
+            bool op_2_neg = (reverse ? operand_1 & 0x80000000 : shifter_operand & 0x80000000);
             bool alu_neg = alu_out & 0x80000000;
-            bool overflow = (subtract ? rn_neg && !alu_neg : !rn_neg && alu_neg);
+            bool overflow = (subtract ? op_1_neg != op_2_neg && op_1_neg != alu_neg : op_1_neg == op_2_neg && op_1_neg != alu_neg);
             set_flag(FLAG_OVERFLOW, overflow);
         }
     }
+
+    LOG_DEBUG("r0({:08X}), r15({:08X}), Carry({})", get_reg(0), get_reg(15), get_flag(FLAG_CARRY));
 }
 
 void CPU::armHalfwordTransfer(u32 instruction) {

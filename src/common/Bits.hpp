@@ -9,7 +9,7 @@ template<u32 start, u32 size, typename T>
 inline auto constexpr get(T value) -> T {
     static_assert((start + size) <= sizeof(value) * 8);
 
-    return value >> start & ((1 << size) - 1);
+    return value >> start & (((u64)1 << size) - 1);
 }
 
 inline auto ror(u32 value, u8 rotate) -> u32 {
@@ -17,7 +17,7 @@ inline auto ror(u32 value, u8 rotate) -> u32 {
 }
 
 inline auto asr(u32 value, u8 shift) -> u32 {
-    return ((value >> shift) & ~(1 << 31)) | (value & (1 << 31));
+    return (s32)value >> shift;
 }
 
 inline auto popcount_16(u16 value) -> u8 {
