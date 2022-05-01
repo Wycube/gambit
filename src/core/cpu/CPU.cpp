@@ -120,6 +120,8 @@ void CPU::execute_arm(u32 instruction) {
         case ARM_BRANCH_AND_EXCHANGE : armBranchExchange(instruction); break;
         case ARM_PSR_TRANSFER : armPSRTransfer(instruction); break;
         case ARM_DATA_PROCESSING : armDataProcessing(instruction); break;
+        case ARM_MULTIPLY : armMultiply(instruction); break;
+        case ARM_MULTIPLY_LONG : armMultiplyLong(instruction); break;
         case ARM_HALFWORD_DATA_TRANSFER : armHalfwordTransfer(instruction); break;
         case ARM_SINGLE_DATA_TRANSFER : armSingleTransfer(instruction); break;
         case ARM_BRANCH : armBranch(instruction); break;

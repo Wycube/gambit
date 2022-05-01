@@ -219,8 +219,59 @@ void CPU::armDataProcessing(u32 instruction) {
             set_flag(FLAG_OVERFLOW, overflow);
         }
     }
+}
 
-    LOG_DEBUG("r0({:08X}), r15({:08X}), Carry({})", get_reg(0), get_reg(15), get_flag(FLAG_CARRY));
+void CPU::armMultiply(u32 instruction) {
+    u8 condition = bits::get<28, 4>(instruction);
+
+    if(!passed(condition)) {
+        return;
+    }
+
+    u8 rd = bits::get<16, 4>(instruction);
+    u8 rn = bits::get<12, 4>(instruction);
+    u8 rs = bits::get<8, 4>(instruction);
+    u8 rm = bits::get<0, 4>(instruction);
+    bool accumulate = bits::get<21, 1>(instruction);
+
+    if(accumulate) {
+        set_reg(rd, get_reg(rm) * get_reg(rs) + get_reg(rn));
+    } else {
+        set_reg(rd, get_reg(rm) * get_reg(rs));
+    }
+}
+
+void CPU::armMultiplyLong(u32 instruction) {
+    u8 condition = bits::get<28, 4>(instruction);
+
+    if(!passed(condition)) {
+        return;
+    }
+
+    u8 rd_hi = bits::get<16, 4>(instruction);
+    u8 rd_lo = bits::get<12, 4>(instruction);
+    u8 rs = bits::get<8, 4>(instruction);
+    u8 rm = bits::get<0, 4>(instruction);
+    bool sign = bits::get<22, 1>(instruction);
+    bool accumulate = bits::get<21, 1>(instruction);
+    bool s = bits::get<20, 1>(instruction);
+    u64 result;
+
+    //TODO: Make sure rd != rm and rd, rm, rn, or rs != r15
+
+    if(sign) {
+        result = (s64)bits::sign_extend32(get_reg(rm)) * (s64)bits::sign_extend32(get_reg(rs)) + (accumulate ? ((s64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
+    } else {
+        result = (u64)get_reg(rm) * (u64)get_reg(rs) + (accumulate ? ((u64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
+    }
+
+    set_reg(rd_hi, bits::get<32, 32>(result));
+    set_reg(rd_lo, bits::get<0, 32>(result));
+
+    if(s) {
+        set_flag(FLAG_NEGATIVE, result >> 63);
+        set_flag(FLAG_ZERO, result == 0);
+    }
 }
 
 void CPU::armHalfwordTransfer(u32 instruction) {
@@ -323,14 +374,14 @@ void CPU::armSingleTransfer(u32 instruction) {
         return;
     }
 
-    u8 rn = (instruction >> 16) & 0xF;
-    u8 rd = (instruction >> 12) & 0xF;
-    bool i = (instruction >> 25) & 0x1;
-    bool p = (instruction >> 24) & 0x1;
-    bool u = (instruction >> 23) & 0x1;
-    bool b = (instruction >> 22) & 0x1;
-    bool w = (instruction >> 21) & 0x1;
-    bool l = (instruction >> 20) & 0x1;
+    u8 rn = bits::get<16, 4>(instruction); //(instruction >> 16) & 0xF;
+    u8 rd = bits::get<12, 4>(instruction); //(instruction >> 12) & 0xF;
+    bool i = bits::get<25, 1>(instruction); //(instruction >> 25) & 0x1;
+    bool p = bits::get<24, 1>(instruction); //(instruction >> 24) & 0x1;
+    bool u = bits::get<23, 1>(instruction); //(instruction >> 23) & 0x1;
+    bool b = bits::get<22, 1>(instruction); //(instruction >> 22) & 0x1;
+    bool w = bits::get<21, 1>(instruction); //(instruction >> 21) & 0x1;
+    bool l = bits::get<20, 1>(instruction); //(instruction >> 20) & 0x1;
     u32 address = addressMode2(rn, instruction & 0xFFF, i, p, u, w);
 
     if(l) {
