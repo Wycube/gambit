@@ -74,12 +74,12 @@ int main(int argc, char *argv[]) {
     emu::GBA gba;
     gba.loadROM(rom);
 
-    emu::dbg::Debugger &debugger = gba.getDebugger();
-
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 
-    DebuggerUI debug_ui(debugger, gba);
-    bool show_debug = true;
+    DebuggerUI debug_ui(gba);
+    bool show_cpu_debug = true;
+    bool show_mem_debug = false;
+    bool show_vram_debug = false;
     bool show_about = false;
     bool show_pak_info = false;
 
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
         glfwPollEvents();
 
         if(debug_ui.running()) {
-            gba.step();
+            gba.step(200);
         }
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -97,8 +97,14 @@ int main(int argc, char *argv[]) {
         ImGui::BeginMainMenuBar();
 
         if(ImGui::BeginMenu("Debug")) {
-            if(ImGui::MenuItem("Debugger")) {
-                show_debug = true;
+            if(ImGui::MenuItem("CPU")) {
+                show_cpu_debug = true;
+            }
+            if(ImGui::MenuItem("Memory Viewer")) {
+                show_mem_debug = true;
+            }
+            if(ImGui::MenuItem("Framebuffer")) {
+                show_vram_debug = true;
             }
             if(ImGui::MenuItem("Cart Info")) {
                 show_pak_info = true;
@@ -117,22 +123,39 @@ int main(int argc, char *argv[]) {
 
         ImGui::EndMainMenuBar();
 
-        debug_ui.draw(&show_debug);
+        if(show_cpu_debug) {
+            if(ImGui::Begin("CPU Debugger", &show_cpu_debug)) debug_ui.drawCPUDebugger();
+            ImGui::End();
+        }
 
-        if(show_pak_info && ImGui::Begin("Pak Info", &show_pak_info)) {
-            ImGui::Text("Name: %s", argv[1]);
-            ImGui::Text("Size: %u bytes", gba.getGamePak().size());
+        if(show_mem_debug) {
+            if(ImGui::Begin("Memory Viewer", &show_mem_debug)) debug_ui.drawMemoryViewer();
+            ImGui::End();
+        }
+
+        if(show_vram_debug) {
+            if(ImGui::Begin("Framebuffer", &show_vram_debug)) debug_ui.drawPPUState();
+            ImGui::End();
+        }
+
+        if(show_pak_info) {
+            if(ImGui::Begin("Pak Info", &show_pak_info)) {
+                ImGui::Text("Name: %s", argv[1]);
+                ImGui::Text("Size: %u bytes", gba.getGamePak().size());
+            }
 
             ImGui::End();
         }
 
-        if(show_about && ImGui::Begin("About", &show_about)) {
-            ImGui::Text("Game Boy Advance Emulator,");
-            ImGui::Text("Copyright (c) 2021 Wycube");
-            ImGui::Separator();
-            ImGui::Text("Version: %s", common::GIT_DESC);
-            ImGui::Text("Commit: %s", common::GIT_COMMIT);
-            ImGui::Text("Branch: %s", common::GIT_BRANCH);
+        if(show_about) {
+            if(ImGui::Begin("About", &show_about)) {
+                ImGui::Text("Game Boy Advance Emulator,");
+                ImGui::Text("Copyright (c) 2021 Wycube");
+                ImGui::Separator();
+                ImGui::Text("Version: %s", common::GIT_DESC);
+                ImGui::Text("Commit: %s", common::GIT_COMMIT);
+                ImGui::Text("Branch: %s", common::GIT_BRANCH);
+            }
 
             ImGui::End();
         }

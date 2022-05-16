@@ -7,7 +7,7 @@
 namespace emu {
 
 void CPU::thumbUnimplemented(u16 instruction) {
-    ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_pc - 4);
+    ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_pc - 4, m_bus.debugRead16(m_pc - 6));
 
     LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", m_pc - 4, decoded.type, decoded.disassembly);
 }

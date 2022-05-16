@@ -37,9 +37,9 @@ auto thumbDetermineType(u16 instruction) -> ThumbInstructionType {
     return static_cast<ThumbInstructionType>(common::const_match_bits<20, 9, THUMB_ENCODINGS>(decoding_bits));
 }
 
-auto thumbDecodeInstruction(u16 instruction, u32 address) -> ThumbInstruction {
+auto thumbDecodeInstruction(u16 instruction, u32 address, u16 prev) -> ThumbInstruction {
     ThumbInstructionType type = thumbDetermineType(instruction);
-    std::string disassembly = thumbDisassemblyFuncs[type](instruction, address);
+    std::string disassembly = thumbDisassemblyFuncs[type](instruction, address, prev);
 
     return ThumbInstruction{instruction, type, disassembly};
 }

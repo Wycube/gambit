@@ -29,8 +29,14 @@ inline auto popcount_16(u16 value) -> u8 {
     return count;
 }
 
+//TODO: Make a templated sign extend function for all cases
+
 inline auto sign_extend32(u32 value) -> u64 {
     return value | ((value >> 31) & 0x1 ? 0xFFFFFFFF00000000 : 0);
+}
+
+inline auto sign_extend23(u32 value) -> u32 {
+    return value | ((value >> 22) & 0x1 ? 0xFF800000 : 0);
 }
 
 inline auto sign_extend16(u16 value) -> u32 {

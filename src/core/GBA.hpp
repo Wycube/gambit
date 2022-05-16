@@ -24,7 +24,7 @@ public:
 
     GBA();
 
-    void step();
+    void step(u32 cycles = 1);
     void loadROM(const std::vector<u8> &rom);
     auto getGamePak() -> GamePak&;
 

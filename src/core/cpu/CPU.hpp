@@ -29,6 +29,23 @@ enum Flag {
     FLAG_OVERFLOW = 1 << 28
 };
 
+enum InterruptSource {
+    INT_LCD_VB  = 1 << 0,  //LCD V-Blank
+    INT_LCD_HB  = 1 << 1,  //LCD H-Blank
+    INT_LCD_VC  = 1 << 2,  //LCD V-Counter Match
+    INT_TIM_0   = 1 << 3,  //Timer 0 Overflow
+    INT_TIM_1   = 1 << 4,  //Timer 1 Overflow
+    INT_TIM_2   = 1 << 5,  //Timer 2 Overflow
+    INT_TIM_3   = 1 << 6,  //Timer 3 Overflow
+    INT_SERIAL  = 1 << 7,  //Serial Communication
+    INT_DMA_0   = 1 << 8,  //DMA 0
+    INT_DMA_1   = 1 << 9,  //DMA 1
+    INT_DMA_2   = 1 << 10, //DMA 2
+    INT_DMA_3   = 1 << 11, //DMA 3
+    INT_KEYPAD  = 1 << 12, //Keypad
+    INT_GAMEPAK = 1 << 13  //Game Pak (external IRQ source)
+};
+
 
 /* 
  * The CPU is an ARM7TDMI that uses the ARMv4TM architecture and supports the ARM
@@ -46,7 +63,6 @@ private:
     u32 m_spsr; //Saved Program Status Register
 
     u32 m_pipeline[2]; //Stores the instructions being decoded and executed
-    // PrivilegeMode m_mode;
     ExecutionState m_exec;
 
     //Hardware
@@ -60,14 +76,15 @@ private:
     auto passed(u8 condition) -> bool;
     auto privileged() -> bool;
 
-    //Arm instruction handlers
+    //Arm instruction handler declarations
     #include "arm/Handlers.inl"
 
-    //Thumb instruction handlers
+    //Thumb instruction handler declarations
     #include "thumb/Handlers.inl"
 
     void execute_arm(u32 instruction);
     void execute_thumb(u16 instruction);
+    void service_interrupt();
 
 public:
 
@@ -75,6 +92,8 @@ public:
 
     void step();
     void loadPipeline();
+
+    void requestInterrupt(InterruptSource source);
 
     void attachDebugger(dbg::Debugger &debugger);
 };

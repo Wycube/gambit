@@ -8,6 +8,7 @@ namespace emu {
 
 CPU::CPU(Bus &bus) : m_bus(bus) {
     m_cpsr = MODE_SYSTEM;
+    m_spsr = m_cpsr;
     m_exec = EXEC_ARM;
     memset(m_regs, 0, sizeof(m_regs));
     m_regs[13] = 0x03007F00;
@@ -146,6 +147,10 @@ void CPU::execute_thumb(u16 instruction) {
     }
 }
 
+void CPU::service_interrupt() {
+
+}
+
 void CPU::step() {
     if(m_exec == EXEC_ARM) {
         u32 instruction = m_pipeline[0];
@@ -165,7 +170,7 @@ void CPU::step() {
         m_pipeline[1] = m_bus.read16(m_pc + 2);
         m_pc += 2;
 
-        ThumbInstruction decoded = thumbDecodeInstruction(instruction);
+        ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_pc - 4, m_bus.debugRead16(m_pc - 6));
 
         LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_pc - 4, instruction, decoded.disassembly);
         execute_thumb(instruction);
@@ -182,6 +187,10 @@ void CPU::loadPipeline() {
         m_pipeline[1] = m_bus.read16(m_pc + 2);
         m_pc += 2;
     }
+}
+
+void CPU::requestInterrupt(InterruptSource source) {
+    
 }
 
 void CPU::attachDebugger(dbg::Debugger &debugger) {

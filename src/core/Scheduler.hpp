@@ -27,6 +27,7 @@ public:
     //auto removeEvent(Event event) -> bool;
 
     void step(u32 cycles);
+    auto getCurrentTimestamp() -> u32;
 };
 
 } //namespace emu

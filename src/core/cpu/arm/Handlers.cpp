@@ -201,9 +201,11 @@ void CPU::armDataProcessing(u32 instruction) {
             set_flag(FLAG_CARRY, shifter_out.second);
         } else {
             bool use_carry = opcode == 5 || opcode == 6 || opcode == 7;
-            bool subtract = opcode == 2 || opcode == 3 || opcode == 6 || opcode == 7;
+            bool subtract = opcode == 2 || opcode == 3 || opcode == 6 || opcode == 7 || opcode == 0xA;
             bool reverse = opcode == 3 || opcode == 7;
             bool carry;
+
+            //TODO: Fix the overflow flag
 
             if(subtract) {
                carry = (u64)(reverse ? shifter_operand : operand_1) >= (u64)(reverse ? operand_1 : shifter_operand) + (u64)(use_carry ? !get_flag(FLAG_CARRY) : 0);
@@ -374,14 +376,14 @@ void CPU::armSingleTransfer(u32 instruction) {
         return;
     }
 
-    u8 rn = bits::get<16, 4>(instruction); //(instruction >> 16) & 0xF;
-    u8 rd = bits::get<12, 4>(instruction); //(instruction >> 12) & 0xF;
-    bool i = bits::get<25, 1>(instruction); //(instruction >> 25) & 0x1;
-    bool p = bits::get<24, 1>(instruction); //(instruction >> 24) & 0x1;
-    bool u = bits::get<23, 1>(instruction); //(instruction >> 23) & 0x1;
-    bool b = bits::get<22, 1>(instruction); //(instruction >> 22) & 0x1;
-    bool w = bits::get<21, 1>(instruction); //(instruction >> 21) & 0x1;
-    bool l = bits::get<20, 1>(instruction); //(instruction >> 20) & 0x1;
+    u8 rn = bits::get<16, 4>(instruction);
+    u8 rd = bits::get<12, 4>(instruction);
+    bool i = bits::get<25, 1>(instruction);
+    bool p = bits::get<24, 1>(instruction);
+    bool u = bits::get<23, 1>(instruction);
+    bool b = bits::get<22, 1>(instruction);
+    bool w = bits::get<21, 1>(instruction);
+    bool l = bits::get<20, 1>(instruction);
     u32 address = addressMode2(rn, instruction & 0xFFF, i, p, u, w);
 
     if(l) {

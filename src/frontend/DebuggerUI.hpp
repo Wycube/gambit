@@ -3,10 +3,12 @@
 #include "core/GBA.hpp"
 #include "core/debug/Debugger.hpp"
 #include "common/StringUtils.hpp"
+#include "common/Bits.hpp"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <glad/gl.h>
 #include <cmath>
 
 
@@ -30,189 +32,206 @@ private:
     emu::dbg::Debugger &m_debugger;
     emu::GBA &m_gba;
 
-    //Disassembly
-    bool m_to_current = true;
+    //VRAM Texture
+    u32 m_vram_tex = 0;
 
     //Memory Viewer
     int m_memory_region = 0;
-    const char *m_regions = "BIOS\0EWRAM\0IWRAM\0Palette RAM\0VRAM\0OAM\0Cartridge ROM\0";
-    u32 m_region_sizes[7] = {16_KiB, 256_KiB, 32_KiB, 1_KiB, 96_KiB, 1_KiB, 16_MiB};
-    u32 m_region_start[7] = {0, 0x02000000, 0x03000000, 0x05000000, 0x06000000, 0x07000000, 0x08000000};
+    const char *m_regions = "BIOS\0EWRAM\0IWRAM\0MMIO\0Palette RAM\0VRAM\0OAM\0Cartridge ROM\0";
+    u32 m_region_sizes[8] = {16_KiB, 256_KiB, 32_KiB, 1023, 1_KiB, 96_KiB, 1_KiB, 32_MiB};
+    u32 m_region_start[8] = {0, 0x02000000, 0x03000000, 0x04000000, 0x05000000, 0x06000000, 0x07000000, 0x08000000};
 
     bool m_running = false;
 
 public:
 
-    DebuggerUI(emu::dbg::Debugger &debugger, emu::GBA &gba) : m_debugger(debugger), m_gba(gba) {
+    DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba) {
         m_region_sizes[6] = m_gba.getGamePak().size();
+        m_debugger.setBreakPoint(0x080000F3);
+
+        //Create OpenGL Texture
+        glGenTextures(1, &m_vram_tex);
+        glBindTexture(GL_TEXTURE_2D, m_vram_tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    ~DebuggerUI() {
+        if(m_vram_tex != 0) {
+            glDeleteTextures(1, &m_vram_tex);
+        }
     }
 
     auto running() -> bool {
+        if(m_running && m_debugger.atBreakPoint()) {
+            LOG_DEBUG("Break Point at 0x{:08X} hit!", m_debugger.getBreakPoint());
+            m_running = false;
+        }
+
         return m_running;
     }
 
-    void draw(bool *show = nullptr) {
-        if(!*show) {
-            return;
-        }
-        
-        //ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        if(ImGui::Begin("Debugger", show)) {
-            //ImGui::PopStyleVar();
+    void drawPPUState() {
+        ImGui::Text("Mode: %i", m_debugger.read8(0x4000000) & 0x7);
+        ImGui::Text("DSPCNT: %04X", m_debugger.read16(0x4000000));
 
-            ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_ChildWindow;
-            //if(ImGui::BeginChild("##DebuggerControlRegion_Child", ImVec2(0, 0), false, flags)) {
-                if(m_running) {
-                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                }
+        //Update texture
+        glBindTexture(GL_TEXTURE_2D, m_vram_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
+        glBindTexture(GL_TEXTURE_2D, 0);
 
-                if(ImGui::Button("Step")) {
-                    m_gba.step();
-                    m_to_current = true;
-                }
-
-                if(m_running) {
-                    ImGui::PopItemFlag();
-                }
-
-                ImGui::SameLine();
-
-                if((!m_running && ImGui::Button("Run")) || (m_running && ImGui::Button("Pause"))) {
-                    m_running = !m_running;
-                }
-
-            //}
-
-            ImGui::Separator();
-
-            if(ImGui::BeginChild("##DebuggerTabRegion_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
-                ImGui::BeginTabBar("##Debugger_TabBar");
-
-                if(ImGui::BeginTabItem("CPU")) {
-                    ImGui::BeginChild("##CPUState_Child");
-                    drawCPUState();
-                    ImGui::EndChild();
-                    ImGui::EndTabItem();
-                }
-                
-                if(ImGui::BeginTabItem("Disassembly")) {
-                    ImGui::BeginChild("##Disassembly_Child");
-                    drawDisassembly();
-                    ImGui::EndChild();
-                    ImGui::EndTabItem();
-                }
-                
-                if(ImGui::BeginTabItem("Memory Viewer")) {
-                    ImGui::BeginChild("##MemoryViewer_Child");
-                    drawMemoryViewer();
-                    ImGui::EndChild();
-                    ImGui::EndTabItem();
-                }
-
-                ImGui::EndTabBar();
-            }
-            ImGui::EndChild();
-        } else {
-            ImGui::PopStyleVar();
-        }
-        ImGui::End();
+        ImGui::Image((void*)(intptr_t)m_vram_tex, ImGui::GetContentRegionAvail());
     }
 
-    void drawCPUState() {
-        ImGui::BeginTable("##CPURegisters_Table", 4);
-        ImGui::TableNextRow();
-
-        for(u8 i = 0; i < 16; i++) {
-            ImGui::TableNextColumn();
-            ImGui::Text("R%-2i: %08X", i, m_debugger.getCPURegister(i));
+    void drawCPUDebugger() {
+        if(m_running) {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         }
-        ImGui::EndTable();
 
-        static const char *FLAG_NAMES[4] = {"Z", "N", "C", "V"};
-        static const emu::Flag FLAGS[4] = {emu::FLAG_ZERO, emu::FLAG_NEGATIVE, emu::FLAG_CARRY, emu::FLAG_OVERFLOW};
-        
+        if(ImGui::Button("Step")) {
+            m_gba.step();
+        }
+
+        if(m_running) {
+            ImGui::PopItemFlag();
+        }
+
+        ImGui::SameLine();
+
+        if((!m_running && ImGui::Button("Run")) || (m_running && ImGui::Button("Pause"))) {
+            m_running = !m_running;
+        }
+
+
         ImGui::Separator();
-        ImGui::Text("Current Execution Mode: %s", (m_debugger.getCPUCurrentStatus() >> 5) & 0x1 ? "THUMB" : "ARM");
-        
-        int mode = (m_debugger.getCPUCurrentStatus() & 0x1F);
-        ImGui::Text("Current Privilege Mode: %s", get_mode_str(mode).c_str());
-        
-        ImGui::Text("CPSR: %08X", m_debugger.getCPUCurrentStatus());
-        ImGui::BeginTable("##CPSR_Table", 32, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame);
-        ImGui::TableNextRow();
-        for(int i = 31; i >= 0; i--) {
-            ImGui::TableNextColumn();
-            ImGui::Text("%i", i);
-        }
-        ImGui::TableNextRow();
-        for(int i = 31; i >= 0; i--) {
-            ImGui::TableNextColumn();
-            ImGui::Text("%i", (m_debugger.getCPUCurrentStatus() >> i) & 0x1);
-        }
-        ImGui::EndTable();
+        ImGui::BeginGroup();
 
-        ImGui::Text("SPSR: %08X", m_debugger.getCPUSavedStatus());
-        ImGui::BeginTable("##SPSR_Table", 32, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedSame);
-        ImGui::TableNextRow();
-        for(int i = 31; i >= 0; i--) {
-            ImGui::TableNextColumn();
-            ImGui::Text("%i", i);
-        }
-        ImGui::TableNextRow();
-        for(int i = 31; i >= 0; i--) {
-            ImGui::TableNextColumn();
-            ImGui::Text("%i", (m_debugger.getCPUSavedStatus() >> i) & 0x1);
-        }
-        ImGui::EndTable();
-    }
+        //CPU Registers
+        if(ImGui::BeginTable("##CPURegisters_Table", 2, ImGuiTableFlags_SizingFixedFit)) {
+            ImGui::TableNextRow();
 
-    void drawDisassembly() {
-        ImGui::BeginTable("##Disassembly_Table", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg);
-        
-        //THUMB or ARM
-        bool thumb = (m_debugger.getCPUCurrentStatus() >> 5) & 1;
-        u8 instr_size = thumb ? 2 : 4;
-
-        ImGuiListClipper clipper(m_region_sizes[3] / instr_size);
-        
-        while(clipper.Step()) {
-            for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-
-                u32 address = m_region_start[6] + i * instr_size;
-                ImGui::Text("%08X ", address);
-
+            for(u8 i = 0; i < 8; i++) {
                 ImGui::TableNextColumn();
-
-                if(address == m_debugger.getCPURegister(15)) { 
-                    //Fetch
-                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
-                } else if(address == m_debugger.getCPURegister(15) - instr_size) {
-                    //Decode
-                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
-                } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
-                    //Execute
-                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
-                }
-
-                //Instruction in hexadecimal
-                u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
-                ImGui::Text(fmt::format("%0{}X ", thumb ? 4 : 8).c_str(), bytes);
-
-                //Actual disassembly
+                ImGui::Text("r%-2i: %08X", i, m_debugger.getCPURegister(i));
+                
                 ImGui::TableNextColumn();
-                std::string disassembled = thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address);
-                ImGui::Text("%s", disassembled.c_str());
+                ImGui::Text("r%-2i: %08X", 8 + i, m_debugger.getCPURegister(8 + i));
             }
+
+            ImGui::EndTable();
         }
 
-        if(m_to_current) {
-            ImGui::SetScrollY(((m_debugger.getCPURegister(15) - m_region_start[3]) / instr_size - 10) * clipper.ItemsHeight);
-            m_to_current = false;
+        ImGui::Spacing();
+
+        u32 cpsr = m_debugger.getCPUCurrentStatus();
+        u32 spsr = m_debugger.getCPUSavedStatus();
+        static constexpr char flag_name[7] = {'N', 'F', 'C', 'V', 'I', 'F', 'T'};
+        static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
+
+        ImGui::Text("CPSR");
+        ImGui::Text("%08X", cpsr);
+        for(int i = 0; i < sizeof(flag_name); i++) {
+            ImGui::Text("%c:", flag_name[i]);
+            ImGui::SameLine();
+
+            bool set = (cpsr >> flag_bit[i]) & 0x1;
+            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
+            ImGui::Text("%1i", set);
+            ImGui::PopStyleColor();
+
+            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
+        }
+        
+        ImGui::Text("SPSR");
+        ImGui::Text("%08X", spsr);
+        for(int i = 0; i < sizeof(flag_name); i++) {
+            ImGui::Text("%c:", flag_name[i]);
+            ImGui::SameLine();
+
+            bool set = (spsr >> flag_bit[i]) & 0x1;
+            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
+            ImGui::Text("%1i", set);
+            ImGui::PopStyleColor();
+
+            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
         }
 
-        ImGui::EndTable();
+        
+        ImGui::EndGroup();
+        //ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0xFF0000FF);
+    
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        ImGui::SameLine();
+
+
+        ImGui::BeginGroup();
+
+        ImGui::Text("Disassembly");
+        ImGui::Separator();
+
+        bool go_to_pc = ImGui::Button("Go to PC");
+
+        if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoScrollbar)) {
+            ImGui::BeginTable("##Disassembly_Table", 3, ImGuiTableFlags_SizingFixedFit);
+         
+            //THUMB or ARM
+            bool thumb = (m_debugger.getCPUCurrentStatus() >> 5) & 1;
+            u8 instr_size = thumb ? 2 : 4;
+
+            ImGuiListClipper clipper(101);
+            
+            while(clipper.Step()) {
+                for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+
+                    u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
+                    ImGui::Text("%08X ", address);
+
+                    ImGui::TableNextColumn();
+
+                    if(address == m_debugger.getCPURegister(15)) { 
+                        //Fetch
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
+                    } else if(address == m_debugger.getCPURegister(15) - instr_size) {
+                        //Decode
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
+                    } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
+                        //Execute
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
+                        if(go_to_pc) ImGui::SetScrollHereY();
+                    }
+
+                    //Instruction in hexadecimal
+                    u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
+                    ImGui::Text(fmt::format("%0{}X ", thumb ? 4 : 8).c_str(), bytes);
+
+                    //Actual disassembly
+                    ImGui::TableNextColumn();
+                    std::string disassembled = thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address);
+                    ImGui::Text("%s", disassembled.c_str());
+                }
+            }
+
+            ImGui::EndTable();
+            
+            if(go_to_pc) {
+                //Scroll to 3 instructions before the current PC
+                ImGui::SetScrollY(47.5f * clipper.ItemsHeight);
+            }
+            
+        }
+        ImGui::EndChild();
+
+        ImGui::EndGroup();
+        //ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0xFF000000);
     }
 
     void drawMemoryViewer() {
@@ -220,53 +239,56 @@ public:
         ImGui::SameLine();
         ImGui::Combo("##Memory_Region_Combo", &m_memory_region, m_regions);
 
-        u32 region_start = m_region_start[m_memory_region];
-        u32 region_size = m_region_sizes[m_memory_region];
+        if(ImGui::BeginChild("##MemoryTable_Child")) {
+            u32 region_start = m_region_start[m_memory_region];
+            u32 region_size = m_region_sizes[m_memory_region];
 
-        ImGui::BeginTable("##MemoryViewer_Table", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH);
-        ImGui::TableHeadersRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Address");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text("Hex (16 Bytes)");
-        ImGui::TableSetColumnIndex(2);
-        ImGui::Text("ASCII");
+            ImGui::BeginTable("##MemoryViewer_Table", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH);
+            ImGui::TableHeadersRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("Address");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("Hex (16 Bytes)");
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("ASCII");
 
-        ImGuiListClipper clipper(std::round((float)region_size / 16.0f));
+            ImGuiListClipper clipper(std::round((float)region_size / 16.0f));
 
-        while(clipper.Step()) {
-            for(size_t i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
+            while(clipper.Step()) {
+                for(size_t i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
 
-                u32 line_address = i * 16;
-                ImGui::Text("%08X ", region_start + line_address);
+                    u32 line_address = i * 16;
+                    ImGui::Text("%08X ", region_start + line_address);
 
-                ImGui::TableNextColumn();
+                    ImGui::TableNextColumn();
 
-                for(int j = 0; j < 16; j++) {
-                    if(line_address + j >= region_size) {
-                        break;
+                    for(int j = 0; j < 16; j++) {
+                        if(line_address + j >= region_size) {
+                            break;
+                        }
+
+                        ImGui::SameLine();
+                        ImGui::Text("%02X", m_debugger.read8(region_start + line_address + j));
                     }
 
-                    ImGui::SameLine();
-                    ImGui::Text("%02X", m_debugger.read8(region_start + line_address + j));
-                }
+                    ImGui::TableNextColumn();
+                    std::string ascii;
+                    for(int j = 0; j < 16; j++) {
+                        if(line_address + j >= region_size) {
+                            break;
+                        }
 
-                ImGui::TableNextColumn();
-                std::string ascii;
-                for(int j = 0; j < 16; j++) {
-                    if(line_address + j >= region_size) {
-                        break;
+                        char c = static_cast<char>(m_debugger.read8(region_start + line_address + j));
+                        ascii += common::is_printable(c) ? c : '.';
                     }
-
-                    char c = static_cast<char>(m_debugger.read8(region_start + line_address + j));
-                    ascii += common::is_printable(c) ? c : '.';
+                    ImGui::Text(" %-16s", ascii.c_str());
                 }
-                ImGui::Text(" %-16s", ascii.c_str());
             }
-        }
 
-        ImGui::EndTable();
+            ImGui::EndTable();
+        }
+        ImGui::EndChild();
     }
 };

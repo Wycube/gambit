@@ -16,11 +16,11 @@ void Scheduler::addEvent(EventFunc callback, u32 cycles_from_now) {
 }
 
 void Scheduler::step(u32 cycles) {
-    //TODO: Check for overflow, possible elsewhere
+    //TODO: Prevent overflow, possibly elsewhere
     m_current_timestamp += cycles;
     bool events_to_run = true;
 
-    LOG_DEBUG("Scheduler ticked {} cycles", cycles);
+    LOG_DEBUG("Scheduler ticked {} cycles | Current Timestamp: {}", cycles, m_current_timestamp);
 
     while(events_to_run) {
         if(m_events.size() > 0 && m_events.back().scheduled_timestamp <= m_current_timestamp) {
@@ -30,6 +30,10 @@ void Scheduler::step(u32 cycles) {
             events_to_run = false;
         }
     }
+}
+
+auto Scheduler::getCurrentTimestamp() -> u32 {
+    return m_current_timestamp;
 }
 
 } //namespace emu

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Scheduler.hpp"
+#include "core/debug/Debugger.hpp"
 
 
 namespace emu {
@@ -35,6 +36,8 @@ public:
 
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
+
+    void attachDebugger(dbg::Debugger &debugger);
 };
 
 } //namespace emu

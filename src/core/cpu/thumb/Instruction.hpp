@@ -39,6 +39,6 @@ struct ThumbInstruction {
 
 
 auto thumbDetermineType(u16 instruction) -> ThumbInstructionType;
-auto thumbDecodeInstruction(u16 instruction, u32 address = 0) -> ThumbInstruction;
+auto thumbDecodeInstruction(u16 instruction, u32 address = 0, u16 prev = 0) -> ThumbInstruction;
 
 } //namespace emu

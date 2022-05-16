@@ -23,6 +23,7 @@ private:
         u8 bios[16_KiB];   //00000000 - 00003FFF
         u8 ewram[256_KiB]; //02000000 - 0203FFFF
         u8 iwram[32_KiB];  //03000000 - 03007FFF
+        u8 io[1023];       //04000000 - 040003FE
         //Rest of general memory
     } m_mem;
 
@@ -33,6 +34,8 @@ private:
     void wait(u32 cycles); //For waitstates
     auto read_byte(u32 address) -> u8;
     void write_byte(u32 address, u8 value);
+    auto read_io(u32 address) -> u8;
+    void write_io(u32 address, u8 value);
 
 public:
 
