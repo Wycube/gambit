@@ -7,9 +7,9 @@
 namespace emu {
 
 void CPU::thumbUnimplemented(u16 instruction) {
-    ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_pc - 4, m_bus.debugRead16(m_pc - 6));
+    ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
 
-    LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", m_pc - 4, decoded.type, decoded.disassembly);
+    LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", m_state.pc - 4, decoded.type, decoded.disassembly);
 }
 
 void CPU::thumbMoveShifted(u16 instruction) {
@@ -87,7 +87,7 @@ void CPU::thumbProcessImmediate(u16 instruction) {
 
     if(opcode == 0) {
         //MOV
-        m_regs[rd_rn] = immed_8;
+        set_reg(rd_rn, immed_8);
 
         //Set Flags
         set_flag(FLAG_NEGATIVE, false);
@@ -117,7 +117,7 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
         LOG_ERROR("Hi Register Operation CMP unimplemented!");
     } else if(opcode == 2) {
         //MOV
-        m_regs[rd_rn] = m_regs[rm];
+        set_reg(rd_rn, get_reg(rm));
 
         if(rd_rn == 15) {
             loadPipeline();
@@ -143,7 +143,7 @@ void CPU::thumbBranchExchange(u16 instruction) {
     if(bits::get<0, 1>(address) == 0) {
         //Word align the address and switch to ARM mode
         set_reg(15, address & ~2);
-        m_exec = EXEC_ARM;
+        m_state.exec = EXEC_ARM;
         loadPipeline();
     } else {
         //Halfword align the address
@@ -156,7 +156,7 @@ void CPU::thumbPCRelativeLoad(u16 instruction) {
     u8 rd = (instruction >> 8) & 0x7;
     u8 immed_8 = instruction & 0xFF;
 
-    u32 address = ((m_pc & ~0x3) << 2) + (immed_8 * 4);
+    u32 address = ((m_state.pc & ~0x3) << 2) + (immed_8 * 4);
     set_reg(rd, m_bus.read32(address));
 }
 
@@ -178,23 +178,23 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
         LOG_ERROR("Pop registers not implemented for THUMB yet!");
     } else {
         //Push
-        u32 address = m_regs[13] - 4 * (bits::popcount_16(registers) + r);
+        u32 address = get_reg(13) - 4 * (bits::popcount_16(registers) + r);
 
         for(int i = 0; i < 8; i++) {
             if((registers >> i) & 1) {
                 //FIX: Subsequent accesses would be Sequential, right?
-                m_bus.write32(address, m_regs[i]); //Should be aligned
+                m_bus.write32(address, get_reg(i)); //Should be aligned
                 address += 4;
             }
         }
 
         //Store LR
         if(r) {
-            m_bus.write32(address, m_regs[14]);
+            m_bus.write32(address, get_reg(14));
             address += 4;
         }
 
-        m_regs[13] = m_regs[13] - 4 * (bits::popcount_16(registers) + r);
+        set_reg(13, get_reg(13) - 4 * (bits::popcount_16(registers) + r));
     }
 }
 
@@ -210,8 +210,33 @@ void CPU::thumbConditionalBranch(u16 instruction) {
     immediate <<= 1;
     immediate |= (immediate >> 8) & 0x1 ? 0xFFFFFF00 : 0; //Sign extend 8-bit to 32-bit
 
-    m_pc += immediate;
+    m_state.pc += immediate;
     loadPipeline();
+}
+
+void CPU::thumbSoftwareInterrupt(u16 instruction) {
+    get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
+    get_reg_ref(14, MODE_SUPERVISOR) = get_reg(15) - 2;
+    m_state.cpsr &= ~((1 << 5) - 1);
+    m_state.cpsr |= MODE_SUPERVISOR;
+    set_flag(FLAG_THUMB, false);
+    set_flag(FLAG_IRQ, true);
+    m_state.exec = EXEC_ARM;
+    set_reg(15, 8);
+    loadPipeline();
+}
+
+void CPU::thumbLongBranch(u16 instruction) {
+    bool second = bits::get<11, 1>(instruction);
+
+    if(second) {
+        u32 lr = get_reg(14);
+        set_reg(14, (get_reg(15) - 2) | 1);
+        set_reg(15, lr + (bits::get<0, 11>(instruction) << 1));
+        loadPipeline();
+    } else {
+        set_reg(14, get_reg(15) + bits::sign_extend<23, s32>(bits::get<0, 11>(instruction) << 12));
+    }
 }
 
 } //namespace emu

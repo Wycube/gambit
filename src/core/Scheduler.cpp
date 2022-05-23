@@ -8,6 +8,10 @@ namespace emu {
 
 Scheduler::Scheduler() { }
 
+void Scheduler::reset() {
+    m_events.clear();
+}
+
 void Scheduler::addEvent(EventFunc callback, u32 cycles_from_now) {
     m_events.push_back(Event{callback, m_current_timestamp + cycles_from_now});
     std::sort(m_events.begin(), m_events.end(), [](const Event &a, const Event &b) {

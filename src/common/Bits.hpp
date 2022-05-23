@@ -2,14 +2,23 @@
 
 #include "Types.hpp"
 
+#include <cassert>
+
 
 namespace bits {
 
-template<u32 start, u32 size, typename T>
+template<u8 start, u8 size, typename T>
 inline auto constexpr get(T value) -> T {
     static_assert((start + size) <= sizeof(value) * 8);
 
-    return value >> start & (((u64)1 << size) - 1);
+    return value >> start & ((static_cast<T>(1) << size) - 1);
+}
+
+template<typename T>
+inline auto constexpr get(u8 start, u8 size, T value) -> T {
+    assert((start + size) <= sizeof(value) * 8);
+
+    return value >> start & ((static_cast<T>(1) << size) - 1);
 }
 
 inline auto ror(u32 value, u8 rotate) -> u32 {
@@ -29,22 +38,13 @@ inline auto popcount_16(u16 value) -> u8 {
     return count;
 }
 
-//TODO: Make a templated sign extend function for all cases
+template<u8 start_size, typename R, typename T>
+inline auto sign_extend(T value) -> R {
+    static_assert(start_size <= sizeof(T) * 8);
+    static_assert(start_size < sizeof(R) * 8);
+    static_assert(sizeof(T) <= sizeof(R));
 
-inline auto sign_extend32(u32 value) -> u64 {
-    return value | ((value >> 31) & 0x1 ? 0xFFFFFFFF00000000 : 0);
-}
-
-inline auto sign_extend23(u32 value) -> u32 {
-    return value | ((value >> 22) & 0x1 ? 0xFF800000 : 0);
-}
-
-inline auto sign_extend16(u16 value) -> u32 {
-    return value | ((value >> 15) & 0x1 ? 0xFFFF0000 : 0);
-}
-
-inline auto sign_extend8(u8 value) -> u32 {
-    return value | ((value >> 7) & 0x1 ? 0xFFFFFF00 : 0);
+    return static_cast<R>(value) | ((value >> (start_size - 1)) & 0x1 ? ~((static_cast<R>(1) << (start_size - 1)) - 1) : 0);
 }
 
 } //namespace common

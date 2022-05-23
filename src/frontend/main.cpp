@@ -24,6 +24,15 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    std::string bios_path;
+
+    if(argc < 3) {
+        LOG_WARNING("No BIOS path specified! Using default: bios.bin");
+        bios_path = "bios.bin";
+    } else {
+        bios_path = argv[2];
+    }
+
     printf("Version: %s\n", common::GIT_DESC);
     printf("Commit: %s\n", common::GIT_COMMIT);
     printf("Branch: %s\n", common::GIT_BRANCH);
@@ -33,7 +42,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     
-    GLFWwindow *window = glfwCreateWindow(1080, 720, "gba", 0, 0);
+    GLFWwindow *window = glfwCreateWindow(1080, 720, fmt::format("gba  {}", common::GIT_DESC).c_str(), 0, 0);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
@@ -54,25 +63,40 @@ int main(int argc, char *argv[]) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
 
-    std::fstream file(argv[1], std::ios_base::in | std::ios_base::binary);
+    std::fstream rom_file(argv[1], std::ios_base::in | std::ios_base::binary);
+    std::fstream bios_file(bios_path, std::ios_base::in | std::ios_base::binary);
 
-    if(!file.good()) {
-        LOG_ERROR("File not good!");
+    if(!rom_file.good()) {
+        LOG_ERROR("ROM file not good!");
         return -1;
     }
 
-    size_t size = std::filesystem::file_size(argv[1]);
-    LOG_INFO("ROM Size: {}", size);
+    if(!bios_file.good()) {
+        LOG_ERROR("BIOS file not good!");
+        return -1;
+    }
+
+    size_t rom_size = std::filesystem::file_size(argv[1]);
+    size_t bios_size = std::filesystem::file_size(bios_path);
+    LOG_INFO("ROM Size: {}", rom_size);
+    LOG_INFO("BIOS Size: {}", bios_size);
 
     std::vector<u8> rom;
-    rom.resize(size);
+    rom.resize(rom_size);
+    std::vector<u8> bios;
+    bios.resize(bios_size);
     
-    for(size_t i = 0; i < size; i++) {
-        rom[i] = static_cast<u8>(file.get());
+    for(size_t i = 0; i < rom_size; i++) {
+        rom[i] = static_cast<u8>(rom_file.get());
+    }
+
+    for(size_t i = 0; i < bios_size; i++) {
+        bios[i] = static_cast<u8>(bios_file.get());
     }
 
     emu::GBA gba;
     gba.loadROM(rom);
+    gba.loadBIOS(bios);
 
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 

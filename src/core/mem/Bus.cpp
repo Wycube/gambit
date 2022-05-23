@@ -6,7 +6,7 @@
 namespace emu {
 
 Bus::Bus(Scheduler &scheduler, PPU &ppu) : m_scheduler(scheduler), m_ppu(ppu) {
-    memset(&m_mem, 0, sizeof(m_mem));
+    reset();
 }
 
 void Bus::wait(u32 cycles) {
@@ -86,11 +86,25 @@ void Bus::write_byte(u32 address, u8 value) {
 }
 
 auto Bus::read_io(u32 address) -> u8 {
+    if((address & ~1) == 0) {
+        return m_ppu.read8(0x04000000 + address);
+    }
+
     return m_mem.io[address];
 }
 
 void Bus::write_io(u32 address, u8 value) {
+    if((address & ~1) == 0) {
+        m_ppu.write8(0x04000000 + address, value);
+        
+        return;
+    }
+
     m_mem.io[address] = value;
+}
+
+void Bus::reset() {
+    memset(&m_mem, 0, sizeof(m_mem));
 }
 
 auto Bus::read8(u32 address) -> u8 {
@@ -149,6 +163,14 @@ auto Bus::getLoadedPak() -> GamePak& {
 
 void Bus::loadROM(const std::vector<u8> &rom) {
     m_pak.loadROM(rom);
+}
+
+void Bus::loadBIOS(const std::vector<u8> &bios) {
+    if(bios.size() > sizeof(m_mem.bios)) {
+        LOG_FATAL("Failed to load bios: Too Large ({} bytes)!", bios.size());
+    }
+
+    memcpy(m_mem.bios, bios.data(), sizeof(m_mem.bios));
 }
 
 auto Bus::debugRead8(u32 address) -> u8 {

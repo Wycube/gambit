@@ -20,6 +20,7 @@ private:
     u32 m_dot;
 
     //Memory
+    u16 m_dspcnt;
     u8 m_palette[1_KiB]; 
     u8 m_vram[96_KiB]; 
     u8 m_oam[1_KiB]; 
@@ -32,7 +33,11 @@ public:
 
     PPU(Scheduler &scheduler);
 
+    void reset();
+
     void run(u32 current, u32 late);
+    void writeFrameMode3();
+    void writeFrameMode4();
 
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);

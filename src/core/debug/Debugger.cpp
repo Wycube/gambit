@@ -11,11 +11,10 @@ namespace dbg {
 
 Debugger::Debugger(Bus &bus) : m_bus(bus) { }
 
-void Debugger::attachCPURegisters(u32 *regs, u32 *pc, u32 *cpsr, u32 *spsr) {
+void Debugger::attachCPURegisters(u32 *regs, u32 *pc, u32 *cpsr) {
     m_cpu_regs = regs;
     m_cpu_pc = pc;
     m_cpu_cpsr = cpsr;
-    m_cpu_spsr = spsr;
 }
 
 void Debugger::attachPPUMem(u8 &vram, u32 &framebuffer) {
@@ -35,10 +34,6 @@ auto Debugger::getCPURegister(u8 index) -> u32 {
 
 auto Debugger::getCPUCurrentStatus() -> u32 {
     return *m_cpu_cpsr;
-}
-
-auto Debugger::getCPUSavedStatus() -> u32 {
-    return *m_cpu_spsr;
 }
 
 auto Debugger::read8(u32 address) -> u8 {

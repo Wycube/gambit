@@ -24,9 +24,12 @@ enum ExecutionState {
 
 enum Flag {
     FLAG_NEGATIVE = 1 << 31, 
-    FLAG_ZERO = 1 << 30, 
-    FLAG_CARRY = 1 << 29, 
-    FLAG_OVERFLOW = 1 << 28
+    FLAG_ZERO     = 1 << 30, 
+    FLAG_CARRY    = 1 << 29,
+    FLAG_OVERFLOW = 1 << 28, 
+    FLAG_IRQ      = 1 << 7,
+    FLAG_FIQ      = 1 << 6,
+    FLAG_THUMB    = 1 << 5
 };
 
 enum InterruptSource {
@@ -46,40 +49,55 @@ enum InterruptSource {
     INT_GAMEPAK = 1 << 13  //Game Pak (external IRQ source)
 };
 
+struct CPUState {
+    u32 regs[13];
+    u32 banked_regs[12];
+    u32 fiq_regs[5];
+    u32 pc;
+    u32 cpsr;
+    u32 spsr[6];
+
+    u32 pipeline[2];
+    PrivilegeMode mode;
+    ExecutionState exec;
+};
+
 
 /* 
- * The CPU is an ARM7TDMI that uses the ARMv4TM architecture and supports the ARM
+ * The CPU is an ARM7TDMI that uses the ARMv4TM architecture which supports the ARM
  * and THUMB instruction sets.
  */
 class CPU {
 private:
 
     //Registers
-    u32 m_regs[15]; //R0-R14
-    u32 m_pc; //R15 / Program Counter
-    u32 m_banked_regs[10]; //R13-R14 for privilege modes other than user and system
-    u32 m_fiq_regs[5]; //R8-R12 for fiq
-    u32 m_cpsr; //Current Program Status Register
-    u32 m_spsr; //Saved Program Status Register
+    // u32 m_regs[15]; //R0-R14
+    // u32 m_pc; //R15 / Program Counter
+    // u32 m_banked_regs[10]; //R13-R14 for privilege modes other than user and system
+    // u32 m_fiq_regs[5]; //R8-R12 for fiq
+    // u32 m_cpsr; //Current Program Status Register
+    // u32 m_spsr[6]; //Saved Program Status Register
 
-    u32 m_pipeline[2]; //Stores the instructions being decoded and executed
-    ExecutionState m_exec;
+    // u32 m_pipeline[2]; //Stores the instructions being decoded and executed
+    // ExecutionState m_exec;
+    CPUState m_state;
 
     //Hardware
     Bus &m_bus;
 
-    auto get_register(u8 reg) -> u32&;
+    auto get_reg_ref(u8 reg, u8 mode) -> u32&;
     auto get_reg(u8 reg) -> u32;
     void set_reg(u8 reg, u32 value);
+    auto get_spsr(u8 mode) -> u32&;
+
     auto get_flag(Flag flag) -> bool;
     void set_flag(Flag flag, bool set);
     auto passed(u8 condition) -> bool;
+    void change_mode(PrivilegeMode mode);
     auto privileged() -> bool;
 
-    //Arm instruction handler declarations
+    //Arm and Thumb instruction handler declarations
     #include "arm/Handlers.inl"
-
-    //Thumb instruction handler declarations
     #include "thumb/Handlers.inl"
 
     void execute_arm(u32 instruction);
@@ -90,10 +108,10 @@ public:
 
     CPU(Bus &bus);
 
+    void reset();
+
     void step();
     void loadPipeline();
-
-    void requestInterrupt(InterruptSource source);
 
     void attachDebugger(dbg::Debugger &debugger);
 };

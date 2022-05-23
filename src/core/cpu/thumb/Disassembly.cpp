@@ -1,6 +1,7 @@
 #include "Disassembly.hpp"
 #include "common/StringUtils.hpp"
 #include "common/Bits.hpp"
+#include "common/Log.hpp"
 
 #include <cassert>
 
@@ -52,7 +53,6 @@ auto thumbDisassembleMoveShifted(u16 instruction, u32 address, u16 prev) -> std:
     return disassembly;
 }
 
-
 //ADD|SUB <Rd>, <Rn>, #<immed_3>
 //ADD|SUB <Rd>, <Rn>, <Rm>
 auto thumbDisassembleAddSubtract(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -89,7 +89,6 @@ auto thumbDisassembleProcessImmediate(u16 instruction, u32 address, u16 prev) ->
     return disassembly;
 }
 
-
 //<opcode> <Rd/Rn>, <Rm>
 auto thumbDisassembleALUOperation(u16 instruction, u32 address, u16 prev) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
@@ -108,7 +107,6 @@ auto thumbDisassembleALUOperation(u16 instruction, u32 address, u16 prev) -> std
 
     return disassembly;
 }
-
 
 //ADD|CMP|MOV <Rd/Rn>, <Rm>
 auto thumbDisassembleHiRegisterOp(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -130,7 +128,6 @@ auto thumbDisassembleHiRegisterOp(u16 instruction, u32 address, u16 prev) -> std
     return disassembly;
 }
 
-
 //BX|BLX <Rm>
 auto thumbDisassembleBranchExchange(u16 instruction, u32 address, u16 prev) -> std::string {
     bool link = (instruction >> 7) & 0x1;
@@ -142,7 +139,6 @@ auto thumbDisassembleBranchExchange(u16 instruction, u32 address, u16 prev) -> s
 
     return disassembly;
 }
-
 
 //LDR <Rd>, [PC, #<immed_8>*4]
 auto thumbDisassemblePCRelativeLoad(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -156,7 +152,6 @@ auto thumbDisassemblePCRelativeLoad(u16 instruction, u32 address, u16 prev) -> s
 
     return disassembly;
 }
-
 
 //STR|LDR{B} <Rd>, [<Rn>, <Rm>]
 auto thumbDisassembleLoadStoreRegister(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -175,7 +170,6 @@ auto thumbDisassembleLoadStoreRegister(u16 instruction, u32 address, u16 prev) -
 
     return disassembly;
 }
-
 
 //STRH|LDRSB|LDRH|LDRSH <Rd>, [<Rn>, <Rm>]
 auto thumbDisassembleLoadStoreSigned(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -197,7 +191,6 @@ auto thumbDisassembleLoadStoreSigned(u16 instruction, u32 address, u16 prev) -> 
     return disassembly;
 }
 
-
 //STR|LDR <Rd>, [<Rn>, #<immed_5>*4]
 //STRB|LDRB <Rd>, [<Rn>, #<immed_5>]
 auto thumbDisassembleLoadStoreImmediate(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -218,7 +211,6 @@ auto thumbDisassembleLoadStoreImmediate(u16 instruction, u32 address, u16 prev) 
     return disassembly;
 }
 
-
 //STRH|LDRH <Rd>, [<Rn>, #<immed_5>*2]
 auto thumbDisassembleLoadStoreHalfword(u16 instruction, u32 address, u16 prev) -> std::string {
     bool l = (instruction >> 11) & 0x1;
@@ -235,7 +227,6 @@ auto thumbDisassembleLoadStoreHalfword(u16 instruction, u32 address, u16 prev) -
     return disassembly;
 }
 
-
 //STR|LDR <Rd>, [SP, #<immed_8>*4]
 auto thumbDisassembleSPRelativeLoadStore(u16 instruction, u32 address, u16 prev) -> std::string {
     bool l = (instruction >> 11) & 0x1;
@@ -249,7 +240,6 @@ auto thumbDisassembleSPRelativeLoadStore(u16 instruction, u32 address, u16 prev)
 
     return disassembly;
 }
-
 
 //ADD <Rd>, PC|SP, #<immed_8>*4
 auto thumbDisassembleLoadAddress(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -267,7 +257,6 @@ auto thumbDisassembleLoadAddress(u16 instruction, u32 address, u16 prev) -> std:
     return disassembly;
 }
 
-
 //ADD SP, #{-}<immed_7>*4
 auto thumbDisassembleAdjustSP(u16 instruction, u32 address, u16 prev) -> std::string {
     bool s = (instruction >> 7) & 0x1;
@@ -281,7 +270,6 @@ auto thumbDisassembleAdjustSP(u16 instruction, u32 address, u16 prev) -> std::st
 
     return disassembly;
 }
-
 
 //PUSH <registers> - If the R bit is set then LR is in the register list
 //POP <registers>  - If the R bit is set then PC is in the register list
@@ -310,7 +298,6 @@ auto thumbDisassemblePushPopRegisters(u16 instruction, u32 address, u16 prev) ->
     return disassembly;
 }
 
-
 //STMIA|LDMIA <Rn>!, <registers>
 auto thumbDisassembleLoadStoreMultiple(u16 instruction, u32 address, u16 prev) -> std::string {
     bool l = (instruction >> 11) & 0x1;
@@ -338,7 +325,6 @@ auto thumbDisassembleLoadStoreMultiple(u16 instruction, u32 address, u16 prev) -
     return disassembly;
 }
 
-
 //B<cond> #<target_address>
 auto thumbDisassembleConditionalBranch(u16 instruction, u32 address, u16 prev) -> std::string {
     static const char *CONDITION_CODES[] = {
@@ -360,7 +346,6 @@ auto thumbDisassembleConditionalBranch(u16 instruction, u32 address, u16 prev) -
     return disassembly;
 }
 
-
 //SWI <immed_8>
 auto thumbDisassembleSoftwareInterrupt(u16 instruction, u32 address, u16 prev) -> std::string {
     u8 immed_8 = instruction & 0xFF;
@@ -371,7 +356,6 @@ auto thumbDisassembleSoftwareInterrupt(u16 instruction, u32 address, u16 prev) -
 
     return disassembly;
 }
-
 
 //B #<target_address>
 auto thumbDisassembleUnconditionalBranch(u16 instruction, u32 address, u16 prev) -> std::string {
@@ -387,7 +371,6 @@ auto thumbDisassembleUnconditionalBranch(u16 instruction, u32 address, u16 prev)
     return disassembly;
 }
 
-
 //BL #<target_address>
 auto thumbDisassembleLongBranch(u16 instruction, u32 address, u16 prev) -> std::string {
     bool second = bits::get<11, 1>(instruction);
@@ -395,17 +378,16 @@ auto thumbDisassembleLongBranch(u16 instruction, u32 address, u16 prev) -> std::
     std::string disassembly;
 
     if(second) {
-        assert((bits::get<11, 5>(prev)) == 0x1E);
+        //assert((bits::get<11, 5>(prev)) == 0x1E);
 
-        s32 offset = bits::sign_extend23((bits::get<0, 11>(prev) << 12) | (bits::get<0, 11>(instruction) << 1));
-        disassembly = "bl #0x" + common::hex(address + 4 + offset);
+        s32 offset = bits::sign_extend<23, s32>((bits::get<0, 11>(prev) << 12) | (bits::get<0, 11>(instruction) << 1));
+        disassembly = "bl #0x" + common::hex(address + 2 + offset);
     } else {
-        disassembly = "long branch";
+        disassembly = "bl";
     }
 
     return disassembly;
 }
-
 
 auto thumbDisassembleInvalid(u16 instruction, u32 address, u16 prev) -> std::string {
     return "Invalid Instruction";

@@ -41,6 +41,8 @@ public:
 
     Bus(Scheduler &scheduler, PPU &ppu);
 
+    void reset();
+
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16; 
     auto read32(u32 address) -> u32;
@@ -51,6 +53,7 @@ public:
 
     auto getLoadedPak() -> GamePak&;
     void loadROM(const std::vector<u8> &rom);
+    void loadBIOS(const std::vector<u8> &bios);
 
     //For Debugger
     auto debugRead8(u32 address) -> u8;

@@ -128,7 +128,6 @@ public:
         ImGui::Spacing();
 
         u32 cpsr = m_debugger.getCPUCurrentStatus();
-        u32 spsr = m_debugger.getCPUSavedStatus();
         static constexpr char flag_name[7] = {'N', 'F', 'C', 'V', 'I', 'F', 'T'};
         static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
 
@@ -139,20 +138,6 @@ public:
             ImGui::SameLine();
 
             bool set = (cpsr >> flag_bit[i]) & 0x1;
-            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
-            ImGui::Text("%1i", set);
-            ImGui::PopStyleColor();
-
-            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
-        }
-        
-        ImGui::Text("SPSR");
-        ImGui::Text("%08X", spsr);
-        for(int i = 0; i < sizeof(flag_name); i++) {
-            ImGui::Text("%c:", flag_name[i]);
-            ImGui::SameLine();
-
-            bool set = (spsr >> flag_bit[i]) & 0x1;
             ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
             ImGui::Text("%1i", set);
             ImGui::PopStyleColor();

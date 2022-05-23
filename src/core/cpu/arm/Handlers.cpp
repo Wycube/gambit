@@ -7,9 +7,9 @@
 namespace emu {
 
 void CPU::armUnimplemented(u32 instruction) {
-    ArmInstruction decoded = armDecodeInstruction(instruction, m_pc - 8);
+    ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
 
-    LOG_FATAL("Unimplemented ARM Instruction: (PC:{:08X} Type:{}) {}", m_pc - 8, decoded.type, decoded.disassembly);
+    LOG_FATAL("Unimplemented ARM Instruction: (PC:{:08X} Type:{}) {}", m_state.pc - 8, decoded.type, decoded.disassembly);
 }
 
 void CPU::armBranchExchange(u32 instruction) {
@@ -21,9 +21,9 @@ void CPU::armBranchExchange(u32 instruction) {
 
     u32 rm = get_reg(instruction & 0xF);
 
-    m_exec = rm & 0x1 ? EXEC_THUMB : EXEC_ARM;
-    m_cpsr = (m_cpsr & ~(1 << 5)) | ((rm & 0x1) << 5);
-    m_pc = rm & (m_exec == EXEC_THUMB ? ~1 : ~3); //Align the address
+    m_state.exec = rm & 0x1 ? EXEC_THUMB : EXEC_ARM;
+    m_state.cpsr = (m_state.cpsr & ~(1 << 5)) | ((rm & 0x1) << 5);
+    m_state.pc = rm & (m_state.exec == EXEC_THUMB ? ~1 : ~3); //Align the address
     loadPipeline();
 }
 
@@ -49,7 +49,7 @@ void CPU::armPSRTransfer(u32 instruction) {
             operand = get_reg(instruction & 0xF);
         }
 
-        u32 psr = r ? m_spsr : m_cpsr;
+        u32 psr = r ? get_spsr(0) : m_state.cpsr;
 
         if((fields & 1) && privileged()) {
             psr &= ~0xFF;
@@ -69,14 +69,14 @@ void CPU::armPSRTransfer(u32 instruction) {
         }
 
         if(r) {
-            m_spsr = psr;
+            get_spsr(0) = psr;
         } else {
-            m_cpsr = psr;
+            m_state.cpsr = psr;
         }
     } else {
         u8 rd = (instruction >> 12) & 0xF;
         //TODO: When executed in User Mode, spsr is the same as cpsr
-        set_reg(rd, r ? m_spsr : m_cpsr);
+        set_reg(rd, r ? get_spsr(0) : m_state.cpsr);
     }
 }
 
@@ -187,7 +187,9 @@ void CPU::armDataProcessing(u32 instruction) {
         set_reg((instruction >> 12) & 0xF, alu_out);
 
         if(((instruction >> 12) & 0xF) == 15) {
-            if(s) { m_cpsr = m_spsr; }
+            if(s) {
+                m_state.cpsr = get_spsr(0);
+            }
             loadPipeline();
         }
     }
@@ -262,7 +264,7 @@ void CPU::armMultiplyLong(u32 instruction) {
     //TODO: Make sure rd != rm and rd, rm, rn, or rs != r15
 
     if(sign) {
-        result = (s64)bits::sign_extend32(get_reg(rm)) * (s64)bits::sign_extend32(get_reg(rs)) + (accumulate ? ((s64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
+        result = bits::sign_extend<32, s64>(get_reg(rm)) * bits::sign_extend<32, s64>(get_reg(rs)) + (accumulate ? ((s64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
     } else {
         result = (u64)get_reg(rm) * (u64)get_reg(rs) + (accumulate ? ((u64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
     }
@@ -320,7 +322,7 @@ void CPU::armHalfwordTransfer(u32 instruction) {
     if(l && wback) set_reg(rn, offset_address);
 
     if(l) {
-        u32 extended = sh == 2 ? bits::sign_extend8(data) : sh == 3 ? bits::sign_extend16(data) : data;
+        u32 extended = sh == 2 ? bits::sign_extend<8, u32>(data) : sh == 3 ? bits::sign_extend<16, u32>(data) : data;
         set_reg(rd, extended);
     } else {
         m_bus.write16(address, data);
@@ -396,7 +398,7 @@ void CPU::armSingleTransfer(u32 instruction) {
         }
 
         if(rd == 15) {
-            m_pc = value & 0xFFFFFFFC;
+            m_state.pc = value & 0xFFFFFFFC;
             loadPipeline();
         } else {
             set_reg(rd, value);
@@ -424,10 +426,10 @@ void CPU::armBranch(u32 instruction) {
 
     //Store next instruction's address in the link register
     if(l) {
-        set_reg(14, m_pc - 4);
+        set_reg(14, m_state.pc - 4);
     }
 
-    m_pc += immediate;
+    m_state.pc += immediate;
     loadPipeline();
 }
 

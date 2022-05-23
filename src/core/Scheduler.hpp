@@ -23,6 +23,8 @@ public:
 
     Scheduler();
 
+    void reset();
+
     void addEvent(EventFunc callback, u32 cycles_from_now);
     //auto removeEvent(Event event) -> bool;
 

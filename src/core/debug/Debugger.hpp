@@ -21,7 +21,6 @@ private:
     u32 *m_cpu_regs; //R0-R14
     u32 *m_cpu_pc; //R15
     u32 *m_cpu_cpsr;
-    u32 *m_cpu_spsr;
 
     //Pointer to PPU stuff
     u8 *m_ppu_vram;
@@ -33,11 +32,10 @@ public:
 
     Debugger(Bus &bus);
 
-    void attachCPURegisters(u32 *regs, u32 *pc, u32 *cpsr, u32 *spsr);
+    void attachCPURegisters(u32 *regs, u32 *pc, u32 *cpsr);
     void attachPPUMem(u8 &vram, u32 &framebuffer);
     auto getCPURegister(u8 index) -> u32;
     auto getCPUCurrentStatus() -> u32;
-    auto getCPUSavedStatus() -> u32;
 
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16;
