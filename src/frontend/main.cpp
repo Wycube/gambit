@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     
     GLFWwindow *window = glfwCreateWindow(1080, 720, fmt::format("gba  {}", common::GIT_DESC).c_str(), 0, 0);
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     int version = gladLoadGL(glfwGetProcAddress);
     if(version == 0) {
@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
     bool show_cpu_debug = true;
     bool show_mem_debug = false;
     bool show_vram_debug = false;
+    bool show_scheduler_debug = false;
     bool show_about = false;
     bool show_pak_info = false;
 
@@ -129,6 +130,9 @@ int main(int argc, char *argv[]) {
             }
             if(ImGui::MenuItem("Framebuffer")) {
                 show_vram_debug = true;
+            }
+            if(ImGui::MenuItem("Scheduler")) {
+                show_scheduler_debug = true;
             }
             if(ImGui::MenuItem("Cart Info")) {
                 show_pak_info = true;
@@ -162,6 +166,11 @@ int main(int argc, char *argv[]) {
             ImGui::End();
         }
 
+        if(show_scheduler_debug) {
+            if(ImGui::Begin("Scheduler", &show_scheduler_debug)) debug_ui.drawSchedulerViewer();
+            ImGui::End();
+        }
+
         if(show_pak_info) {
             if(ImGui::Begin("Pak Info", &show_pak_info)) {
                 ImGui::Text("Name: %s", argv[1]);
@@ -183,6 +192,8 @@ int main(int argc, char *argv[]) {
 
             ImGui::End();
         }
+
+        ImGui::ShowMetricsWindow();
 
         ImGui::Render();
         glClear(GL_COLOR_BUFFER_BIT);

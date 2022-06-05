@@ -259,8 +259,8 @@ auto thumbDisassembleLoadAddress(u16 instruction, u32 address, u16 prev) -> std:
 
 //ADD SP, #{-}<immed_7>*4
 auto thumbDisassembleAdjustSP(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool s = (instruction >> 7) & 0x1;
-    u8 immed_7 = instruction & 0x7F;
+    bool s = bits::get<7, 1>(instruction);
+    u8 immed_7 = bits::get<0, 7>(instruction);
 
     std::string disassembly;
     disassembly = "add sp, ";
@@ -359,9 +359,8 @@ auto thumbDisassembleSoftwareInterrupt(u16 instruction, u32 address, u16 prev) -
 
 //B #<target_address>
 auto thumbDisassembleUnconditionalBranch(u16 instruction, u32 address, u16 prev) -> std::string {
-    s32 immediate = instruction & 0xFFF;
-    immediate <<= 1;
-    immediate |= (immediate >> 11) & 0x1 ? 0xFFFFF000 : 0; //Sign extend 11-bit to 32-bit
+    s32 immediate = bits::get<0, 11>(instruction);
+    immediate = bits::sign_extend<12, s32>(immediate << 1);
 
     std::string disassembly;
     disassembly = "b";

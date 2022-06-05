@@ -9,10 +9,6 @@ Bus::Bus(Scheduler &scheduler, PPU &ppu) : m_scheduler(scheduler), m_ppu(ppu) {
     reset();
 }
 
-void Bus::wait(u32 cycles) {
-    m_scheduler.step(cycles);
-}
-
 auto Bus::read_byte(u32 address) -> u8 {
     address &= 0x0FFFFFFF;
     u32 sub_address = address & 0xFFFFFF;
@@ -22,24 +18,24 @@ auto Bus::read_byte(u32 address) -> u8 {
         break;
         case 0x1 : //Not Used
         break;
-        case 0x2 : return m_mem.ewram[sub_address]; //On-Board WRAM
+        case 0x2 : return m_mem.ewram[sub_address % sizeof(m_mem.ewram)]; //On-Board WRAM
         break;
-        case 0x3 : return m_mem.iwram[sub_address]; //On-Chip WRAM
+        case 0x3 : return m_mem.iwram[sub_address % sizeof(m_mem.iwram)]; //On-Chip WRAM
         break;
-        case 0x4 : return read_io(address - 0x4000000);
+        case 0x4 : return read_io(address);
         break;
         case 0x5 :
         case 0x6 :
         case 0x7 : return m_ppu.read8(address); //BG/OBJ Palette RAM / VRAM / OAM - OBJ Attributes
         break;
         case 0x8 : 
-        case 0x9 : return m_pak.read8(address - 0x8000000); //Pak ROM Waitstate 0
+        case 0x9 : return m_pak.read8(address); //Pak ROM Waitstate 0
         break;
         case 0xA : 
-        case 0xB : return m_pak.read8(address - 0xA000000); //Pak ROM Waitstate 1
+        case 0xB : return m_pak.read8(address - 0x2000000); //Pak ROM Waitstate 1
         break;
         case 0xC : 
-        case 0xD : return m_pak.read8(address - 0xC000000); //Pak ROM Waitstate 2
+        case 0xD : return m_pak.read8(address - 0x4000000); //Pak ROM Waitstate 2
         break;
         case 0xE : //Pak SRAM
         break;
@@ -59,11 +55,11 @@ void Bus::write_byte(u32 address, u8 value) {
         break;
         case 0x1 : //Not Used
         break;
-        case 0x2 : m_mem.ewram[sub_address] = value; //On-Board WRAM
+        case 0x2 : m_mem.ewram[sub_address % sizeof(m_mem.ewram)] = value; //On-Board WRAM
         break;
-        case 0x3 : m_mem.iwram[sub_address] = value; //On-Chip WRAM
+        case 0x3 : m_mem.iwram[sub_address % sizeof(m_mem.iwram)] = value; //On-Chip WRAM
         break;
-        case 0x4 : write_io(address - 0x4000000, value);
+        case 0x4 : write_io(address, value);
         break;
         case 0x5 :
         case 0x6 :
@@ -86,25 +82,28 @@ void Bus::write_byte(u32 address, u8 value) {
 }
 
 auto Bus::read_io(u32 address) -> u8 {
-    if((address & ~1) == 0) {
-        return m_ppu.read8(0x04000000 + address);
+    if(address <= 0x04000056) {
+        return m_ppu.read8(address);
     }
 
-    return m_mem.io[address];
+    return m_mem.io[address - 0x04000000];
 }
 
 void Bus::write_io(u32 address, u8 value) {
-    if((address & ~1) == 0) {
-        m_ppu.write8(0x04000000 + address, value);
-        
+    if(address <= 0x04000056) {
+        m_ppu.write8(address, value);
         return;
     }
 
-    m_mem.io[address] = value;
+    m_mem.io[address - 0x04000000] = value;
 }
 
 void Bus::reset() {
     memset(&m_mem, 0, sizeof(m_mem));
+}
+
+void Bus::cycle(u32 cycles) {
+    m_scheduler.step(cycles);
 }
 
 auto Bus::read8(u32 address) -> u8 {
@@ -153,8 +152,10 @@ void Bus::write32(u32 address, u32 value) {
     write_byte(address + 3, (value >> 24) & 0xFF);
 }
 
-void Bus::cycle() {
-    m_scheduler.step(1);
+void Bus::requestInterrupt(InterruptSource source) {
+    //Set the flag in IF at address 0x04000202
+    m_mem.io[2] |= source;
+    m_mem.io[3] |= source >> 8;
 }
 
 auto Bus::getLoadedPak() -> GamePak& {

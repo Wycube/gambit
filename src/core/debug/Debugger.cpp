@@ -2,7 +2,8 @@
 #include "core/mem/Bus.hpp"
 #include "core/cpu/arm/Instruction.hpp"
 #include "core/cpu/thumb/Instruction.hpp"
-#include "core/cpu/CPU.hpp"
+#include "core/Scheduler.hpp"
+#include "common/Log.hpp"
 
 
 namespace emu {
@@ -10,31 +11,6 @@ namespace emu {
 namespace dbg {
 
 Debugger::Debugger(Bus &bus) : m_bus(bus) { }
-
-void Debugger::attachCPURegisters(u32 *regs, u32 *pc, u32 *cpsr) {
-    m_cpu_regs = regs;
-    m_cpu_pc = pc;
-    m_cpu_cpsr = cpsr;
-}
-
-void Debugger::attachPPUMem(u8 &vram, u32 &framebuffer) {
-    m_ppu_vram = &vram;
-    m_ppu_framebuffer = &framebuffer;
-}
-
-auto Debugger::getCPURegister(u8 index) -> u32 {
-    index &= 0xF;
-    
-    if(index == 15) {
-        return *m_cpu_pc;
-    }
-
-    return m_cpu_regs[index];
-}
-
-auto Debugger::getCPUCurrentStatus() -> u32 {
-    return *m_cpu_cpsr;
-}
 
 auto Debugger::read8(u32 address) -> u8 {
     return m_bus.debugRead8(address);
@@ -48,29 +24,110 @@ auto Debugger::read32(u32 address) -> u32 {
     return m_bus.debugRead32(address);
 }
 
+auto Debugger::armDisassembleAt(u32 address) -> std::string {
+    return armDecodeInstruction(m_bus.debugRead32(address), address).disassembly;
+}
+
+auto Debugger::thumbDisassembleAt(u32 address) -> std::string {
+    return thumbDecodeInstruction(m_bus.debugRead16(address), address, m_bus.debugRead16(address - 2)).disassembly;
+}
+
+void Debugger::attachCPUState(CPUState *state) {
+    m_cpu_state = state;
+}
+
+auto Debugger::getCPURegister(u8 reg, u8 mode) -> u32 {
+    reg &= 0xF;
+
+    if(mode == 0) {
+        mode = m_cpu_state->mode;
+    }
+
+    if(reg < 13) {
+        if(mode > 7 && mode == MODE_FIQ) {
+            return m_cpu_state->fiq_regs[reg - 8];
+        }
+
+        return m_cpu_state->regs[reg];
+    }
+
+    if(reg == 15) {
+        return m_cpu_state->pc;
+    }
+
+    switch(mode) {
+        case MODE_USER :
+        case MODE_SYSTEM : return m_cpu_state->banked_regs[reg - 13];
+        case MODE_FIQ : return m_cpu_state->banked_regs[reg - 11];
+        case MODE_IRQ : return m_cpu_state->banked_regs[reg - 9];
+        case MODE_SUPERVISOR : return m_cpu_state->banked_regs[reg - 7];
+        case MODE_ABORT : return m_cpu_state->banked_regs[reg - 5];
+        case MODE_UNDEFINED : return m_cpu_state->banked_regs[reg - 3];
+        default : return 0;
+    }
+}
+
+auto Debugger::getCPUCPSR() -> u32 {
+    return m_cpu_state->cpsr;
+}
+
+auto Debugger::getCPUSPSR(u8 mode) -> u32 {
+    if(mode == 0) {
+        mode = m_cpu_state->mode;
+    }
+
+    switch(mode) {
+        case MODE_USER :
+        case MODE_SYSTEM : return m_cpu_state->cpsr;
+        case MODE_FIQ : return m_cpu_state->spsr[0];
+        case MODE_IRQ : return m_cpu_state->spsr[1];
+        case MODE_SUPERVISOR : return m_cpu_state->spsr[2];
+        case MODE_ABORT : return m_cpu_state->spsr[3];
+        case MODE_UNDEFINED : return m_cpu_state->spsr[4];
+        default : return 0;
+    }
+}
+
+auto Debugger::getCPUMode() -> PrivilegeMode {
+    return m_cpu_state->mode;
+}
+
+auto Debugger::getCPUExec() -> ExecutionState {
+    return m_cpu_state->exec;
+}
+
+void Debugger::attachPPUMem(u32 *framebuffer) {
+    m_ppu_framebuffer = framebuffer;
+}
+
 auto Debugger::getFramebuffer() -> u32* {
     return m_ppu_framebuffer;
 }
 
-auto Debugger::armDisassembleAt(u32 address) -> std::string {
-    ArmInstruction decoded = armDecodeInstruction(m_bus.debugRead32(address), address);
-
-    return decoded.disassembly;
+void Debugger::attachScheduler(std::vector<Event> *scheduler_events, u32 *scheduler_timestamp) {
+    m_scheduler_events = scheduler_events;
+    m_scheduler_timestamp = scheduler_timestamp;
 }
 
-auto Debugger::thumbDisassembleAt(u32 address) -> std::string {
-    ThumbInstruction decoded = thumbDecodeInstruction(m_bus.debugRead16(address), address, m_bus.debugRead16(address - 2));
+auto Debugger::numEvents() -> u32 {
+    return m_scheduler_events->size();
+}
 
-    return decoded.disassembly;
+auto Debugger::getEventTag(u32 index) -> std::string {
+    return m_scheduler_events->at(index).debug_tag;
+}
+
+auto Debugger::getEventCycles(u32 index) -> u32 {
+    return m_scheduler_events->at(index).scheduled_timestamp - *m_scheduler_timestamp;
 }
 
 auto Debugger::atBreakPoint() -> bool {
-    bool thumb = (*m_cpu_cpsr >> 5) & 0x1;
+    bool thumb = (m_cpu_state->cpsr >> 5) & 0x1;
     
     if(thumb) {
-        return (*m_cpu_pc - 2) == m_break_point;
+        return (m_cpu_state->pc - 2) == m_break_point;
     } else {
-        return (*m_cpu_pc - 4) == m_break_point;
+        return (m_cpu_state->pc - 4) == m_break_point;
     }
 }
 

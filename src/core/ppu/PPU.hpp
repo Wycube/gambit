@@ -20,7 +20,8 @@ private:
     u32 m_dot;
 
     //Memory
-    u16 m_dspcnt;
+    u16 m_dispcnt;
+    u16 m_dispstat;
     u8 m_palette[1_KiB]; 
     u8 m_vram[96_KiB]; 
     u8 m_oam[1_KiB]; 
@@ -28,6 +29,9 @@ private:
     u32 m_framebuffer[240 * 160];
 
     Scheduler &m_scheduler;
+
+    auto read_io(u32 address) -> u8;
+    void write_io(u32 address, u8 value);
 
 public:
 

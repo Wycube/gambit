@@ -4,11 +4,11 @@
 namespace emu {
 
 auto GamePak::read8(u32 address) -> u8 {
-    if(address >= m_rom.size()) {
+    if((address - 0x08000000) >= m_rom.size()) {
        return 0;
     }
 
-    return m_rom[address];
+    return m_rom[address - 0x08000000];
 }
 
 void GamePak::write8(u32 address, u8 value) {

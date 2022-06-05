@@ -32,6 +32,9 @@ private:
     emu::dbg::Debugger &m_debugger;
     emu::GBA &m_gba;
 
+    //CPU Registers mode
+    int m_mode = 0;
+
     //VRAM Texture
     u32 m_vram_tex = 0;
 
@@ -57,6 +60,12 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
+        
+        #if _DEBUG
+        //Label the texture
+        glObjectLabel(GL_TEXTURE, m_vram_tex, -1, "GBA Screen Texture");
+        #endif
+
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
@@ -110,16 +119,23 @@ public:
         ImGui::Separator();
         ImGui::BeginGroup();
 
+        //Mode select
+        ImGui::SetNextItemWidth(200.0f);
+        ImGui::Combo("Mode", &m_mode, "Current\0User\0System\0Supervisor\0FIQ\0IRQ\0Abort\0Undefined\0");
+
+        static constexpr u8 modes[8] = {0, emu::MODE_USER, emu::MODE_SYSTEM, emu::MODE_SUPERVISOR, emu::MODE_FIQ, emu::MODE_IRQ, emu::MODE_ABORT, emu::MODE_UNDEFINED};
+        u8 mode = modes[m_mode];
+
         //CPU Registers
         if(ImGui::BeginTable("##CPURegisters_Table", 2, ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableNextRow();
 
             for(u8 i = 0; i < 8; i++) {
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", i, m_debugger.getCPURegister(i));
+                ImGui::Text("r%-2i: %08X", i, m_debugger.getCPURegister(i, mode));
                 
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", 8 + i, m_debugger.getCPURegister(8 + i));
+                ImGui::Text("r%-2i: %08X", 8 + i, m_debugger.getCPURegister(8 + i, mode));
             }
 
             ImGui::EndTable();
@@ -127,17 +143,34 @@ public:
 
         ImGui::Spacing();
 
-        u32 cpsr = m_debugger.getCPUCurrentStatus();
-        static constexpr char flag_name[7] = {'N', 'F', 'C', 'V', 'I', 'F', 'T'};
+        u32 cpsr = m_debugger.getCPUCPSR();
+        u32 spsr = m_debugger.getCPUSPSR(mode);
+        static constexpr char flag_name[7] = {'N', 'Z', 'C', 'V', 'I', 'F', 'T'};
         static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
 
         ImGui::Text("CPSR");
         ImGui::Text("%08X", cpsr);
+        ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(cpsr)).c_str());
         for(int i = 0; i < sizeof(flag_name); i++) {
             ImGui::Text("%c:", flag_name[i]);
             ImGui::SameLine();
 
             bool set = (cpsr >> flag_bit[i]) & 0x1;
+            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
+            ImGui::Text("%1i", set);
+            ImGui::PopStyleColor();
+
+            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
+        }
+
+        ImGui::Text("SPSR");
+        ImGui::Text("%08X", spsr);
+        ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(spsr)).c_str());
+        for(int i = 0; i < sizeof(flag_name); i++) {
+            ImGui::Text("%c:", flag_name[i]);
+            ImGui::SameLine();
+
+            bool set = (spsr >> flag_bit[i]) & 0x1;
             ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
             ImGui::Text("%1i", set);
             ImGui::PopStyleColor();
@@ -167,7 +200,7 @@ public:
             ImGui::BeginTable("##Disassembly_Table", 3, ImGuiTableFlags_SizingFixedFit);
          
             //THUMB or ARM
-            bool thumb = (m_debugger.getCPUCurrentStatus() >> 5) & 1;
+            bool thumb = (m_debugger.getCPUCPSR() >> 5) & 1;
             u8 instr_size = thumb ? 2 : 4;
 
             ImGuiListClipper clipper(101);
@@ -275,5 +308,11 @@ public:
             ImGui::EndTable();
         }
         ImGui::EndChild();
+    }
+
+    void drawSchedulerViewer() {
+        for(u32 i = 0; i < m_debugger.numEvents(); i++) {
+            ImGui::Text("%i : %s -> %i cycles", i, m_debugger.getEventTag(i).c_str(), m_debugger.getEventCycles(i));
+        }
     }
 };

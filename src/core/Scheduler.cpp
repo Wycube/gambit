@@ -12,8 +12,8 @@ void Scheduler::reset() {
     m_events.clear();
 }
 
-void Scheduler::addEvent(EventFunc callback, u32 cycles_from_now) {
-    m_events.push_back(Event{callback, m_current_timestamp + cycles_from_now});
+void Scheduler::addEvent(std::string debug_tag, EventFunc callback, u32 cycles_from_now) {
+    m_events.push_back(Event{debug_tag, callback, m_current_timestamp + cycles_from_now});
     std::sort(m_events.begin(), m_events.end(), [](const Event &a, const Event &b) {
         return a.scheduled_timestamp >= b.scheduled_timestamp;
     });
@@ -38,6 +38,10 @@ void Scheduler::step(u32 cycles) {
 
 auto Scheduler::getCurrentTimestamp() -> u32 {
     return m_current_timestamp;
+}
+
+void Scheduler::attachDebugger(dbg::Debugger &debugger) {
+    debugger.attachScheduler(&m_events, &m_current_timestamp);
 }
 
 } //namespace emu

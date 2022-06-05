@@ -49,11 +49,16 @@ void CPU::armPSRTransfer(u32 instruction) {
             operand = get_reg(instruction & 0xF);
         }
 
-        u32 psr = r ? get_spsr(0) : m_state.cpsr;
+        u32 psr = r ? get_spsr() : m_state.cpsr;
 
         if((fields & 1) && privileged()) {
+            u8 old_mode = bits::get<0, 5>(psr);
             psr &= ~0xFF;
             psr |= operand & 0xFF;
+
+            if(!r && bits::get<0, 5>(psr) != old_mode) {
+                change_mode(mode_from_bits(bits::get<0, 5>(psr)));
+            }
         }
         if(((fields >> 1) & 1) && privileged()) {
             psr &= ~(0xFF << 8);
@@ -69,7 +74,7 @@ void CPU::armPSRTransfer(u32 instruction) {
         }
 
         if(r) {
-            get_spsr(0) = psr;
+            get_spsr() = psr;
         } else {
             m_state.cpsr = psr;
         }
@@ -124,7 +129,8 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
     }
 }
 
-//TODO: Refactor these functions
+//TODO: Refactor these functions  ^  |
+//                                |  v
 
 void CPU::armDataProcessing(u32 instruction) {
     u8 condition = instruction >> 28;
@@ -210,7 +216,7 @@ void CPU::armDataProcessing(u32 instruction) {
             //TODO: Fix the overflow flag
 
             if(subtract) {
-               carry = (u64)(reverse ? shifter_operand : operand_1) >= (u64)(reverse ? operand_1 : shifter_operand) + (u64)(use_carry ? !get_flag(FLAG_CARRY) : 0);
+                carry = (u64)(reverse ? shifter_operand : operand_1) >= (u64)(reverse ? operand_1 : shifter_operand) + (u64)(use_carry ? !get_flag(FLAG_CARRY) : 0);
             } else {
                 carry = (u64)alu_out < (u64)operand_1 + (u64)(use_carry ? get_flag(FLAG_CARRY) : 0);
             }
@@ -412,16 +418,92 @@ void CPU::armSingleTransfer(u32 instruction) {
     }
 }
 
-void CPU::armBranch(u32 instruction) {
-    u8 condition =  instruction >> 28;
+//TODO: Handle empty rlist and whatever other weird edge-cases this instruction has
+void CPU::armBlockTransfer(u32 instruction) {
+    u8 condition = instruction >> 28;
 
     if(!passed(condition)) {
         return;
     }
 
-    bool l = (instruction >> 24) & 0x1;
-    s32 immediate = instruction & 0xFFFFFF;
-    immediate |= (immediate >> 23) & 0x1 ? 0xFF000000 : 0; //Sign extend 24-bit to 32-bit
+    u8 rn = bits::get<16, 4>(instruction);
+    u8 pu = bits::get<23, 2>(instruction);
+    bool s = bits::get<22, 1>(instruction);
+    bool w = bits::get<21, 1>(instruction);
+    bool l = bits::get<20, 1>(instruction);
+    u16 registers = bits::get<0, 16>(instruction);
+
+    u32 address = get_reg(rn);
+    if(pu == 0 || pu == 2) {
+        address -= 4 * bits::popcount_16(registers);
+    }
+    if(pu == 0 || pu == 3) {
+        address += 4;
+    }
+    u32 writeback = get_reg(rn) + (4 * bits::popcount_16(registers) * (pu & 1 ? 1 : -1));
+    u8 mode = s && bits::get<15, 1>(registers) ? MODE_USER : 0;
+
+    if(l) {
+        for(int i = 0; i < 15; i++) {
+            if(bits::get(i, 1, registers)) {
+                set_reg(i, m_bus.read32(address), mode);
+                address += 4;
+            }
+        }
+
+        if(bits::get<15, 1>(registers)) {
+            m_state.pc = address & ~3;
+            loadPipeline();
+
+            if(s) {
+                m_state.cpsr = get_spsr();
+                change_mode(mode_from_bits(bits::get<0, 5, u8>(m_state.cpsr)));
+            }
+        }
+
+        //No writeback if rn is in the register list
+        //or if S is set and r15 is not in the register list
+        if((w && !(s && !bits::get<15, 1>(registers))) && !bits::get(rn, 1, registers)) {
+            set_reg(rn, writeback);
+        }
+    } else {
+        bool lowest_set = false;
+
+        for(int i = 0; i < 15; i++) {
+            if(bits::get(i, 1, registers)) {
+                //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
+                if(i == rn && w && lowest_set) {
+                    m_bus.write32(address, writeback);
+                } else {
+                    m_bus.write32(address, get_reg(i, mode));
+                }
+
+                address += 4;
+                lowest_set = true;
+            }
+        }
+
+        if(bits::get<15, 1>(registers)) {
+            m_bus.write32(address, m_state.pc);
+        }
+
+        if(w && !s) {
+            set_reg(rn, writeback);
+        }
+    }
+}
+
+void CPU::armBranch(u32 instruction) {
+    u8 condition = instruction >> 28;
+
+    if(!passed(condition)) {
+        return;
+    }
+
+    bool l = bits::get<24, 1>(instruction); //(instruction >> 24) & 0x1;
+    // s32 immediate = instruction & 0xFFFFFF;
+    // immediate |= (immediate >> 23) & 0x1 ? 0xFF000000 : 0; //Sign extend 24-bit to 32-bit
+    s32 immediate = bits::sign_extend<24, s32>(bits::get<0, 24>(instruction));
     immediate <<= 2;
 
     //Store next instruction's address in the link register
