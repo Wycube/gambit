@@ -452,7 +452,7 @@ void CPU::armBlockTransfer(u32 instruction) {
         }
 
         if(bits::get<15, 1>(registers)) {
-            m_state.pc = address & ~3;
+            m_state.pc = m_bus.read32(address) & ~3;
             loadPipeline();
 
             if(s) {

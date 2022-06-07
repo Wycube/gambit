@@ -10,22 +10,24 @@ PPU::PPU(Scheduler &scheduler) : m_scheduler(scheduler) {
 }
 
 auto PPU::read_io(u32 address) -> u8 {
-    if((address & ~1) == 0x04000000) { //DISPCNT (Display Count)
-        return (m_dispcnt >> 8 * (address & 0x1)) & 0xFF;
-    }
-    if((address & ~1) == 0x04000004) { //DISPSTAT (Display Status)
-        return (m_dispstat >> 8 * (address & 0x1)) & 0xFF;
+    switch(address) {
+        case 0x04000000 : return bits::get<0, 8>(m_dispcnt); //DISPCNT (LCD Control)
+        case 0x04000001 : return bits::get<8, 8>(m_dispcnt);
+        case 0x04000004 : return bits::get<0, 8>(m_dispstat); //DISPSTAT (LCD Status)
+        case 0x04000005 : return bits::get<8, 8>(m_dispstat);
+        case 0x04000006 : return m_line; //VCOUNT
+        case 0x04000007 : return 0;
     }
 
-    return 0xFF;
+    return 0;
 }
 
 void PPU::write_io(u32 address, u8 value) {
-    if((address & ~1) == 0x04000000) { //DISPCNT (Display Count)
-        m_dispcnt = (bits::get(8 * !(address & 0x1), 8, m_dispcnt) << 8 * !(address & 0x1)) | (value << 8 * (address & 0x1));
-    }
-    if((address & ~1) == 0x04000004) { //DISPSTAT (Display Status)
-        m_dispstat = (bits::get(8 * !(address & 0x1), 8, m_dispstat) << 8 * !(address & 0x1)) | (value << 8 * (address & 0x1));
+    switch(address) {
+        case 0x04000000 : m_dispcnt = (m_dispcnt & ~0xFF) | value; break;
+        case 0x04000001 : m_dispcnt = (m_dispcnt & 0xFF) | (value << 8); break;
+        case 0x04000004 : m_dispstat = (m_dispstat & 0xFFE2) | (value & ~0xE2); break;
+        case 0x04000005 : m_dispstat = (m_dispstat & 0xFF) | (value << 8); break;
     }
 }
 
@@ -42,6 +44,7 @@ void PPU::run(u32 current, u32 late) {
 
     if(m_state != VBLANK && m_line >= 160) {
         m_state = VBLANK;
+        m_dispstat |= 1;
 
         if(mode == 3) {
             writeFrameMode3();
@@ -66,9 +69,13 @@ void PPU::run(u32 current, u32 late) {
             writeFrameMode4();
         }
         
-        m_state = m_state == VBLANK ? VBLANK : DRAWING;
         m_line++;
         m_dot = 0;
+
+        m_state = m_state == VBLANK ? VBLANK : DRAWING;
+
+        m_dispstat &= ~1;
+        m_dispstat |= m_state == VBLANK;
     }
 
     LOG_DEBUG("PPU: Dot({}), Line({}), State({})", m_dot, m_line, m_state);
@@ -94,7 +101,7 @@ void PPU::writeFrameMode4() {
 
     for(int i = 0; i < sizeof(m_framebuffer) / 4; i++) {
         u8 color_index = m_vram[data_start + i];
-        u16 color = (m_vram[color_index * 2 + 1] << 8) | m_vram[color_index * 2];
+        u16 color = (m_palette[color_index * 2 + 1] << 8) | m_palette[color_index * 2];
 
         u8 red = bits::get<0, 5>(color) * 8;
         u8 green = bits::get<5, 5>(color) * 8;

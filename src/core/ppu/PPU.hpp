@@ -16,8 +16,8 @@ class PPU {
 private:
 
     LCDState m_state;
-    u32 m_line;
-    u32 m_dot;
+    u8 m_line;
+    u16 m_dot;
 
     //Memory
     u16 m_dispcnt;
