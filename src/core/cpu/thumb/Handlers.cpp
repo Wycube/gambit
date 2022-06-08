@@ -38,7 +38,7 @@ void CPU::thumbMoveShifted(u16 instruction) {
         u8 shift = immed_5 == 0 ? 32 : immed_5;
 
         carry = (get_reg(rm) >> shift) & 0x1;
-        result = get_reg(rm) >> shift | (get_reg(rm) & ~(1 << 31));
+        result = bits::asr(get_reg(rm), shift);
     } else {
         LOG_FATAL("Opcode not suppose to equal 0b11!");
     }
@@ -339,12 +339,12 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
 
     if(l) {
         //Pop
-        u32 address = get_reg(13) + 4 * (bits::popcount_16(registers) + r);
+        u32 address = get_reg(13);
 
         for(int i = 0; i < 8; i++) {
             if(bits::get(i, 1, registers)) {
                 set_reg(i, m_bus.read32(address));
-                address -= 4;
+                address += 4;
             }
         }
 
@@ -352,7 +352,7 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
         if(r) {
             set_reg(15, m_bus.read32(address) & ~1);
             loadPipeline();
-            address -= 4;
+            address += 4;
         }
 
         set_reg(13, get_reg(13) + 4 * (bits::popcount_16(registers) + r));
@@ -442,6 +442,7 @@ void CPU::thumbSoftwareInterrupt(u16 instruction) {
     m_state.exec = EXEC_ARM;
     m_state.pc = 0x8;
     loadPipeline();
+    printf("Thumb software interrupt");
 }
 
 void CPU::thumbUnconditionalBranch(u16 instruction) {

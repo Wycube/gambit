@@ -115,8 +115,10 @@ int main(int argc, char *argv[]) {
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        if(debug_ui.running()) {
-            gba.step(200);
+        for(int i = 0; i < 200; i++) {
+            if(debug_ui.running()) {
+                gba.step();
+            }
         }
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -197,7 +199,13 @@ int main(int argc, char *argv[]) {
             ImGui::End();
         }
 
-        ImGui::ShowMetricsWindow();
+        ImGui::SetNextWindowPos(ImVec2(5.0f, ImGui::GetIO().DisplaySize.y - ImGui::GetTextLineHeight() * 3));
+        ImGui::SetNextWindowBgAlpha(0.5f);
+        if(ImGui::Begin("##InfoPanel_Window", 0, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs)) {
+            ImGui::LabelText("##FPS_Label", "FPS: %.1f", ImGui::GetIO().Framerate);
+            ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+        }
+        ImGui::End();
 
         ImGui::Render();
         glClear(GL_COLOR_BUFFER_BIT);

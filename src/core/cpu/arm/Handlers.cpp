@@ -298,10 +298,10 @@ void CPU::armDataSwap(u32 instruction) {
         return;
     }
 
-    bool b = bits::get<22, 1>(instruction); //(instruction >> 22) & 0x1
-    u8 rn = bits::get<16, 4>(instruction); //(instruction >> 16) & 0xF;
-    u8 rd = bits::get<12, 4>(instruction); //(instruction >> 12) & 0xF;
-    u8 rm = bits::get<0, 4>(instruction); //instruction & 0xF;
+    bool b = bits::get<22, 1>(instruction);
+    u8 rn = bits::get<16, 4>(instruction);
+    u8 rd = bits::get<12, 4>(instruction);
+    u8 rm = bits::get<0, 4>(instruction);
 
     u32 data_32 = bits::ror(m_bus.read32(get_reg(rn) & ~3), (get_reg(rn) & 3) * 8);
 
@@ -469,7 +469,7 @@ void CPU::armBlockTransfer(u32 instruction) {
         address += 4;
     }
     u32 writeback = get_reg(rn) + (4 * bits::popcount_16(registers) * (pu & 1 ? 1 : -1));
-    u8 mode = s && bits::get<15, 1>(registers) ? MODE_USER : 0;
+    u8 mode = s && !(l && bits::get<15, 1>(registers)) ? MODE_USER : 0;
 
     if(l) {
         for(int i = 0; i < 15; i++) {
@@ -479,11 +479,11 @@ void CPU::armBlockTransfer(u32 instruction) {
             }
         }
 
-        if(bits::get<15, 1>(registers)) {
+        if(registers == 0 || bits::get<15, 1>(registers)) {
             m_state.pc = m_bus.read32(address) & ~3;
             loadPipeline();
 
-            if(s) {
+            if(registers && s) {
                 m_state.cpsr = get_spsr();
                 change_mode(mode_from_bits(bits::get<0, 5, u8>(m_state.cpsr)));
             }
@@ -493,6 +493,11 @@ void CPU::armBlockTransfer(u32 instruction) {
         //or if S is set and r15 is not in the register list
         if((w && !(s && !bits::get<15, 1>(registers))) && !bits::get(rn, 1, registers)) {
             set_reg(rn, writeback);
+        }
+
+        //Empty rlist causes 0x40 to be added to the base register
+        if(registers == 0) {
+            set_reg(rn, get_reg(rn) + 0x40);
         }
     } else {
         bool lowest_set = false;
@@ -511,12 +516,22 @@ void CPU::armBlockTransfer(u32 instruction) {
             }
         }
 
-        if(bits::get<15, 1>(registers)) {
-            m_bus.write32(address, m_state.pc);
+        if(registers == 0 || bits::get<15, 1>(registers)) {
+            if(registers == 0) {
+                address = get_reg(rn) + (pu == 0 || pu == 2 ? -0x40 : 0);
+                address += (pu == 0 || pu == 3) ? 4 : 0;
+            }
+
+            m_bus.write32(address, m_state.pc + 4);
         }
 
         if(w && !s) {
             set_reg(rn, writeback);
+        }
+
+        //Empty rlist causes 0x40 to be added to the base register
+        if(registers == 0) {
+            set_reg(rn, get_reg(rn) + (pu == 0 || pu == 2 ? -0x40 : 0x40));
         }
     }
 }
