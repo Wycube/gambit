@@ -44,7 +44,7 @@ auto Debugger::getCPURegister(u8 reg, u8 mode) -> u32 {
     }
 
     if(reg < 13) {
-        if(mode > 7 && mode == MODE_FIQ) {
+        if(reg > 7 && mode == MODE_FIQ) {
             return m_cpu_state->fiq_regs[reg - 8];
         }
 
@@ -122,9 +122,7 @@ auto Debugger::getEventCycles(u32 index) -> u32 {
 }
 
 auto Debugger::atBreakPoint() -> bool {
-    bool thumb = (m_cpu_state->cpsr >> 5) & 0x1;
-    
-    if(thumb) {
+    if(m_cpu_state->exec == EXEC_THUMB) {
         return (m_cpu_state->pc - 2) == m_break_point;
     } else {
         return (m_cpu_state->pc - 4) == m_break_point;

@@ -19,7 +19,7 @@ auto CPU::get_reg_ref(u8 reg, u8 mode) -> u32& {
     }
 
     if(reg < 13) {
-        if(mode > 7 && mode == MODE_FIQ) {
+        if(reg > 7 && mode == MODE_FIQ) {
             return m_state.fiq_regs[reg - 8];
         }
 
@@ -134,10 +134,12 @@ void CPU::execute_arm(u32 instruction) {
         case ARM_DATA_PROCESSING : armDataProcessing(instruction); break;
         case ARM_MULTIPLY : armMultiply(instruction); break;
         case ARM_MULTIPLY_LONG : armMultiplyLong(instruction); break;
+        case ARM_SINGLE_DATA_SWAP : armDataSwap(instruction); break;
         case ARM_HALFWORD_DATA_TRANSFER : armHalfwordTransfer(instruction); break;
         case ARM_SINGLE_DATA_TRANSFER : armSingleTransfer(instruction); break;
         case ARM_BLOCK_DATA_TRANSFER : armBlockTransfer(instruction); break;
         case ARM_BRANCH : armBranch(instruction); break;
+        case ARM_SOFTWARE_INTERRUPT : armSoftwareInterrupt(instruction); break;
         default: armUnimplemented(instruction);
     }
 }

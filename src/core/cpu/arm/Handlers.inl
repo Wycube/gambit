@@ -8,11 +8,13 @@ void armDataProcessing(u32 instruction);
 
 void armMultiply(u32 instruction);
 void armMultiplyLong(u32 instruction);
+void armDataSwap(u32 instruction);
 void armHalfwordTransfer(u32 instruction);
 
-auto addressMode2(u8 rn, u16 addr_mode, bool i, bool p, bool u, bool w) -> u32;
+auto addressMode2(u16 addr_mode, bool i) -> u32;
 void armSingleTransfer(u32 instruction);
 
 void armBlockTransfer(u32 instruction);
 
 void armBranch(u32 instruction);
+void armSoftwareInterrupt(u32 instruction);

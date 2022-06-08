@@ -80,7 +80,6 @@ void CPU::armPSRTransfer(u32 instruction) {
         }
     } else {
         u8 rd = (instruction >> 12) & 0xF;
-        //TODO: When executed in User Mode, spsr is the same as cpsr
         set_reg(rd, r ? get_spsr(0) : m_state.cpsr);
     }
 }
@@ -100,7 +99,7 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
         bool r = (instruction >> 4) & 0x1;
         u64 rm = get_reg(instruction & 0xF);
 
-        //Specific case for shift by register (probably some kind of pipelining during the shift)
+        //Specific case for shift by register
         if(r && (instruction & 0xF) == 15) {
             rm += 4;
         }
@@ -191,11 +190,19 @@ void CPU::armDataProcessing(u32 instruction) {
 
     if(opcode < 0x8 || opcode > 0xB) {
         set_reg((instruction >> 12) & 0xF, alu_out);
+    }
 
-        if(((instruction >> 12) & 0xF) == 15) {
-            if(s) {
-                m_state.cpsr = get_spsr(0);
+    if(((instruction >> 12) & 0xF) == 15) {
+        if(s) {
+            u8 old_mode = bits::get<0, 5>(m_state.cpsr);
+            m_state.cpsr = get_spsr(0);
+
+            if(bits::get<0, 5>(m_state.cpsr) != old_mode) {
+                change_mode(mode_from_bits(bits::get<0, 5>(m_state.cpsr)));
             }
+        }
+
+        if(opcode < 0x8 || opcode > 0xB) {
             loadPipeline();
         }
     }
@@ -284,6 +291,24 @@ void CPU::armMultiplyLong(u32 instruction) {
     }
 }
 
+void CPU::armDataSwap(u32 instruction) {
+    u8 condition = instruction >> 28;
+
+    if(!passed(condition)) {
+        return;
+    }
+
+    bool b = bits::get<22, 1>(instruction); //(instruction >> 22) & 0x1
+    u8 rn = bits::get<16, 4>(instruction); //(instruction >> 16) & 0xF;
+    u8 rd = bits::get<12, 4>(instruction); //(instruction >> 12) & 0xF;
+    u8 rm = bits::get<0, 4>(instruction); //instruction & 0xF;
+
+    u32 data_32 = bits::ror(m_bus.read32(get_reg(rn) & ~3), (get_reg(rn) & 3) * 8);
+
+    b ? m_bus.write8(get_reg(rn), get_reg(rm)) : m_bus.write32(get_reg(rn) & ~3, get_reg(rm));
+    set_reg(rd, b ? m_bus.read8(get_reg(rn)) : data_32);
+}
+
 void CPU::armHalfwordTransfer(u32 instruction) {
     u8 condition = bits::get<28, 4>(instruction);
 
@@ -299,8 +324,6 @@ void CPU::armHalfwordTransfer(u32 instruction) {
     bool w = bits::get<21, 1>(instruction);
     bool l = bits::get<20, 1>(instruction);
     u8 sh = bits::get<5, 2>(instruction);
-
-    bool wback = p || !w;
  
     u32 offset = 0;
     if(i) {
@@ -311,34 +334,33 @@ void CPU::armHalfwordTransfer(u32 instruction) {
 
     u32 offset_address = u ? get_reg(rn) + offset : get_reg(rn) - offset;
     u32 address = p ? offset_address : get_reg(rn);
-    
-    u16 data = 0;
+    u32 data = 0;
+
     if(sh != 2) {
-        if(bits::get<0, 1>(address) == 0) {
-            data = l ? m_bus.read16(address) : get_reg(rd);
-        } else {
-            //TODO: Figure out what UNPREDICTABLE does here
-            LOG_ERROR("Unpredictable behavior: Address not aligned in halfwordStore");
-        }
+        data = l ? bits::ror(m_bus.read16(address & ~1), (address & 1) * 8) : get_reg(rd);
     } else {
         //Should not happen with a store
         data = m_bus.read8(address);
     }
 
-    if(l && wback) set_reg(rn, offset_address);
-
     if(l) {
-        u32 extended = sh == 2 ? bits::sign_extend<8, u32>(data) : sh == 3 ? bits::sign_extend<16, u32>(data) : data;
-        set_reg(rd, extended);
-    } else {
-        m_bus.write16(address, data);
-    }
+        u32 extended = sh == 2 ? bits::sign_extend<8, u32>(data) : sh == 3 ? (address & 1) ? bits::sign_extend<8, u32>(data) : bits::sign_extend<16, u32>(data) : data;
+        
+        if(!p || w) {
+            set_reg(rn, offset_address);
+        }
 
-    if(!l && wback) set_reg(rn, offset_address);
+        set_reg(rd, extended);
+    } else if(sh == 1) {
+        m_bus.write16(address & ~1, data);
+
+        if(!p || w) {
+            set_reg(rn, offset_address);
+        }
+    }
 }
 
-auto CPU::addressMode2(u8 rn, u16 addr_mode, bool i, bool p, bool u, bool w) -> u32 {
-    u32 address;
+auto CPU::addressMode2(u16 addr_mode, bool i) -> u32 {
     u32 offset;
     
     if(!i) {
@@ -360,21 +382,7 @@ auto CPU::addressMode2(u8 rn, u16 addr_mode, bool i, bool p, bool u, bool w) -> 
         }
     }
 
-    if(u) {
-        address = get_reg(rn) + offset;
-    } else {
-        address = get_reg(rn) - offset;
-    }
-
-    if(p && w) {
-        set_reg(rn, address);
-    } else if(!p && !w) {
-        u32 temp = address;
-        address = get_reg(rn);
-        set_reg(rn, temp);
-    }
-
-    return address;
+    return offset;
 }
 
 void CPU::armSingleTransfer(u32 instruction) {
@@ -392,7 +400,16 @@ void CPU::armSingleTransfer(u32 instruction) {
     bool b = bits::get<22, 1>(instruction);
     bool w = bits::get<21, 1>(instruction);
     bool l = bits::get<20, 1>(instruction);
-    u32 address = addressMode2(rn, instruction & 0xFFF, i, p, u, w);
+    u32 offset = addressMode2(instruction & 0xFFF, i);
+    u32 address = get_reg(rn);
+
+    if(p) {
+        if(u) {
+            address += offset;
+        } else {
+            address -= offset;
+        }
+    }
 
     if(l) {
         u32 value;
@@ -400,20 +417,31 @@ void CPU::armSingleTransfer(u32 instruction) {
         if(b) {
             value = m_bus.read8(address);
         } else {
-            value = bits::ror(m_bus.read32(address), address & 0x3);
+            value = bits::ror(m_bus.read32(address & ~3), (address & 3) * 8);
+        }
+
+        //Writeback is optional with pre-indexed addressing
+        if(!p || w) {
+            set_reg(rn, get_reg(rn) + (u ? offset : -offset));
         }
 
         if(rd == 15) {
-            m_state.pc = value & 0xFFFFFFFC;
+            m_state.pc = value & ~3;
             loadPipeline();
         } else {
             set_reg(rd, value);
         }
     } else {
+        u32 value = rd == 15 ? m_state.pc + 4 : get_reg(rd);
+
         if(b) {
-            m_bus.write8(address, get_reg(rd) & 0xFF);
+            m_bus.write8(address, value & 0xFF);
         } else {
-            m_bus.write32(address & ~0x3, get_reg(rd));
+            m_bus.write32(address & ~3, value);
+        }
+
+        if(!p || w) {
+            set_reg(rn, get_reg(rn) + (u ? offset : -offset));
         }
     }
 }
@@ -512,6 +540,21 @@ void CPU::armBranch(u32 instruction) {
     }
 
     m_state.pc += immediate;
+    loadPipeline();
+}
+
+void CPU::armSoftwareInterrupt(u32 instruction) {
+    u8 condition = instruction >> 28;
+
+    if(!passed(condition)) {
+        return;
+    }
+
+    get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
+    get_reg_ref(14, MODE_SUPERVISOR) = m_state.pc - 4;
+    change_mode(MODE_SUPERVISOR);
+    set_flag(FLAG_IRQ, true);
+    m_state.pc = 0x8;
     loadPipeline();
 }
 

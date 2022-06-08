@@ -94,6 +94,10 @@ int main(int argc, char *argv[]) {
         bios[i] = static_cast<u8>(bios_file.get());
     }
 
+    //Close stream
+    rom_file.close();
+    bios_file.close();
+
     emu::GBA gba;
     gba.loadROM(rom);
     gba.loadBIOS(bios);
