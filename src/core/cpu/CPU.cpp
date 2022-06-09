@@ -198,8 +198,8 @@ void CPU::reset() {
     m_state.exec = EXEC_ARM;
     m_state.cpsr = 0;
     change_mode(MODE_SYSTEM);
-    memset(m_state.spsr, 0, sizeof(m_state.spsr));
-    memset(m_state.regs, 0, sizeof(m_state.regs));
+    std::memset(m_state.spsr, 0, sizeof(m_state.spsr));
+    std::memset(m_state.regs, 0, sizeof(m_state.regs));
     set_reg(13, 0x03007F00);
     set_reg(13, 0x03007FA0, MODE_IRQ);
     set_reg(13, 0x03007FE0, MODE_SUPERVISOR);

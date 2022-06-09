@@ -21,13 +21,13 @@ enum ExecutionState {
 };
 
 enum Flag : u32 {
-    FLAG_NEGATIVE = (u32)1 << 31, 
-    FLAG_ZERO     = 1 << 30, 
-    FLAG_CARRY    = 1 << 29,
-    FLAG_OVERFLOW = 1 << 28, 
-    FLAG_IRQ      = 1 << 7,
+    FLAG_THUMB    = 1 << 5,
     FLAG_FIQ      = 1 << 6,
-    FLAG_THUMB    = 1 << 5
+    FLAG_IRQ      = 1 << 7,
+    FLAG_OVERFLOW = 1 << 28, 
+    FLAG_CARRY    = 1 << 29,
+    FLAG_ZERO     = 1 << 30,
+    FLAG_NEGATIVE = (u32)1 << 31 
 };
 
 enum InterruptSource : u16 {

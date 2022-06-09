@@ -3,7 +3,7 @@
 
 namespace emu {
 
-GBA::GBA() : m_ppu(m_scheduler), m_bus(m_scheduler, m_ppu), m_cpu(m_bus), m_debugger(m_bus) {
+GBA::GBA() : m_ppu(m_scheduler), m_bus(m_scheduler, m_keypad, m_ppu), m_cpu(m_bus), m_debugger(m_bus) {
     m_scheduler.attachDebugger(m_debugger);
     m_cpu.attachDebugger(m_debugger);
     m_ppu.attachDebugger(m_debugger);
@@ -35,6 +35,10 @@ void GBA::loadROM(const std::vector<u8> &rom) {
 
 void GBA::loadBIOS(const std::vector<u8> &bios) {
     m_bus.loadBIOS(bios);
+}
+
+auto GBA::getKeypad() -> Keypad& {
+    return m_keypad;
 }
 
 auto GBA::getDebugger() -> dbg::Debugger& {

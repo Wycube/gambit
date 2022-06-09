@@ -1,9 +1,10 @@
 #pragma once
 
 #include "common/Types.hpp"
-#include "core/Scheduler.hpp"
 #include "core/ppu/PPU.hpp"
 #include "core/cpu/Types.hpp"
+#include "core/Scheduler.hpp"
+#include "core/Keypad.hpp"
 #include "GamePak.hpp"
 
 #include <vector>
@@ -24,7 +25,9 @@ private:
 
     GamePak m_pak;
     Scheduler &m_scheduler;
+    Keypad &m_keypad;
     PPU &m_ppu;
+
 
     auto read_byte(u32 address) -> u8;
     void write_byte(u32 address, u8 value);
@@ -33,7 +36,7 @@ private:
 
 public:
 
-    Bus(Scheduler &scheduler, PPU &ppu);
+    Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu);
 
     void reset();
 

@@ -5,7 +5,7 @@
 
 namespace emu {
 
-Bus::Bus(Scheduler &scheduler, PPU &ppu) : m_scheduler(scheduler), m_ppu(ppu) {
+Bus::Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu) : m_scheduler(scheduler), m_keypad(keypad), m_ppu(ppu) {
     reset();
 }
 
@@ -85,6 +85,9 @@ auto Bus::read_io(u32 address) -> u8 {
     if(address <= 0x04000056) {
         return m_ppu.read8(address);
     }
+    if(address >= 0x04000130 && address <= 0x04000133) {
+        return m_keypad.read8(address);
+    }
 
     return m_mem.io[address - 0x04000000];
 }
@@ -92,6 +95,10 @@ auto Bus::read_io(u32 address) -> u8 {
 void Bus::write_io(u32 address, u8 value) {
     if(address <= 0x04000056) {
         m_ppu.write8(address, value);
+        return;
+    }
+    if(address >= 0x04000130 && address <= 0x04000133) {
+        m_keypad.write8(address, value);
         return;
     }
 

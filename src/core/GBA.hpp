@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Scheduler.hpp"
+#include "core/Keypad.hpp"
 #include "core/ppu/PPU.hpp"
 #include "core/mem/Bus.hpp"
 #include "core/cpu/CPU.hpp"
@@ -14,6 +15,7 @@ class GBA {
 private:
 
     Scheduler m_scheduler;
+    Keypad m_keypad;
     PPU m_ppu;
     Bus m_bus;
     CPU m_cpu;
@@ -31,6 +33,7 @@ public:
     void loadROM(const std::vector<u8> &rom);
     void loadBIOS(const std::vector<u8> &bios);
 
+    auto getKeypad() -> Keypad&;
     auto getDebugger() -> dbg::Debugger&;
 };
 

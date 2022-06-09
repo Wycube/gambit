@@ -113,13 +113,13 @@ void PPU::writeFrameMode4() {
 
 auto PPU::read8(u32 address) -> u8 {
     if(address <= 0x04000056) {
-        return read_io(address); //(m_dispcnt >> 8 * (address & 0x1)) & 0xFF;
+        return read_io(address);
     } else if(address <= 0x050003FF) { //Palette RAM
-        return m_palette[address - 0x05000000];
+        return m_palette[(address - 0x05000000) % sizeof(m_palette)];
     } else if(address <= 0x06017FFF) { //Video RAM
-        return m_vram[address - 0x06000000];
+        return m_vram[(address - 0x06000000) % sizeof(m_vram)];
     } else if(address <= 0x070003FF) { //OBJ Attributes
-        return m_oam[address - 0x07000000];
+        return m_oam[(address - 0x07000000) % sizeof(m_oam)];
     }
 
     return 0xFF;
@@ -127,13 +127,13 @@ auto PPU::read8(u32 address) -> u8 {
 
 void PPU::write8(u32 address, u8 value) {
     if(address <= 0x04000056) {
-        write_io(address, value); //m_dispcnt = (bits::get(8 * !(address & 0x1), 8, m_dispcnt) << 8 * !(address & 0x1)) | (value << 8 * (address & 0x1));
+        write_io(address, value);
     } else if(address <= 0x050003FF) { //Palette RAM
-        m_palette[address - 0x05000000] = value;
+        m_palette[(address - 0x05000000) % sizeof(m_palette)] = value;
     } else if(address <= 0x06017FFF) { //Video RAM
-        m_vram[address - 0x06000000] = value;
+        m_vram[(address - 0x06000000) % sizeof(m_vram)] = value;
     } else if(address <= 0x070003FF) { //OBJ Attributes
-        m_oam[address - 0x07000000] = value;
+        m_oam[(address - 0x07000000) % sizeof(m_oam)] = value;
     }
 }
 

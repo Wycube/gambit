@@ -18,6 +18,43 @@
 #include <vector>
 
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    emu::GBA *gba = reinterpret_cast<emu::GBA*>(glfwGetWindowUserPointer(window));
+    
+    u16 pressed = ~gba->getKeypad().get_keys();
+
+    if(action == GLFW_PRESS) {
+        switch(key) {
+            case GLFW_KEY_UP : pressed |= emu::KeypadInput::UP; break;
+            case GLFW_KEY_DOWN : pressed |= emu::KeypadInput::DOWN; break;
+            case GLFW_KEY_RIGHT : pressed |= emu::KeypadInput::RIGHT; break;
+            case GLFW_KEY_LEFT : pressed |= emu::KeypadInput::LEFT; break;
+            case GLFW_KEY_A : pressed |= emu::KeypadInput::BUTTON_A; break;
+            case GLFW_KEY_S : pressed |= emu::KeypadInput::BUTTON_B; break;
+            case GLFW_KEY_Z : pressed |= emu::KeypadInput::START; break;
+            case GLFW_KEY_X : pressed |= emu::KeypadInput::SELECT; break;
+        }
+    }
+
+    if(action == GLFW_RELEASE) {
+        switch(key) {
+            case GLFW_KEY_UP : pressed &= ~emu::KeypadInput::UP; break;
+            case GLFW_KEY_DOWN : pressed &= ~emu::KeypadInput::DOWN; break;
+            case GLFW_KEY_RIGHT : pressed &= ~emu::KeypadInput::RIGHT; break;
+            case GLFW_KEY_LEFT : pressed &= ~emu::KeypadInput::LEFT; break;
+            case GLFW_KEY_A : pressed &= ~emu::KeypadInput::BUTTON_A; break;
+            case GLFW_KEY_S : pressed &= ~emu::KeypadInput::BUTTON_B; break;
+            case GLFW_KEY_Z : pressed &= ~emu::KeypadInput::START; break;
+            case GLFW_KEY_X : pressed &= ~emu::KeypadInput::SELECT; break;
+        }
+    }
+
+
+    gba->getKeypad().set_keys(pressed);
+}
+
+
 int main(int argc, char *argv[]) {
     if(argc < 2) {
         LOG_ERROR("No ROM file specified!");
@@ -45,6 +82,9 @@ int main(int argc, char *argv[]) {
     GLFWwindow *window = glfwCreateWindow(1080, 720, fmt::format("gba  {}", common::GIT_DESC).c_str(), 0, 0);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0);
+
+    //Setup input callback
+    glfwSetKeyCallback(window, key_callback);
 
     int version = gladLoadGL(glfwGetProcAddress);
     if(version == 0) {
@@ -101,6 +141,8 @@ int main(int argc, char *argv[]) {
     emu::GBA gba;
     gba.loadROM(rom);
     gba.loadBIOS(bios);
+
+    glfwSetWindowUserPointer(window, &gba);
 
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 

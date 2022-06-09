@@ -32,7 +32,7 @@ void CPU::thumbMoveShifted(u16 instruction) {
     } else if(opcode == 1) {
         u8 shift = immed_5 == 0 ? 32 : immed_5;
 
-        carry = (get_reg(rm) >> shift) & 0x1;
+        carry = (get_reg(rm) >> (shift - 1)) & 0x1;
         result = get_reg(rm) >> shift;
     } else if(opcode == 2) {
         u8 shift = immed_5 == 0 ? 32 : immed_5;
@@ -442,7 +442,6 @@ void CPU::thumbSoftwareInterrupt(u16 instruction) {
     m_state.exec = EXEC_ARM;
     m_state.pc = 0x8;
     loadPipeline();
-    printf("Thumb software interrupt");
 }
 
 void CPU::thumbUnconditionalBranch(u16 instruction) {
