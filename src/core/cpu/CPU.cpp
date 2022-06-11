@@ -156,6 +156,7 @@ void CPU::execute_thumb(u16 instruction) {
         case THUMB_BRANCH_EXCHANGE : thumbBranchExchange(instruction); break;
         case THUMB_PC_RELATIVE_LOAD : thumbPCRelativeLoad(instruction); break;
         case THUMB_LOAD_STORE_REGISTER : thumbLoadStoreRegister(instruction); break;
+        case THUMB_LOAD_STORE_SIGN_EXTEND : thumbLoadStoreSigned(instruction); break;
         case THUMB_LOAD_STORE_IMMEDIATE : thumbLoadStoreImmediate(instruction); break;
         case THUMB_LOAD_STORE_HALFWORD : thumbLoadStoreHalfword(instruction); break;
         case THUMB_SP_RELATIVE_LOAD_STORE : thumbSPRelativeLoadStore(instruction); break;

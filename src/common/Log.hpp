@@ -5,6 +5,10 @@
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 
 #include <fmt/format.h>
+#include <thread>
+#include <queue>
+#include <fstream>
+#include <condition_variable>
 
 
 namespace common {
@@ -19,10 +23,34 @@ enum LogLevel {
     FATAL
 };
 
+class Logger final {
+private:
+
+    std::thread m_thread;
+    std::mutex m_stop_mutex;
+    bool m_stop = false;
+
+    std::fstream m_log_file;
+    std::queue<std::string> m_queue;
+    std::mutex m_message_mutex;
+    bool m_new_message = false;
+
+    void log_to_file();
+
+public:
+
+    void init();
+    void queueMessage(const std::string &message);
+    void close();
+};
+
+
 void log(const std::string &message, LogLevel level);
 void log_debug(const std::string &message, LogLevel level, const char *file, const char *func, int line);
 
 } //namespace log
+
+extern log::Logger s_logger;
 
 #define LOG_MESSAGE(level, message, ...) //common::log::log(fmt::format(message, ##__VA_ARGS__), level)
 #ifdef _DEBUG

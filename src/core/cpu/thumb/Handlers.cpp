@@ -272,6 +272,22 @@ void CPU::thumbLoadStoreRegister(u16 instruction) {
     }
 }
 
+void CPU::thumbLoadStoreSigned(u16 instruction) {
+    u8 opcode = bits::get<10, 2>(instruction); //(instruction >> 10) & 0x3;
+    u8 rm = bits::get<6, 3>(instruction); //(instruction >> 6) & 0x7;
+    u8 rn = bits::get<3, 3>(instruction); //(instruction >> 3) & 0x7;
+    u8 rd = bits::get<0, 3>(instruction); //instruction & 0x7;
+
+    u32 address = get_reg(rn) + get_reg(rm);
+
+    switch(opcode) {
+        case 0 : m_bus.write16(address, get_reg(rd)); break;
+        case 1 : set_reg(rd, bits::sign_extend<8, u32>(m_bus.read8(address))); break;
+        case 2 : set_reg(rd, m_bus.read16(address)); break;
+        case 3 : set_reg(rd, bits::sign_extend<16, u32>(m_bus.read16(address))); break;
+    }
+}
+
 void CPU::thumbLoadStoreImmediate(u16 instruction) {
     bool b = bits::get<12, 1>(instruction);
     bool l = bits::get<11, 1>(instruction);

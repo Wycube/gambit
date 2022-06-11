@@ -8,6 +8,7 @@ void thumbHiRegisterOp(u16 instruction);
 void thumbBranchExchange(u16 instruction);
 void thumbPCRelativeLoad(u16 instruction);
 void thumbLoadStoreRegister(u16 instruction);
+void thumbLoadStoreSigned(u16 instruction);
 void thumbLoadStoreImmediate(u16 instruction);
 void thumbLoadStoreHalfword(u16 instruction);
 void thumbSPRelativeLoadStore(u16 instruction);
