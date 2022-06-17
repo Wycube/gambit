@@ -1,16 +1,17 @@
 #pragma once
 
 #include "common/Types.hpp"
-#include "core/ppu/PPU.hpp"
 #include "core/cpu/Types.hpp"
 #include "core/Scheduler.hpp"
-#include "core/Keypad.hpp"
 #include "GamePak.hpp"
 
 #include <vector>
 
 
 namespace emu {
+
+class PPU;
+class Keypad;
 
 class Bus {
 private:

@@ -183,7 +183,7 @@ auto armDisassembleDataProcessing(u32 instruction, u32 address) -> std::string {
 
 
 //MUL{<cond>}{S} <Rd>, <Rm>, <Rs>
-//MLA{<cond>}{S} <Rd>, <Rm>, <Rs>
+//MLA{<cond>}{S} <Rd>, <Rm>, <Rs>, <Rn>
 auto armDisassembleMultiply(u32 instruction, u32 address) -> std::string {
     u8 condition = instruction >> 28;
     u8 rd = (instruction >> 16) & 0xF;

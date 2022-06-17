@@ -52,11 +52,11 @@ void CPU::thumbMoveShifted(u16 instruction) {
 
 //TODO: Make sure overflow flag is being set correctly
 void CPU::thumbAddSubtract(u16 instruction) {
-    bool i = (instruction >> 10) & 0x1;
-    bool s = (instruction >> 9) & 0x1;
-    u8 rm_immed = (instruction >> 6) & 0x7;
-    u8 rn = (instruction >> 3) & 0x7;
-    u8 rd = instruction & 0x7;
+    bool i = bits::get<10, 1>(instruction); //(instruction >> 10) & 0x1;
+    bool s = bits::get<9, 1>(instruction); //(instruction >> 9) & 0x1;
+    u8 rm_immed = bits::get<6, 3>(instruction); //(instruction >> 6) & 0x7;
+    u8 rn = bits::get<3, 3>(instruction); //(instruction >> 3) & 0x7;
+    u8 rd = bits::get<0, 3>(instruction); //instruction & 0x7;
 
     u32 op_1 = get_reg(rn);
     u32 op_2 = i ? rm_immed : get_reg(rm_immed);
@@ -203,10 +203,19 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
 
     if(opcode == 0) {
         //ADD
-        LOG_ERROR("Hi Register Oporation ADD unimplemented!");
+        set_reg(rd_rn, get_reg(rd_rn) + get_reg(rm));
+    
+        if(rd_rn == 15) {
+            loadPipeline();
+        }
     } else if(opcode == 1) {
         //CMP
-        LOG_ERROR("Hi Register Operation CMP unimplemented!");
+        u32 result = get_reg(rd_rn) - get_reg(rm);
+
+        set_flag(FLAG_NEGATIVE, result >> 31);
+        set_flag(FLAG_ZERO, result == 0);
+        set_flag(FLAG_CARRY, get_reg(rd_rn) >= get_reg(rm));
+        set_flag(FLAG_OVERFLOW, (result & ~(1 << 31)) > (get_reg(rd_rn) & ~(1 << 31)));
     } else if(opcode == 2) {
         //MOV
         set_reg(rd_rn, get_reg(rm));

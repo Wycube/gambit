@@ -109,6 +109,10 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
         u64 result;
         bool shifter_carry_out;
 
+        if(r && shift_imm == 0) {
+            return std::pair(rm, get_flag(FLAG_CARRY));
+        }
+
         switch(op) {
             case 0 : result = rm << shift_imm; //LSL
                 shifter_carry_out = shift_imm == 0 ? get_flag(FLAG_CARRY) : (rm >> (32 - shift_imm)) & 0x1;
@@ -117,7 +121,7 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
                 shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
             break;
             case 2 : result = shift_imm == 0 && !r ? ~(rm >> 31) + 1 : bits::asr(rm, shift_imm); //ASR
-                shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
+                shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> ((shift_imm > 32 ? 32 : shift_imm) - 1)) & 0x1;
             break;
             case 3 : result = shift_imm == 0 && !r ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : bits::ror(rm, shift_imm); //RRX and ROR
                 shifter_carry_out = shift_imm == 0 ? rm & 0x1 : (result >> 31) & 0x1; //(rm >> (shift_imm - 1)) & 0x1;
@@ -188,6 +192,10 @@ void CPU::armDataProcessing(u32 instruction) {
         break;
     }
 
+    // if(instruction == 0x13811010) {
+    //     printf("Yeet the address is %08X\n", m_state.pc);
+    // }
+
     if(opcode < 0x8 || opcode > 0xB) {
         set_reg((instruction >> 12) & 0xF, alu_out);
     }
@@ -220,8 +228,6 @@ void CPU::armDataProcessing(u32 instruction) {
             bool reverse = opcode == 3 || opcode == 7;
             bool carry;
 
-            //TODO: Fix the overflow flag
-
             if(subtract) {
                 carry = (u64)(reverse ? shifter_operand : operand_1) >= (u64)(reverse ? operand_1 : shifter_operand) + (u64)(use_carry ? !get_flag(FLAG_CARRY) : 0);
             } else {
@@ -245,16 +251,24 @@ void CPU::armMultiply(u32 instruction) {
         return;
     }
 
+    bool accumulate = bits::get<21, 1>(instruction);
+    bool s = bits::get<20, 1>(instruction);
     u8 rd = bits::get<16, 4>(instruction);
     u8 rn = bits::get<12, 4>(instruction);
     u8 rs = bits::get<8, 4>(instruction);
     u8 rm = bits::get<0, 4>(instruction);
-    bool accumulate = bits::get<21, 1>(instruction);
 
     if(accumulate) {
         set_reg(rd, get_reg(rm) * get_reg(rs) + get_reg(rn));
     } else {
         set_reg(rd, get_reg(rm) * get_reg(rs));
+    }
+
+    //Note: The carry flag is destroyed on ARMv4, not
+    //sure how though, so I will leave it unchanged.
+    if(s) {
+        set_flag(FLAG_NEGATIVE, get_reg(rd) >> 31);
+        set_flag(FLAG_ZERO, get_reg(rd) == 0);
     }
 }
 
@@ -305,8 +319,8 @@ void CPU::armDataSwap(u32 instruction) {
 
     u32 data_32 = bits::ror(m_bus.read32(get_reg(rn) & ~3), (get_reg(rn) & 3) * 8);
 
-    b ? m_bus.write8(get_reg(rn), get_reg(rm)) : m_bus.write32(get_reg(rn) & ~3, get_reg(rm));
-    set_reg(rd, b ? m_bus.read8(get_reg(rn)) : data_32);
+    b ? m_bus.write8(get_reg(rn), get_reg(rm) & 0xFF) : m_bus.write32(get_reg(rn) & ~3, get_reg(rm));
+    set_reg(rd, b ? data_32 & 0xFF : data_32);
 }
 
 void CPU::armHalfwordTransfer(u32 instruction) {
@@ -489,9 +503,9 @@ void CPU::armBlockTransfer(u32 instruction) {
             }
         }
 
-        //No writeback if rn is in the register list
-        //or if S is set and r15 is not in the register list
-        if((w && !(s && !bits::get<15, 1>(registers))) && !bits::get(rn, 1, registers)) {
+        //No writeback if rn is in the register list and not the first entry
+        bool rn_in_list = bits::get(rn, 1, registers) && (bits::get(rn - 1, rn, registers) != 0);
+        if(w && !rn_in_list) {
             set_reg(rn, writeback);
         }
 

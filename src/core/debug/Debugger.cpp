@@ -121,6 +121,10 @@ auto Debugger::getEventCycles(u32 index) -> u32 {
     return m_scheduler_events->at(index).scheduled_timestamp - *m_scheduler_timestamp;
 }
 
+auto Debugger::getCurrentCycle() -> u32 {
+    return *m_scheduler_timestamp;
+}
+
 auto Debugger::atBreakPoint() -> bool {
     if(m_cpu_state->exec == EXEC_THUMB) {
         return (m_cpu_state->pc - 2) == m_break_point;

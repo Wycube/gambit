@@ -26,7 +26,7 @@ inline auto ror(u32 value, u8 rotate) -> u32 {
 }
 
 inline auto asr(u32 value, u8 shift) -> u32 {
-    return (s32)value >> shift;
+    return (s32)value >> (shift > 31 ? 31 : shift);
 }
 
 inline auto popcount_16(u16 value) -> u8 {

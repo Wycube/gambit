@@ -56,8 +56,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 
 int main(int argc, char *argv[]) {
-    common::s_logger.init();
-
     if(argc < 2) {
         LOG_ERROR("No ROM file specified!");
         return -1;
@@ -264,6 +262,4 @@ int main(int argc, char *argv[]) {
 
     glfwDestroyWindow(window);
     glfwTerminate();
-
-    common::s_logger.close();
 }

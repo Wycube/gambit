@@ -23,26 +23,26 @@ enum LogLevel {
     FATAL
 };
 
-class Logger final {
-private:
+// class Logger final {
+// private:
 
-    std::thread m_thread;
-    std::mutex m_stop_mutex;
-    bool m_stop = false;
+//     std::thread m_thread;
+//     std::mutex m_stop_mutex;
+//     bool m_stop = false;
 
-    std::fstream m_log_file;
-    std::queue<std::string> m_queue;
-    std::mutex m_message_mutex;
-    bool m_new_message = false;
+//     std::fstream m_log_file;
+//     std::queue<std::string> m_queue;
+//     std::mutex m_message_mutex;
+//     bool m_new_message = false;
 
-    void log_to_file();
+//     void log_to_file();
 
-public:
+// public:
 
-    void init();
-    void queueMessage(const std::string &message);
-    void close();
-};
+//     void init();
+//     void queueMessage(const std::string &message);
+//     void close();
+// };
 
 
 void log(const std::string &message, LogLevel level);
@@ -50,7 +50,7 @@ void log_debug(const std::string &message, LogLevel level, const char *file, con
 
 } //namespace log
 
-extern log::Logger s_logger;
+// extern log::Logger s_logger;
 
 #define LOG_MESSAGE(level, message, ...) //common::log::log(fmt::format(message, ##__VA_ARGS__), level)
 #ifdef _DEBUG

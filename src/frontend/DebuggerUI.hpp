@@ -50,7 +50,7 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba) {
         m_region_sizes[6] = m_gba.getGamePak().size();
-        m_debugger.setBreakPoint(0x08000212);
+        m_debugger.setBreakPoint(0); //0x08000444);
 
         //Create OpenGL Texture
         glGenTextures(1, &m_vram_tex);
@@ -93,7 +93,7 @@ public:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
         glBindTexture(GL_TEXTURE_2D, 0);
 
-        ImGui::Image((void*)(intptr_t)m_vram_tex, ImGui::GetContentRegionAvail());
+        ImGui::Image((void*)(intptr_t)m_vram_tex, ImVec2(ImGui::GetContentRegionAvail().x, (160.0f / 240.0f) * ImGui::GetContentRegionAvail().x));
     }
 
     void drawCPUDebugger() {
@@ -311,6 +311,7 @@ public:
     }
 
     void drawSchedulerViewer() {
+        ImGui::Text("Cycle: %i", m_debugger.getCurrentCycle());
         for(u32 i = 0; i < m_debugger.numEvents(); i++) {
             ImGui::Text("%i : %s -> %i cycles", i, m_debugger.getEventTag(i).c_str(), m_debugger.getEventCycles(i));
         }

@@ -56,6 +56,7 @@ public:
     auto numEvents() -> u32;
     auto getEventTag(u32 index) -> std::string;
     auto getEventCycles(u32 index) -> u32;
+    auto getCurrentCycle() -> u32;
 
     auto atBreakPoint() -> bool;
     void setBreakPoint(u32 address);

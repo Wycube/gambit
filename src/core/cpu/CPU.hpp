@@ -49,6 +49,11 @@ public:
 
     void step();
     void loadPipeline();
+    
+    //Temp
+    auto getPC() -> u32 {
+        return m_state.pc;
+    }
 
     void attachDebugger(dbg::Debugger &debugger);
 };

@@ -1,6 +1,8 @@
 #include "Bus.hpp"
 
 #include "common/Log.hpp"
+#include "core/ppu/PPU.hpp"
+#include "core/Keypad.hpp"
 
 
 namespace emu {
