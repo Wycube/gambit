@@ -30,7 +30,7 @@ public:
 
     void step(u32 cycles = 1);
     auto getGamePak() -> GamePak&;
-    void loadROM(const std::vector<u8> &rom);
+    void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);
 
     auto getKeypad() -> Keypad&;

@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     
-    GLFWwindow *window = glfwCreateWindow(1080, 720, fmt::format("gba  {}", common::GIT_DESC).c_str(), 0, 0);
+    GLFWwindow *window = glfwCreateWindow(1080, 720, "", 0, 0);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0);
 
@@ -139,8 +139,13 @@ int main(int argc, char *argv[]) {
     bios_file.close();
 
     emu::GBA gba;
-    gba.loadROM(rom);
+    gba.loadROM(std::move(rom));
     gba.loadBIOS(bios);
+
+    char game_title[13];
+    std::memcpy(game_title, gba.getGamePak().getHeader().title, 12);
+    game_title[12] = '\0';
+    glfwSetWindowTitle(window, fmt::format("gba  [{}] - {}", common::GIT_DESC, game_title).c_str());
 
     glfwSetWindowUserPointer(window, &gba);
 
@@ -221,8 +226,17 @@ int main(int argc, char *argv[]) {
 
         if(show_pak_info) {
             if(ImGui::Begin("Pak Info", &show_pak_info)) {
+                emu::GamePak &pak = gba.getGamePak();
+                emu::GamePakHeader &header = pak.getHeader();
+                ImGui::Text("Size: %u bytes", pak.size());
                 ImGui::Text("Name: %s", argv[1]);
-                ImGui::Text("Size: %u bytes", gba.getGamePak().size());
+                ImGui::Text("Internal Title: %s", game_title);
+                ImGui::Text("Game Code: %c%c%c%c", header.game_code[0], header.game_code[1], header.game_code[2], header.game_code[3]);
+                ImGui::Text("Maker Code: %c%c", header.maker_code[0], header.maker_code[1]);
+                ImGui::Text("Version: %i", header.version);
+                ImGui::Text("Device Type: %i", header.device_type);
+                ImGui::Text("Main Unit Code: %i", header.unit_code);
+                ImGui::Text("Checksum: %i", header.checksum);
             }
 
             ImGui::End();

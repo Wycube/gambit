@@ -171,8 +171,8 @@ auto Bus::getLoadedPak() -> GamePak& {
     return m_pak;
 }
 
-void Bus::loadROM(const std::vector<u8> &rom) {
-    m_pak.loadROM(rom);
+void Bus::loadROM(std::vector<u8> &&rom) {
+    m_pak.loadROM(std::move(rom));
 }
 
 void Bus::loadBIOS(const std::vector<u8> &bios) {

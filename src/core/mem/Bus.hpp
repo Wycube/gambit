@@ -51,7 +51,7 @@ public:
     void requestInterrupt(InterruptSource source);
 
     auto getLoadedPak() -> GamePak&;
-    void loadROM(const std::vector<u8> &rom);
+    void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);
 
     //For Debugger
