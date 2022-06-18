@@ -24,7 +24,7 @@ void Scheduler::step(u32 cycles) {
     m_current_timestamp += cycles;
     bool events_to_run = true;
 
-    LOG_DEBUG("Scheduler ticked {} cycles | Current Timestamp: {}", cycles, m_current_timestamp);
+    //LOG_DEBUG("Scheduler ticked {} cycles | Current Timestamp: {}", cycles, m_current_timestamp);
 
     while(events_to_run) {
         if(m_events.size() > 0 && m_events.back().scheduled_timestamp <= m_current_timestamp) {

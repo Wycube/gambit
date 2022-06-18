@@ -1,12 +1,11 @@
 #include "PPU.hpp"
-#include "core/cpu/CPU.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
 
 
 namespace emu {
 
-PPU::PPU(Scheduler &scheduler, Bus &bus, CPU &cpu) : m_scheduler(scheduler), m_bus(bus), m_cpu(cpu) {
+PPU::PPU(Scheduler &scheduler, Bus &bus) : m_scheduler(scheduler), m_bus(bus) {
     reset();
 }
 
@@ -45,10 +44,10 @@ void PPU::write_io(u32 address, u8 value) {
         case 0x0400000D : m_bg2.bg2cnt = (m_bg2.bg2cnt & 0xFF) | (value << 8); break;
         case 0x0400000E : m_bg3.bg3cnt = (m_bg3.bg3cnt & ~0xFF) | value; break;
         case 0x0400000F : m_bg3.bg3cnt = (m_bg3.bg3cnt & 0xFF) | (value << 8); break;
-        case 0x04000010 : m_bg0.bg0hofs = (m_bg0.bg0hofs & ~0xFF) | value; printf("bg0hofs written from: %08X\n", m_cpu.getPC()); break;
-        case 0x04000011 : m_bg0.bg0hofs = (m_bg0.bg0hofs & 0xFF) | ((value & 1) << 8); printf("bg0hofs written from: %08X\n", m_cpu.getPC()); break;
-        case 0x04000012 : m_bg0.bg0vofs = (m_bg0.bg0vofs & ~0xFF) | value; printf("bg0vofs written from: %08X\n", m_cpu.getPC()); break;
-        case 0x04000013 : m_bg0.bg0vofs = (m_bg0.bg0vofs & 0xFF) | ((value & 1) << 8); printf("bg0vofs written from: %08X\n", m_cpu.getPC()); break;
+        case 0x04000010 : m_bg0.bg0hofs = (m_bg0.bg0hofs & ~0xFF) | value; break;
+        case 0x04000011 : m_bg0.bg0hofs = (m_bg0.bg0hofs & 0xFF) | ((value & 1) << 8); break;
+        case 0x04000012 : m_bg0.bg0vofs = (m_bg0.bg0vofs & ~0xFF) | value; break;
+        case 0x04000013 : m_bg0.bg0vofs = (m_bg0.bg0vofs & 0xFF) | ((value & 1) << 8); break;
         case 0x04000014 : m_bg1.bg1hofs = (m_bg1.bg1hofs & ~0xFF) | value; break;
         case 0x04000015 : m_bg1.bg1hofs = (m_bg1.bg1hofs & 0xFF) | ((value & 1) << 8); break;
         case 0x04000016 : m_bg1.bg1vofs = (m_bg1.bg1vofs & ~0xFF) | value; break;
@@ -122,7 +121,7 @@ void PPU::run(u32 current, u32 late) {
         }
     }
 
-    LOG_DEBUG("PPU: Dot({}), Line({}), State({})", m_dot, m_line, m_state);
+    //LOG_DEBUG("PPU: Dot({}), Line({}), State({})", m_dot, m_line, m_state);
     m_scheduler.addEvent("PPU Update", [this] (u32 a, u32 b) { run(a, b); }, 4 - (late % 4));
 }
 

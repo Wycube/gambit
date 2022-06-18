@@ -1,13 +1,12 @@
 #include "Keypad.hpp"
 #include "common/Bits.hpp"
-#include "core/cpu/CPU.hpp"
 
 #include <cstring>
 
 
 namespace emu {
 
-Keypad::Keypad(CPU &cpu) : m_cpu(cpu) {
+Keypad::Keypad() {
     reset();
 }
 
@@ -18,7 +17,7 @@ void Keypad::reset() {
 
 auto Keypad::read8(u32 address) -> u8 {
     switch(address) {
-        case 0x04000130 : printf("Read from keyinput at %08X\n", m_cpu.getPC()); return bits::get<0, 8>(m_keyinput);
+        case 0x04000130 : return bits::get<0, 8>(m_keyinput);
         case 0x04000131 : return bits::get<8, 8>(m_keyinput);
         case 0x04000132 : return bits::get<0, 8>(m_keycnt);
         case 0x04000133 : return bits::get<8, 8>(m_keycnt);

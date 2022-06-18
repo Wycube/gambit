@@ -33,14 +33,15 @@ void CPU::thumbMoveShifted(u16 instruction) {
         u8 shift = immed_5 == 0 ? 32 : immed_5;
 
         carry = (get_reg(rm) >> (shift - 1)) & 0x1;
-        result = get_reg(rm) >> shift;
+        result = shift == 32 ? 0 : get_reg(rm) >> shift;
     } else if(opcode == 2) {
         u8 shift = immed_5 == 0 ? 32 : immed_5;
 
-        carry = (get_reg(rm) >> shift) & 0x1;
+        carry = (get_reg(rm) >> (shift - 1)) & 0x1;
         result = bits::asr(get_reg(rm), shift);
     } else {
-        LOG_FATAL("Opcode not suppose to equal 0b11!");
+        //Opcode not suppose to equal 3
+        return;
     }
 
     set_reg(rd, result);
@@ -139,8 +140,8 @@ void CPU::thumbALUOperation(u16 instruction) {
     switch(opcode) {
         case 0x0 : result = op_1 & op_2; break; //AND
         case 0x1 : result = op_1 ^ op_2; break; //XOR
-        case 0x2 : result = op_1 << (op_2 & 0xFF); break; //LSL
-        case 0x3 : result = op_1 >> (op_2 & 0xFF); break; //LSR
+        case 0x2 : result = op_2 > 31 ? 0 : op_1 << op_2; break; //LSL
+        case 0x3 : result = op_2 > 31 ? 0 : op_1 >> op_2; break; //LSR
         case 0x4 : result = bits::asr(op_1, op_2 & 0xFF); break; //ASR
         case 0x5 : result = op_1 + op_2 + get_flag(FLAG_CARRY); break; //ADC
         case 0x6 : result = op_1 - op_2 - !get_flag(FLAG_CARRY); break; //SBC
@@ -198,14 +199,22 @@ void CPU::thumbALUOperation(u16 instruction) {
 
 void CPU::thumbHiRegisterOp(u16 instruction) {
     u8 opcode = (instruction >> 8) & 0x3;
-    u8 rm = (instruction >> 3) & 0xF;
-    u8 rd_rn = ((instruction >> 4) & 0x8) | (instruction & 0x7);
+    u8 rm = (instruction >> 3) & 0x7;
+    u8 rd_rn = instruction & 0x7;
+
+    if(bits::get<7, 1>(instruction)) {
+        rd_rn |= 8;
+    }
+    if(bits::get<6, 1>(instruction)) {
+        rm |= 8;
+    }
 
     if(opcode == 0) {
         //ADD
         set_reg(rd_rn, get_reg(rd_rn) + get_reg(rm));
     
         if(rd_rn == 15) {
+            set_reg(rd_rn, get_reg(rd_rn) & ~1);
             loadPipeline();
         }
     } else if(opcode == 1) {
@@ -221,6 +230,7 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
         set_reg(rd_rn, get_reg(rm));
 
         if(rd_rn == 15) {
+            set_reg(rd_rn, get_reg(rd_rn) & ~1);
             loadPipeline();
         }
     }
@@ -271,12 +281,12 @@ void CPU::thumbLoadStoreRegister(u16 instruction) {
     u32 address = get_reg(rn) + get_reg(rm);
 
     if(l) {
-        set_reg(rd, b ? m_bus.read8(address) : m_bus.read32(address));
+        set_reg(rd, b ? m_bus.read8(address) : bits::ror(m_bus.read32(address & ~3), (address & 3) * 8));
     } else {
         if(b) {
             m_bus.write8(address, get_reg(rd) & 0xFF);
         } else {
-            m_bus.write32(address, get_reg(rd));
+            m_bus.write32(address & ~3, get_reg(rd));
         }
     }
 }
@@ -301,18 +311,18 @@ void CPU::thumbLoadStoreImmediate(u16 instruction) {
     bool b = bits::get<12, 1>(instruction);
     bool l = bits::get<11, 1>(instruction);
     u8 offset = bits::get<6, 5>(instruction);
-    offset <<= b ? 0 : 2;
+    offset = b ? offset : offset * 4;
     u8 rn = bits::get<3, 3>(instruction);
     u8 rd = bits::get<0, 3>(instruction);
     u32 address = get_reg(rn) + offset;
 
     if(l) {
-        set_reg(rd, b ? m_bus.read8(address) : m_bus.read32(address));
+        set_reg(rd, b ? m_bus.read8(address) : bits::ror(m_bus.read32(address & ~3), (address & 3) * 8));
     } else {
         if(b) {
             m_bus.write8(address, get_reg(rd) & 0xFF);
         } else {
-            m_bus.write32(address, get_reg(rd));
+            m_bus.write32(address & ~3, get_reg(rd));
         }
     }
 }
@@ -346,8 +356,9 @@ void CPU::thumbLoadAddress(u16 instruction) {
     bool sp = bits::get<11, 1>(instruction);
     u8 rd = bits::get<8, 3>(instruction);
     u8 immed_8 = bits::get<0, 8>(instruction);
+    u32 address = sp ? get_reg(13) : get_reg(15) & ~2;
 
-    set_reg(rd, get_reg(sp ? 13 : 15) + immed_8);
+    set_reg(rd, address + immed_8 * 4);
 }
 
 void CPU::thumbAdjustSP(u16 instruction) {

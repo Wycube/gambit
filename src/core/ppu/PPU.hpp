@@ -8,8 +8,6 @@
 
 namespace emu {
 
-class CPU;
-
 enum LCDState : u8 {
     VBLANK = 0,
     HBLANK = 1,
@@ -40,14 +38,13 @@ private:
 
     Scheduler &m_scheduler;
     Bus &m_bus;
-    CPU &m_cpu;
 
     auto read_io(u32 address) -> u8;
     void write_io(u32 address, u8 value);
 
 public:
 
-    PPU(Scheduler &scheduler, Bus &bus, CPU &cpu);
+    PPU(Scheduler &scheduler, Bus &bus);
 
     void reset();
 

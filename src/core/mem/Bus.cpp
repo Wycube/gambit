@@ -117,35 +117,35 @@ void Bus::cycle(u32 cycles) {
 
 auto Bus::read8(u32 address) -> u8 {
     cycle();
-    LOG_DEBUG("8-bit read at 0x{:08X}", address);
+    //LOG_DEBUG("8-bit read at 0x{:08X}", address);
 
     return read_byte(address);
 }
 
 auto Bus::read16(u32 address) -> u16 {
     cycle();
-    LOG_DEBUG("16-bit read at 0x{:08X}", address);
+    //LOG_DEBUG("16-bit read at 0x{:08X}", address);
 
     return read_byte(address) | (read_byte(address + 1) << 8);
 }
 
 auto Bus::read32(u32 address) -> u32 {
     cycle();
-    LOG_DEBUG("32-bit read at 0x{:08X}", address);
+    //LOG_DEBUG("32-bit read at 0x{:08X}", address);
     
     return read_byte(address) | (read_byte(address + 1) << 8) | (read_byte(address + 2) << 16) | (read_byte(address + 3) << 24);
 }
 
 void Bus::write8(u32 address, u8 value) {
     cycle();
-    LOG_DEBUG("8-bit write of 0x{:02X} to 0x{:08X}", value, address);
+    //LOG_DEBUG("8-bit write of 0x{:02X} to 0x{:08X}", value, address);
     
     write_byte(address, value);
 }
 
 void Bus::write16(u32 address, u16 value) {
     cycle();
-    LOG_DEBUG("16-bit write of 0x{:02X} to 0x{:08X}", value, address);
+    //LOG_DEBUG("16-bit write of 0x{:02X} to 0x{:08X}", value, address);
     
     write_byte(address, value & 0xFF);
     write_byte(address + 1, (value >> 8) & 0xFF);
@@ -153,7 +153,7 @@ void Bus::write16(u32 address, u16 value) {
 
 void Bus::write32(u32 address, u32 value) {
     cycle();
-    LOG_DEBUG("32-bit write of 0x{:02X} to 0x{:08X}", value, address);
+    //LOG_DEBUG("32-bit write of 0x{:02X} to 0x{:08X}", value, address);
 
     write_byte(address, value & 0xFF);
     write_byte(address + 1, (value >> 8) & 0xFF);

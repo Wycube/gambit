@@ -5,8 +5,6 @@
 
 namespace emu {
 
-class CPU;
-
 enum KeypadInput : u16 {
     BUTTON_A = 1 << 0,
     BUTTON_B = 1 << 1,
@@ -26,11 +24,9 @@ private:
     u16 m_keyinput;
     u16 m_keycnt;
 
-    CPU &m_cpu;
-
 public:
 
-    Keypad(CPU &cpu);
+    Keypad();
 
     void reset();
 

@@ -219,7 +219,7 @@ void CPU::step() {
 
         ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
 
-        LOG_INFO("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", m_state.pc - 8, instruction, decoded.disassembly);
+        //LOG_INFO("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", m_state.pc - 8, instruction, decoded.disassembly);
         execute_arm(instruction);
     } else if(m_state.exec == EXEC_THUMB) {
         u16 instruction = m_state.pipeline[0];
@@ -230,7 +230,7 @@ void CPU::step() {
 
         ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
 
-        LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
+        //LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
         execute_thumb(instruction);
     }
 }

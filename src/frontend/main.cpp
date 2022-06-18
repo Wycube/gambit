@@ -56,6 +56,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 
 int main(int argc, char *argv[]) {
+    LOG_INFO("Version: {}", common::GIT_DESC);
+    LOG_INFO("Commit: {}", common::GIT_COMMIT);
+    LOG_INFO("Branch: {}", common::GIT_BRANCH);
+
     if(argc < 2) {
         LOG_ERROR("No ROM file specified!");
         return -1;
@@ -69,10 +73,6 @@ int main(int argc, char *argv[]) {
     } else {
         bios_path = argv[2];
     }
-
-    printf("Version: %s\n", common::GIT_DESC);
-    printf("Commit: %s\n", common::GIT_COMMIT);
-    printf("Branch: %s\n", common::GIT_BRANCH);
 
     if(glfwInit() == GLFW_FALSE) {
         LOG_ERROR("GLFW failed to initialize!");
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    LOG_DEBUG("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+    LOG_INFO("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
