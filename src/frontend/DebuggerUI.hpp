@@ -49,7 +49,7 @@ private:
 public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba) {
-        m_region_sizes[6] = m_gba.getGamePak().size();
+        m_region_sizes[7] = m_gba.getGamePak().size();
         m_debugger.setBreakPoint(0x08003E20);
 
         //Create OpenGL Texture

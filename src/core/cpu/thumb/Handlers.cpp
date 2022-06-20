@@ -300,10 +300,10 @@ void CPU::thumbLoadStoreSigned(u16 instruction) {
     u32 address = get_reg(rn) + get_reg(rm);
 
     switch(opcode) {
-        case 0 : m_bus.write16(address, get_reg(rd)); break;
+        case 0 : m_bus.write16(address & ~1, get_reg(rd)); break;
         case 1 : set_reg(rd, bits::sign_extend<8, u32>(m_bus.read8(address))); break;
-        case 2 : set_reg(rd, m_bus.read16(address)); break;
-        case 3 : set_reg(rd, bits::sign_extend<16, u32>(m_bus.read16(address))); break;
+        case 2 : set_reg(rd, bits::ror(m_bus.read16(address & ~1), (address & 1) * 8)); break;
+        case 3 : set_reg(rd, (address & 1) ? bits::sign_extend<8, u32>(bits::ror(m_bus.read16(address & ~1), (address & 1) * 8)) : bits::sign_extend<16, u32>(bits::ror(m_bus.read16(address & ~1), (address & 1) * 8))); break;
     }
 }
 
@@ -334,9 +334,9 @@ void CPU::thumbLoadStoreHalfword(u16 instruction) {
     u8 rd = bits::get<0, 3>(instruction);
 
     if(l) {
-        set_reg(rd, m_bus.read16(get_reg(rn) + offset));
+        set_reg(rd, bits::ror(m_bus.read16((get_reg(rn) + offset) & ~1), (get_reg(rn) & 1) * 8));
     } else {
-        m_bus.write16(get_reg(rn) + offset, get_reg(rd));
+        m_bus.write16((get_reg(rn) + offset) & ~1, get_reg(rd));
     }
 }
 
@@ -344,11 +344,12 @@ void CPU::thumbSPRelativeLoadStore(u16 instruction) {
     bool l = bits::get<11, 1>(instruction);
     u8 rd = bits::get<8, 3>(instruction);
     u16 offset = bits::get<0, 8>(instruction) * 4;
+    u32 address = get_reg(13) + offset;
 
     if(l) {
-        set_reg(rd, m_bus.read32(get_reg(13) + offset));
+        set_reg(rd, bits::ror(m_bus.read32(address & ~1), (address & 1) * 8));
     } else {
-        m_bus.write32(get_reg(13) + offset, get_reg(rd));
+        m_bus.write32(address & ~1, get_reg(rd));
     }
 }
 
@@ -428,6 +429,12 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
             }
         }
 
+        if(registers == 0) {
+            set_reg(15, m_bus.read32(address));
+            loadPipeline();
+            writeback = get_reg(rn) + 0x40;
+        }
+
         //No writeback if rn is in the register list
         if(!bits::get(rn, 1, registers)) {
             set_reg(rn, writeback);
@@ -447,6 +454,11 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
                 address += 4;
                 lowest_set = true;
             }
+        }
+
+        if(registers == 0) {
+            m_bus.write32(address, get_reg(15) + 2);
+            writeback = get_reg(rn) + 0x40;
         }
 
         set_reg(rn, writeback);

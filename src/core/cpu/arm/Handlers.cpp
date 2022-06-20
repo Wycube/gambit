@@ -503,8 +503,8 @@ void CPU::armBlockTransfer(u32 instruction) {
             }
         }
 
-        //No writeback if rn is in the register list and not the first entry
-        bool rn_in_list = bits::get(rn, 1, registers) && (bits::get(rn - 1, rn, registers) != 0);
+        //No writeback if rn is in the register list
+        bool rn_in_list = bits::get(rn, 1, registers);
         if(w && !rn_in_list) {
             set_reg(rn, writeback);
         }
