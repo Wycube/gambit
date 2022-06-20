@@ -34,13 +34,18 @@ private:
     Background2 m_bg2;
     Background3 m_bg3;
 
-    u32 m_framebuffer[240 * 160];
+    u32 m_internal_framebuffer[240 * 160];
+    u32 m_present_framebuffer[240 * 160];
 
     Scheduler &m_scheduler;
     Bus &m_bus;
 
     auto read_io(u32 address) -> u8;
     void write_io(u32 address, u8 value);
+
+    void hblank_start(u32 current, u32 late);
+    void hblank_end(u32 current, u32 late);
+    void vblank(u32 current, u32 late);
 
 public:
 
@@ -53,8 +58,14 @@ public:
     void writeFrameMode3();
     void writeFrameMode4();
 
-    auto read8(u32 address) -> u8;
-    void write8(u32 address, u8 value);
+    auto readIO(u32 address) -> u8;
+    auto readPalette(u32 address) -> u8;
+    auto readVRAM(u32 address) -> u8;
+    auto readOAM(u32 address) -> u8;
+    void writeIO(u32 address, u8 value);
+    void writePalette(u32 address, u8 value);
+    void writeVRAM(u32 address, u8 value);
+    void writeOAM(u32 address, u8 value);
 
     void attachDebugger(dbg::Debugger &debugger);
 };

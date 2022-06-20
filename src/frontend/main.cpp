@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
     bios_file.close();
 
     emu::GBA gba;
-    gba.loadROM(std::move(rom));
     gba.loadBIOS(bios);
+    gba.loadROM(std::move(rom));
 
     char game_title[13];
     std::memcpy(game_title, gba.getGamePak().getHeader().title, 12);
@@ -159,8 +159,17 @@ int main(int argc, char *argv[]) {
     bool show_about = false;
     bool show_pak_info = false;
 
+    // u32 cycles_start = gba.getCurrentTimestamp();
+    // auto start = std::chrono::steady_clock::now();
+
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        // if(std::chrono::steady_clock::now() > (start + std::chrono::seconds(1))) {
+        //     start = std::chrono::steady_clock::now();
+        //     LOG_DEBUG("{}hz", gba.getCurrentTimestamp() - cycles_start);
+        //     cycles_start = gba.getCurrentTimestamp();
+        // }
 
         for(int i = 0; i < 500; i++) {
             if(debug_ui.running()) {

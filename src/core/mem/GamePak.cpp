@@ -19,11 +19,11 @@ void GamePak::parse_header() {
 }
 
 auto GamePak::read8(u32 address) -> u8 {
-    if((address - 0x08000000) >= m_rom.size()) {
+    if(address >= m_rom.size()) {
        return 0;
     }
 
-    return m_rom[address - 0x08000000];
+    return m_rom[address];
 }
 
 void GamePak::write8(u32 address, u8 value) {

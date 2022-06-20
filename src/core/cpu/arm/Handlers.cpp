@@ -13,12 +13,6 @@ void CPU::armUnimplemented(u32 instruction) {
 }
 
 void CPU::armBranchExchange(u32 instruction) {
-    u8 condition = instruction >> 28;
-
-    if(!passed(condition)) {
-        return;
-    }
-
     u32 rm = get_reg(instruction & 0xF);
 
     m_state.exec = rm & 0x1 ? EXEC_THUMB : EXEC_ARM;
@@ -28,12 +22,6 @@ void CPU::armBranchExchange(u32 instruction) {
 }
 
 void CPU::armPSRTransfer(u32 instruction) {
-    u8 condition = instruction >> 28;
-    
-    if(!passed(condition)) {
-        return;
-    }
-    
     bool r = (instruction >> 22) & 0x1;
     bool s = (instruction >> 21) & 0x1;
     u8 fields = (instruction >> 16) & 0xF;
@@ -136,12 +124,6 @@ auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
 //                                |  v
 
 void CPU::armDataProcessing(u32 instruction) {
-    u8 condition = instruction >> 28;
-
-    if(!passed(condition)) {
-        return;
-    }
-
     u8 opcode = (instruction >> 21) & 0xF;
     bool s = (instruction >> 20) & 0x1;
     u8 rn = (instruction >> 16) & 0xF;
@@ -245,12 +227,6 @@ void CPU::armDataProcessing(u32 instruction) {
 }
 
 void CPU::armMultiply(u32 instruction) {
-    u8 condition = bits::get<28, 4>(instruction);
-
-    if(!passed(condition)) {
-        return;
-    }
-
     bool accumulate = bits::get<21, 1>(instruction);
     bool s = bits::get<20, 1>(instruction);
     u8 rd = bits::get<16, 4>(instruction);
@@ -273,12 +249,6 @@ void CPU::armMultiply(u32 instruction) {
 }
 
 void CPU::armMultiplyLong(u32 instruction) {
-    u8 condition = bits::get<28, 4>(instruction);
-
-    if(!passed(condition)) {
-        return;
-    }
-
     u8 rd_hi = bits::get<16, 4>(instruction);
     u8 rd_lo = bits::get<12, 4>(instruction);
     u8 rs = bits::get<8, 4>(instruction);
@@ -306,12 +276,6 @@ void CPU::armMultiplyLong(u32 instruction) {
 }
 
 void CPU::armDataSwap(u32 instruction) {
-    u8 condition = instruction >> 28;
-
-    if(!passed(condition)) {
-        return;
-    }
-
     bool b = bits::get<22, 1>(instruction);
     u8 rn = bits::get<16, 4>(instruction);
     u8 rd = bits::get<12, 4>(instruction);
@@ -324,12 +288,6 @@ void CPU::armDataSwap(u32 instruction) {
 }
 
 void CPU::armHalfwordTransfer(u32 instruction) {
-    u8 condition = bits::get<28, 4>(instruction);
-
-    if(!passed(condition)) {
-        return;
-    }
-
     u8 rn = bits::get<16, 4>(instruction);
     u8 rd = bits::get<12, 4>(instruction);
     bool p = bits::get<24, 1>(instruction);
@@ -400,12 +358,6 @@ auto CPU::addressMode2(u16 addr_mode, bool i) -> u32 {
 }
 
 void CPU::armSingleTransfer(u32 instruction) {
-    u8 condition = instruction >> 28;
-
-    if(!passed(condition)) {
-        return;
-    }
-
     u8 rn = bits::get<16, 4>(instruction);
     u8 rd = bits::get<12, 4>(instruction);
     bool i = bits::get<25, 1>(instruction);
@@ -462,12 +414,6 @@ void CPU::armSingleTransfer(u32 instruction) {
 
 //TODO: Handle empty rlist and whatever other weird edge-cases this instruction has
 void CPU::armBlockTransfer(u32 instruction) {
-    u8 condition = instruction >> 28;
-
-    if(!passed(condition)) {
-        return;
-    }
-
     u8 rn = bits::get<16, 4>(instruction);
     u8 pu = bits::get<23, 2>(instruction);
     bool s = bits::get<22, 1>(instruction);
@@ -551,12 +497,6 @@ void CPU::armBlockTransfer(u32 instruction) {
 }
 
 void CPU::armBranch(u32 instruction) {
-    u8 condition = instruction >> 28;
-
-    if(!passed(condition)) {
-        return;
-    }
-
     bool l = bits::get<24, 1>(instruction); //(instruction >> 24) & 0x1;
     // s32 immediate = instruction & 0xFFFFFF;
     // immediate |= (immediate >> 23) & 0x1 ? 0xFF000000 : 0; //Sign extend 24-bit to 32-bit
@@ -573,12 +513,6 @@ void CPU::armBranch(u32 instruction) {
 }
 
 void CPU::armSoftwareInterrupt(u32 instruction) {
-    u8 condition = instruction >> 28;
-
-    if(!passed(condition)) {
-        return;
-    }
-
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
     get_reg_ref(14, MODE_SUPERVISOR) = m_state.pc - 4;
     change_mode(MODE_SUPERVISOR);

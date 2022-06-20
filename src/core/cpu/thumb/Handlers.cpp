@@ -51,13 +51,12 @@ void CPU::thumbMoveShifted(u16 instruction) {
     set_flag(FLAG_CARRY, carry);
 }
 
-//TODO: Make sure overflow flag is being set correctly
 void CPU::thumbAddSubtract(u16 instruction) {
-    bool i = bits::get<10, 1>(instruction); //(instruction >> 10) & 0x1;
-    bool s = bits::get<9, 1>(instruction); //(instruction >> 9) & 0x1;
-    u8 rm_immed = bits::get<6, 3>(instruction); //(instruction >> 6) & 0x7;
-    u8 rn = bits::get<3, 3>(instruction); //(instruction >> 3) & 0x7;
-    u8 rd = bits::get<0, 3>(instruction); //instruction & 0x7;
+    bool i = bits::get<10, 1>(instruction);
+    bool s = bits::get<9, 1>(instruction);
+    u8 rm_immed = bits::get<6, 3>(instruction);
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
 
     u32 op_1 = get_reg(rn);
     u32 op_2 = i ? rm_immed : get_reg(rm_immed);
@@ -82,9 +81,9 @@ void CPU::thumbAddSubtract(u16 instruction) {
 }
 
 void CPU::thumbProcessImmediate(u16 instruction) {
-    u8 opcode = bits::get<11, 2>(instruction); //(instruction >> 11) & 0x3;
-    u8 rd_rn = bits::get<8, 3>(instruction); //(instruction >> 8) & 0x7;
-    u8 immed_8 = bits::get<0, 8>(instruction); //instruction & 0xFF;
+    u8 opcode = bits::get<11, 2>(instruction);
+    u8 rd_rn = bits::get<8, 3>(instruction);
+    u8 immed_8 = bits::get<0, 8>(instruction);
     u32 op_1 = get_reg(rd_rn);
     u32 result = 0;
 
@@ -198,9 +197,9 @@ void CPU::thumbALUOperation(u16 instruction) {
 }
 
 void CPU::thumbHiRegisterOp(u16 instruction) {
-    u8 opcode = (instruction >> 8) & 0x3;
-    u8 rm = (instruction >> 3) & 0x7;
-    u8 rd_rn = instruction & 0x7;
+    u8 opcode = bits::get<8, 2>(instruction);
+    u8 rm = bits::get<3, 3>(instruction);
+    u8 rd_rn = bits::get<0, 3>(instruction);
 
     if(bits::get<7, 1>(instruction)) {
         rd_rn |= 8;
@@ -239,11 +238,6 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
 void CPU::thumbBranchExchange(u16 instruction) {
     bool link = bits::get<7, 1>(instruction);
     u8 rm = bits::get<3, 4>(instruction);
-
-    if(link && rm == 15) {
-        LOG_FATAL("Using r15 with BLX is not allowed!");
-    }
-
     u32 address = get_reg(rm);
 
     //Store address of next instruction, plus the thumb-bit (equivilent to +1), in the Link-Register
@@ -253,31 +247,31 @@ void CPU::thumbBranchExchange(u16 instruction) {
 
     if(bits::get<0, 1>(address) == 0) {
         //Word align the address and switch to ARM mode
-        m_state.pc = address & ~2;
+        set_reg(15, address & ~2);
         m_state.exec = EXEC_ARM;
         set_flag(FLAG_THUMB, false);
-        loadPipeline();
     } else {
         //Halfword align the address
-        m_state.pc = address & ~1;
-        loadPipeline();
+        set_reg(15, address & ~1);
     }
+
+    loadPipeline();
 }
 
 void CPU::thumbPCRelativeLoad(u16 instruction) {
-    u8 rd = (instruction >> 8) & 0x7;
-    u8 immed_8 = instruction & 0xFF;
+    u8 rd = bits::get<8, 3>(instruction);
+    u16 offset = bits::get<0, 8>(instruction) * 4;
 
-    u32 address = (m_state.pc & ~2) + (immed_8 * 4);
+    u32 address = (get_reg(15) & ~2) + offset;
     set_reg(rd, m_bus.read32(address));
 }
 
 void CPU::thumbLoadStoreRegister(u16 instruction) {
-    bool l = bits::get<11, 1>(instruction); //(instruction >> 11) & 0x1;
-    bool b = bits::get<10, 1>(instruction); //(instruction >> 10) & 0x1;
-    u8 rm = bits::get<6, 3>(instruction); //(instruction >> 6) & 0x7;
-    u8 rn = bits::get<3, 3>(instruction); //(instruction >> 3) & 0x7;
-    u8 rd = bits::get<0, 3>(instruction); //instruction & 0x7;
+    bool l = bits::get<11, 1>(instruction);
+    bool b = bits::get<10, 1>(instruction);
+    u8 rm = bits::get<6, 3>(instruction);
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
     u32 address = get_reg(rn) + get_reg(rm);
 
     if(l) {
@@ -292,11 +286,10 @@ void CPU::thumbLoadStoreRegister(u16 instruction) {
 }
 
 void CPU::thumbLoadStoreSigned(u16 instruction) {
-    u8 opcode = bits::get<10, 2>(instruction); //(instruction >> 10) & 0x3;
-    u8 rm = bits::get<6, 3>(instruction); //(instruction >> 6) & 0x7;
-    u8 rn = bits::get<3, 3>(instruction); //(instruction >> 3) & 0x7;
-    u8 rd = bits::get<0, 3>(instruction); //instruction & 0x7;
-
+    u8 opcode = bits::get<10, 2>(instruction);
+    u8 rm = bits::get<6, 3>(instruction);
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
     u32 address = get_reg(rn) + get_reg(rm);
 
     switch(opcode) {
@@ -332,11 +325,12 @@ void CPU::thumbLoadStoreHalfword(u16 instruction) {
     u8 offset = bits::get<6, 5>(instruction) * 2;
     u8 rn = bits::get<3, 3>(instruction);
     u8 rd = bits::get<0, 3>(instruction);
+    u32 address = get_reg(rn) + offset;
 
     if(l) {
-        set_reg(rd, bits::ror(m_bus.read16((get_reg(rn) + offset) & ~1), (get_reg(rn) & 1) * 8));
+        set_reg(rd, bits::ror(m_bus.read16(address & ~1), (address & 1) * 8));
     } else {
-        m_bus.write16((get_reg(rn) + offset) & ~1, get_reg(rd));
+        m_bus.write16(address & ~1, get_reg(rd));
     }
 }
 
@@ -370,9 +364,9 @@ void CPU::thumbAdjustSP(u16 instruction) {
 }
 
 void CPU::thumbPushPopRegisters(u16 instruction) {
-    bool l = (instruction >> 11) & 0x1;
-    bool r = (instruction >> 8) & 0x1;
-    u8 registers = instruction & 0xFF;
+    bool l = bits::get<11, 1>(instruction);
+    bool r = bits::get<8, 1>(instruction);
+    u8 registers = bits::get<0, 8>(instruction);
 
     if(l) {
         //Pop
@@ -415,9 +409,9 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
 }
 
 void CPU::thumbLoadStoreMultiple(u16 instruction) {
-    bool l = bits::get<11, 1>(instruction); //(instruction >> 11) & 0x1;
-    u8 rn = bits::get<8, 3>(instruction); //(instruction >> 8) & 0x7;
-    u8 registers = bits::get<0, 8>(instruction); //instruction & 0xFF;
+    bool l = bits::get<11, 1>(instruction);
+    u8 rn = bits::get<8, 3>(instruction);
+    u8 registers = bits::get<0, 8>(instruction);
     u32 address = get_reg(rn);
     u32 writeback = get_reg(rn) + 4 * bits::popcount_16(registers);
 
@@ -468,35 +462,31 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
 void CPU::thumbConditionalBranch(u16 instruction) {
     u8 condition = (instruction >> 8) & 0xF;
 
-    //AL (0b1110) is UNDEFINED, TODO: what is the behavior on GBA?
     if(!passed(condition)) {
         return;
     }
     
-    s32 immediate = instruction & 0xFF;
-    immediate <<= 1;
-    immediate |= (immediate >> 8) & 0x1 ? 0xFFFFFF00 : 0; //Sign extend 8-bit to 32-bit
+    s32 immediate = bits::sign_extend<8, s32>(bits::get<0, 8>(instruction) << 1);
 
-    m_state.pc += immediate;
+    set_reg(15, get_reg(15) + immediate);
     loadPipeline();
 }
 
 void CPU::thumbSoftwareInterrupt(u16 instruction) {
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
-    get_reg_ref(14, MODE_SUPERVISOR) = m_state.pc - 2;
+    get_reg_ref(14, MODE_SUPERVISOR) = get_reg(15) - 2;
     change_mode(MODE_SUPERVISOR);
     set_flag(FLAG_THUMB, false);
     set_flag(FLAG_IRQ, true);
     m_state.exec = EXEC_ARM;
-    m_state.pc = 0x8;
+    set_reg(15, 8);
     loadPipeline();
 }
 
 void CPU::thumbUnconditionalBranch(u16 instruction) {
-    s32 immediate = bits::get<0, 11>(instruction);
-    immediate = bits::sign_extend<12, s32>(immediate << 1);
+    s32 immediate = bits::sign_extend<12, s32>(bits::get<0, 11>(instruction) << 1);
 
-    m_state.pc += immediate;
+    set_reg(15, get_reg(15) + immediate);
     loadPipeline();
 }
 

@@ -35,6 +35,11 @@ public:
 
     auto getKeypad() -> Keypad&;
     auto getDebugger() -> dbg::Debugger&;
+
+    //Temp
+    auto getCurrentTimestamp() -> u32 {
+        return m_scheduler.getCurrentTimestamp();
+    }
 };
 
 } //namespace emu

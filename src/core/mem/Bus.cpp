@@ -12,10 +12,9 @@ Bus::Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu) : m_scheduler(scheduler
 }
 
 auto Bus::read_byte(u32 address) -> u8 {
-    address &= 0x0FFFFFFF;
     u32 sub_address = address & 0xFFFFFF;
 
-    switch(address >> 24) {
+    switch((address >> 24) & 0xF) {
         case 0x0 : return m_mem.bios[sub_address]; //BIOS
         break;
         case 0x1 : //Not Used
@@ -24,20 +23,20 @@ auto Bus::read_byte(u32 address) -> u8 {
         break;
         case 0x3 : return m_mem.iwram[sub_address % sizeof(m_mem.iwram)]; //On-Chip WRAM
         break;
-        case 0x4 : return read_io(address);
+        case 0x4 : return read_io(sub_address);
         break;
-        case 0x5 :
-        case 0x6 :
-        case 0x7 : return m_ppu.read8(address); //BG/OBJ Palette RAM / VRAM / OAM - OBJ Attributes
+        case 0x5 : return m_ppu.readPalette(sub_address); //BG/OBJ Palette RAM
+        break;
+        case 0x6 : return m_ppu.readVRAM(sub_address); //VRAM
+        break;
+        case 0x7 : return m_ppu.readOAM(sub_address); //OAM - OBJ Attributes
         break;
         case 0x8 : 
-        case 0x9 : return m_pak.read8(address); //Pak ROM Waitstate 0
-        break;
+        case 0x9 : //Pak ROM Waitstate 0
         case 0xA : 
-        case 0xB : return m_pak.read8(address - 0x2000000); //Pak ROM Waitstate 1
-        break;
+        case 0xB : //Pak ROM Waitstate 1
         case 0xC : 
-        case 0xD : return m_pak.read8(address - 0x4000000); //Pak ROM Waitstate 2
+        case 0xD : return m_pak.read8(sub_address); //Pak ROM Waitstate 2
         break;
         case 0xE : //Pak SRAM
         break;
@@ -49,10 +48,9 @@ auto Bus::read_byte(u32 address) -> u8 {
 }
 
 void Bus::write_byte(u32 address, u8 value) {
-    address &= 0x0FFFFFFF;
     u32 sub_address = address & 0xFFFFFF;
 
-    switch(address >> 24) {
+    switch((address >> 24) & 0xF) {
         case 0x0 : m_mem.bios[sub_address] = value; //BIOS
         break;
         case 0x1 : //Not Used
@@ -61,20 +59,20 @@ void Bus::write_byte(u32 address, u8 value) {
         break;
         case 0x3 : m_mem.iwram[sub_address % sizeof(m_mem.iwram)] = value; //On-Chip WRAM
         break;
-        case 0x4 : write_io(address, value);
+        case 0x4 : write_io(sub_address, value);
         break;
-        case 0x5 :
-        case 0x6 :
-        case 0x7 : m_ppu.write8(address, value); //BG/OBJ Palette RAM / VRAM / OAM - OBJ Attributes
+        case 0x5 : m_ppu.writePalette(sub_address, value); //BG/OBJ Palette RAM
+        break;
+        case 0x6 : m_ppu.writeVRAM(sub_address, value); //VRAM
+        break;
+        case 0x7 : m_ppu.writeOAM(sub_address, value); //OAM - OBJ Attributes
         break;
         case 0x8 : 
-        case 0x9 : m_pak.write8(address - 0x8000000, value); //Pak ROM Waitstate 0
-        break;
+        case 0x9 : //Pak ROM Waitstate 0
         case 0xA : 
-        case 0xB : m_pak.write8(address - 0xA000000, value); //Pak ROM Waitstate 1
-        break;
+        case 0xB : //Pak ROM Waitstate 1
         case 0xC : 
-        case 0xD : m_pak.write8(address - 0xC000000, value); //Pak ROM Waitstate 2
+        case 0xD : m_pak.write8(sub_address, value); //Pak ROM Waitstate 2
         break;
         case 0xE : //Pak SRAM
         break;
@@ -84,27 +82,27 @@ void Bus::write_byte(u32 address, u8 value) {
 }
 
 auto Bus::read_io(u32 address) -> u8 {
-    if(address <= 0x04000056) {
-        return m_ppu.read8(address);
+    if(address <= 0x56) {
+        return m_ppu.readIO(address);
     }
-    if(address >= 0x04000130 && address <= 0x04000133) {
+    if(address >= 0x130 && address <= 0x133) {
         return m_keypad.read8(address);
     }
 
-    return m_mem.io[address - 0x04000000];
+    return m_mem.io[address];
 }
 
 void Bus::write_io(u32 address, u8 value) {
-    if(address <= 0x04000056) {
-        m_ppu.write8(address, value);
+    if(address <= 0x56) {
+        m_ppu.writeIO(address, value);
         return;
     }
-    if(address >= 0x04000130 && address <= 0x04000133) {
+    if(address >= 0x130 && address <= 0x133) {
         m_keypad.write8(address, value);
         return;
     }
 
-    m_mem.io[address - 0x04000000] = value;
+    m_mem.io[address] = value;
 }
 
 void Bus::reset() {

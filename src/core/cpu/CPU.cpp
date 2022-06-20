@@ -220,7 +220,9 @@ void CPU::step() {
         ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
 
         //LOG_INFO("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", m_state.pc - 8, instruction, decoded.disassembly);
-        execute_arm(instruction);
+        if(passed(instruction >> 28)) {
+            execute_arm(instruction);
+        }
     } else if(m_state.exec == EXEC_THUMB) {
         u16 instruction = m_state.pipeline[0];
 
@@ -248,7 +250,6 @@ void CPU::loadPipeline() {
 }
 
 void CPU::attachDebugger(dbg::Debugger &debugger) {
-    //debugger.attachCPURegisters(m_state.regs, &m_state.pc, &m_state.cpsr);
     debugger.attachCPUState(&m_state);
 }
 
