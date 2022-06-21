@@ -18,7 +18,7 @@ void CPU::armBranchExchange(u32 instruction) {
     m_state.exec = rm & 0x1 ? EXEC_THUMB : EXEC_ARM;
     m_state.cpsr = (m_state.cpsr & ~(1 << 5)) | ((rm & 0x1) << 5);
     m_state.pc = rm & (m_state.exec == EXEC_THUMB ? ~1 : ~3); //Align the address
-    loadPipeline();
+    flushPipeline();
 }
 
 void CPU::armPSRTransfer(u32 instruction) {
@@ -193,7 +193,7 @@ void CPU::armDataProcessing(u32 instruction) {
         }
 
         if(opcode < 0x8 || opcode > 0xB) {
-            loadPipeline();
+            flushPipeline();
         }
     }
 
@@ -393,7 +393,7 @@ void CPU::armSingleTransfer(u32 instruction) {
 
         if(rd == 15) {
             m_state.pc = value & ~3;
-            loadPipeline();
+            flushPipeline();
         } else {
             set_reg(rd, value);
         }
@@ -441,7 +441,7 @@ void CPU::armBlockTransfer(u32 instruction) {
 
         if(registers == 0 || bits::get<15, 1>(registers)) {
             m_state.pc = m_bus.read32(address) & ~3;
-            loadPipeline();
+            flushPipeline();
 
             if(registers && s) {
                 m_state.cpsr = get_spsr();
@@ -509,7 +509,7 @@ void CPU::armBranch(u32 instruction) {
     }
 
     m_state.pc += immediate;
-    loadPipeline();
+    flushPipeline();
 }
 
 void CPU::armSoftwareInterrupt(u32 instruction) {
@@ -518,7 +518,7 @@ void CPU::armSoftwareInterrupt(u32 instruction) {
     change_mode(MODE_SUPERVISOR);
     set_flag(FLAG_IRQ, true);
     m_state.pc = 0x8;
-    loadPipeline();
+    flushPipeline();
 }
 
 } //namespace emu

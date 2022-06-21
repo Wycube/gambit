@@ -4,7 +4,6 @@
 #include "core/debug/Debugger.hpp"
 #include "common/StringUtils.hpp"
 #include "common/Bits.hpp"
-
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -27,25 +26,6 @@ auto get_mode_str(u8 mode_bits) -> std::string {
 
 
 class DebuggerUI {
-private:
-
-    emu::dbg::Debugger &m_debugger;
-    emu::GBA &m_gba;
-
-    //CPU Registers mode
-    int m_mode = 0;
-
-    //VRAM Texture
-    u32 m_vram_tex = 0;
-
-    //Memory Viewer
-    int m_memory_region = 0;
-    const char *m_regions = "BIOS\0EWRAM\0IWRAM\0MMIO\0Palette RAM\0VRAM\0OAM\0Cartridge ROM\0";
-    u32 m_region_sizes[8] = {16_KiB, 256_KiB, 32_KiB, 1023, 1_KiB, 96_KiB, 1_KiB, 32_MiB};
-    u32 m_region_start[8] = {0, 0x02000000, 0x03000000, 0x04000000, 0x05000000, 0x06000000, 0x07000000, 0x08000000};
-
-    bool m_running = false;
-
 public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba) {
@@ -316,4 +296,23 @@ public:
             ImGui::Text("%i : %s -> %i cycles", i, m_debugger.getEventTag(i).c_str(), m_debugger.getEventCycles(i));
         }
     }
+
+private:
+
+    emu::dbg::Debugger &m_debugger;
+    emu::GBA &m_gba;
+
+    //CPU Registers mode
+    int m_mode = 0;
+
+    //VRAM Texture
+    u32 m_vram_tex = 0;
+
+    //Memory Viewer
+    int m_memory_region = 0;
+    const char *m_regions = "BIOS\0EWRAM\0IWRAM\0MMIO\0Palette RAM\0VRAM\0OAM\0Cartridge ROM\0";
+    u32 m_region_sizes[8] = {16_KiB, 256_KiB, 32_KiB, 1023, 1_KiB, 96_KiB, 1_KiB, 32_MiB};
+    u32 m_region_start[8] = {0, 0x02000000, 0x03000000, 0x04000000, 0x05000000, 0x06000000, 0x07000000, 0x08000000};
+
+    bool m_running = false;
 };

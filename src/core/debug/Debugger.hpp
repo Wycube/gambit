@@ -1,8 +1,7 @@
 #pragma once
 
-#include "common/Types.hpp"
 #include "core/cpu/Types.hpp"
-
+#include "common/Types.hpp"
 #include <string>
 #include <vector>
 
@@ -16,22 +15,6 @@ struct Event;
 namespace dbg {
 
 class Debugger {
-private:
-
-    u32 m_break_point = 0xFFFFFFFF;
-
-    //Pointer to CPU state
-    CPUState *m_cpu_state = nullptr;
-
-    //Pointer to PPU stuff
-    u32 *m_ppu_framebuffer = nullptr;
-
-    //Pointer to Scheduler stuff
-    std::vector<Event> *m_scheduler_events;
-    u32 *m_scheduler_timestamp;
-
-    Bus &m_bus;
-
 public:
 
     Debugger(Bus &bus);
@@ -61,6 +44,22 @@ public:
     auto atBreakPoint() -> bool;
     void setBreakPoint(u32 address);
     auto getBreakPoint() -> u32;
+
+private:
+
+    u32 m_break_point = 0xFFFFFFFF;
+
+    //Pointer to CPU state
+    CPUState *m_cpu_state = nullptr;
+
+    //Pointer to PPU stuff
+    u32 *m_ppu_framebuffer = nullptr;
+
+    //Pointer to Scheduler stuff
+    std::vector<Event> *m_scheduler_events;
+    u32 *m_scheduler_timestamp;
+
+    Bus &m_bus;
 };
 
 } //namespace dbg

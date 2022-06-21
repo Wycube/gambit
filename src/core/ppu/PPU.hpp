@@ -15,6 +15,25 @@ enum LCDState : u8 {
 };
 
 class PPU {
+public:
+
+    PPU(Scheduler &scheduler, Bus &bus);
+
+    void reset();
+
+    void run(u32 current, u32 late);
+
+    auto readIO(u32 address) -> u8;
+    auto readPalette(u32 address) -> u8;
+    auto readVRAM(u32 address) -> u8;
+    auto readOAM(u32 address) -> u8;
+    void writeIO(u32 address, u8 value);
+    void writePalette(u32 address, u8 value);
+    void writeVRAM(u32 address, u8 value);
+    void writeOAM(u32 address, u8 value);
+
+    void attachDebugger(dbg::Debugger &debugger);
+
 private:
 
     LCDState m_state;
@@ -29,10 +48,10 @@ private:
     u8 m_oam[1_KiB];
 
     //Backgrounds
-    Background0 m_bg0;
-    Background1 m_bg1;
-    Background2 m_bg2;
-    Background3 m_bg3;
+    TextBackground m_bg0;
+    TextBackground m_bg1;
+    BitmapBackground m_bg2;
+    RotScaleBackground m_bg3;
 
     u32 m_internal_framebuffer[240 * 160];
     u32 m_present_framebuffer[240 * 160];
@@ -40,34 +59,17 @@ private:
     Scheduler &m_scheduler;
     Bus &m_bus;
 
-    auto read_io(u32 address) -> u8;
-    void write_io(u32 address, u8 value);
+    auto _readIO(u32 address) -> u8;
+    void _writeIO(u32 address, u8 value);
 
-    void hblank_start(u32 current, u32 late);
-    void hblank_end(u32 current, u32 late);
+    void hblankStart(u32 current, u32 late);
+    void hblankEnd(u32 current, u32 late);
     void vblank(u32 current, u32 late);
 
-public:
-
-    PPU(Scheduler &scheduler, Bus &bus);
-
-    void reset();
-
-    void run(u32 current, u32 late);
-    void writeFrameMode0();
-    void writeFrameMode3();
-    void writeFrameMode4();
-
-    auto readIO(u32 address) -> u8;
-    auto readPalette(u32 address) -> u8;
-    auto readVRAM(u32 address) -> u8;
-    auto readOAM(u32 address) -> u8;
-    void writeIO(u32 address, u8 value);
-    void writePalette(u32 address, u8 value);
-    void writeVRAM(u32 address, u8 value);
-    void writeOAM(u32 address, u8 value);
-
-    void attachDebugger(dbg::Debugger &debugger);
+    void writeLineMode0();
+    void writeLineMode3();
+    void writeLineMode4();
+    void writeLineMode5();
 };
 
 } //namespace emu

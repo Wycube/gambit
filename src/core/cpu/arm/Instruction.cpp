@@ -2,8 +2,6 @@
 #include "Disassembly.hpp"
 #include "common/Pattern.hpp"
 
-#include <bitset>
-
 
 namespace emu {
 

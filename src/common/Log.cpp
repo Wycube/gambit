@@ -1,5 +1,4 @@
 #include "Log.hpp"
-
 #include <chrono>
 
 

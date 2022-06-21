@@ -1,11 +1,10 @@
+#include "core/GBA.hpp"
 #include "common/Version.hpp"
 #include "common/Types.hpp"
 #include "common/Log.hpp"
 #include "common/Pattern.hpp"
 #include "common/StringUtils.hpp"
-#include "core/GBA.hpp"
 #include "DebuggerUI.hpp"
-
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>

@@ -5,33 +5,22 @@
 
 namespace emu {
 
-struct Background0 {
-    u16 bg0cnt;
-    u16 bg0hofs;
-    u16 bg0vofs;
+struct TextBackground {
+    u16 bgcnt;
+    u16 bghofs;
+    u16 bgvofs;
 
-    auto getPixelColor(int x, int y, u8 *vram, u8 *palette) -> u32;
+    auto getTextPixel(int x, int y, u8 *vram, u8 *palette) -> u32;
 };
 
-struct Background1 {
-    u16 bg1cnt;
-    u16 bg1hofs;
-    u16 bg1vofs;
+struct RotScaleBackground : TextBackground {
 
 };
 
-struct Background2 {
-    u16 bg2cnt;
-    u16 bg2hofs;
-    u16 bg2vofs;
-
-};
-
-struct Background3 {
-    u16 bg3cnt;
-    u16 bg3hofs;
-    u16 bg3vofs;
-
+struct BitmapBackground : RotScaleBackground {
+    auto getBitmapPixelMode3(int x, int y, u8 *vram) -> u32;
+    auto getBitmapPixelMode4(int x, int y, u8 *vram, u8 *palette, bool frame_1) -> u32;
+    auto getBitmapPixelMode5(int x, int y, u8 *vram, bool frame_1) -> u32;
 };
 
 } //namespace emu

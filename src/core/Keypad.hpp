@@ -19,11 +19,6 @@ enum KeypadInput : u16 {
 };
 
 class Keypad {
-private:
-
-    u16 m_keyinput;
-    u16 m_keycnt;
-
 public:
 
     Keypad();
@@ -35,6 +30,11 @@ public:
 
     void set_keys(u16 keys);
     auto get_keys() -> u16;
+
+private:
+
+    u16 m_keyinput;
+    u16 m_keycnt;
 };
 
 } //namespace emu

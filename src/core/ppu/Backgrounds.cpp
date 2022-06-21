@@ -1,22 +1,20 @@
 #include "Backgrounds.hpp"
 #include "common/Bits.hpp"
 
-#include <cstdio>
-
 
 namespace emu {
 
-auto Background0::getPixelColor(int x, int y, u8 *vram, u8 *palette) -> u32 {
-    u32 char_data_base = 0x4000 * bits::get<2, 2>(bg0cnt); //Offset starting from 0x06000000 VRAM
-    u32 map_data_base = 0x800 * bits::get<8, 5>(bg0cnt); //Offset starting from 0x06000000 VRAM
-    bool color_mode = bits::get<7, 1>(bg0cnt); //1 is 256 color or 8bpp, 0 is 16 color or 4bpp
-    int map_width = 32 << bits::get<14, 1>(bg0cnt);
-    int map_height = 32 << bits::get<13, 1>(bg0cnt);
+auto TextBackground::getTextPixel(int x, int y, u8 *vram, u8 *palette) -> u32 {
+    u32 char_data_base = 0x4000 * bits::get<2, 2>(bgcnt); //Offset starting from 0x06000000 VRAM
+    u32 map_data_base = 0x800 * bits::get<8, 5>(bgcnt); //Offset starting from 0x06000000 VRAM
+    bool color_mode = bits::get<7, 1>(bgcnt); //1 is 256 color or 8bpp, 0 is 16 color or 4bpp
+    int map_width = 32 << bits::get<14, 1>(bgcnt);
+    int map_height = 32 << bits::get<13, 1>(bgcnt);
 
     //Apply offset
-    x += bg0hofs;
+    x += bghofs;
     x %= map_width * 8;
-    y += bg0vofs;
+    y += bgvofs;
     y %= map_height * 8;
 
     int tile_x = x / 8;
@@ -45,6 +43,47 @@ auto Background0::getPixelColor(int x, int y, u8 *vram, u8 *palette) -> u32 {
     u8 red = bits::get<0, 5>(color_16) * 8;
     u8 green = bits::get<5, 5>(color_16) * 8;
     u8 blue = bits::get<10, 5>(color_16) * 8;
+
+    return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
+}
+
+auto BitmapBackground::getBitmapPixelMode3(int x, int y, u8 *vram) -> u32 {
+    u32 index = x + y * 240;
+    u16 color = (vram[index * 2 + 1] << 8) | vram[index * 2];
+
+    u8 red = bits::get<0, 5>(color) * 8;
+    u8 green = bits::get<5, 5>(color) * 8;
+    u8 blue = bits::get<10, 5>(color) * 8;
+
+    //Take the 16-bit, mode 3, color and turn it into a 24-bit color value
+    return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
+}
+
+auto BitmapBackground::getBitmapPixelMode4(int x, int y, u8 *vram, u8 *palette, bool frame_1) -> u32 {
+    u32 index = x + y * 240;
+    u32 data_start = frame_1 ? 0xA000 : 0;
+    u8 color_index = vram[data_start + index];
+    u16 color = (palette[color_index * 2 + 1] << 8) | palette[color_index * 2];
+
+    u8 red = bits::get<0, 5>(color) * 8;
+    u8 green = bits::get<5, 5>(color) * 8;
+    u8 blue = bits::get<10, 5>(color) * 8;
+
+    return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
+}
+
+auto BitmapBackground::getBitmapPixelMode5(int x, int y, u8 *vram, bool frame_1) -> u32 {
+    if(x > 160 || y > 128) {
+        return 0;
+    }
+
+    u32 index = x + y * 160;
+    u32 data_start = frame_1 ? 0xA000 : 0;
+    u16 color = vram[data_start + index];
+
+    u8 red = bits::get<0, 5>(color) * 8;
+    u8 green = bits::get<5, 5>(color) * 8;
+    u8 blue = bits::get<10, 5>(color) * 8;
 
     return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
 }

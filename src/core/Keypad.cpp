@@ -1,8 +1,6 @@
 #include "Keypad.hpp"
 #include "common/Bits.hpp"
 
-#include <cstring>
-
 
 namespace emu {
 

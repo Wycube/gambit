@@ -30,7 +30,7 @@ auto GBA::getGamePak() -> GamePak& {
 
 void GBA::loadROM(std::vector<u8> &&rom) {
     m_bus.loadROM(std::move(rom));
-    m_cpu.loadPipeline();
+    m_cpu.flushPipeline();
 }
 
 void GBA::loadBIOS(const std::vector<u8> &bios) {

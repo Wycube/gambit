@@ -1,13 +1,8 @@
 #include "Disassembly.hpp"
 #include "common/StringUtils.hpp"
 #include "common/Bits.hpp"
-
 #include <cassert>
 
-
-//TODO:
-// - Use a formatting library like {fmt}
-// - Use something better than an assert to handle errors
 
 namespace emu {
 

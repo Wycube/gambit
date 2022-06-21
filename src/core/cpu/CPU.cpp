@@ -10,7 +10,64 @@ CPU::CPU(Bus &bus) : m_bus(bus) {
     reset();
 }
 
-//TODO: Do this better
+void CPU::reset() {
+    m_state.exec = EXEC_ARM;
+    m_state.cpsr = 0;
+    change_mode(MODE_SYSTEM);
+    std::memset(m_state.spsr, 0, sizeof(m_state.spsr));
+    std::memset(m_state.regs, 0, sizeof(m_state.regs));
+    set_reg(13, 0x03007F00);
+    set_reg(13, 0x03007FA0, MODE_IRQ);
+    set_reg(13, 0x03007FE0, MODE_SUPERVISOR);
+    m_state.pc = 0x08000000;
+}
+
+void CPU::step() {
+    service_interrupt();
+
+    if(m_state.exec == EXEC_ARM) {
+        u32 instruction = m_state.pipeline[0];
+
+        m_state.pipeline[0] = m_state.pipeline[1];
+        m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
+        m_state.pc += 4;
+
+        ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
+
+        //LOG_INFO("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", m_state.pc - 8, instruction, decoded.disassembly);
+        if(passed(instruction >> 28)) {
+            execute_arm(instruction);
+        }
+    } else if(m_state.exec == EXEC_THUMB) {
+        u16 instruction = m_state.pipeline[0];
+
+        m_state.pipeline[0] = m_state.pipeline[1];
+        m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
+        m_state.pc += 2;
+
+        ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
+
+        //LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
+        execute_thumb(instruction);
+    }
+}
+
+void CPU::flushPipeline() {
+    if(m_state.exec == EXEC_ARM) {
+        m_state.pipeline[0] = m_bus.read32(m_state.pc);
+        m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
+        m_state.pc += 4;
+    } else if(m_state.exec == EXEC_THUMB) {
+        m_state.pipeline[0] = m_bus.read16(m_state.pc);
+        m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
+        m_state.pc += 2;
+    }
+}
+
+void CPU::attachDebugger(dbg::Debugger &debugger) {
+    debugger.attachCPUState(&m_state);
+}
+
 auto CPU::get_reg_ref(u8 reg, u8 mode) -> u32& {
     reg &= 0xF;
 
@@ -189,68 +246,10 @@ void CPU::service_interrupt() {
         if(enabled && request) {
             m_state.exec = EXEC_ARM;
             m_state.pc = 0x18;
-            loadPipeline();
+            flushPipeline();
             break;
         }
     }
-}
-
-void CPU::reset() {
-    m_state.exec = EXEC_ARM;
-    m_state.cpsr = 0;
-    change_mode(MODE_SYSTEM);
-    std::memset(m_state.spsr, 0, sizeof(m_state.spsr));
-    std::memset(m_state.regs, 0, sizeof(m_state.regs));
-    set_reg(13, 0x03007F00);
-    set_reg(13, 0x03007FA0, MODE_IRQ);
-    set_reg(13, 0x03007FE0, MODE_SUPERVISOR);
-    m_state.pc = 0x08000000;
-}
-
-void CPU::step() {
-    service_interrupt();
-
-    if(m_state.exec == EXEC_ARM) {
-        u32 instruction = m_state.pipeline[0];
-
-        m_state.pipeline[0] = m_state.pipeline[1];
-        m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
-        m_state.pc += 4;
-
-        ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
-
-        //LOG_INFO("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", m_state.pc - 8, instruction, decoded.disassembly);
-        if(passed(instruction >> 28)) {
-            execute_arm(instruction);
-        }
-    } else if(m_state.exec == EXEC_THUMB) {
-        u16 instruction = m_state.pipeline[0];
-
-        m_state.pipeline[0] = m_state.pipeline[1];
-        m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
-        m_state.pc += 2;
-
-        ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
-
-        //LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
-        execute_thumb(instruction);
-    }
-}
-
-void CPU::loadPipeline() {
-    if(m_state.exec == EXEC_ARM) {
-        m_state.pipeline[0] = m_bus.read32(m_state.pc);
-        m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
-        m_state.pc += 4;
-    } else if(m_state.exec == EXEC_THUMB) {
-        m_state.pipeline[0] = m_bus.read16(m_state.pc);
-        m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
-        m_state.pc += 2;
-    }
-}
-
-void CPU::attachDebugger(dbg::Debugger &debugger) {
-    debugger.attachCPUState(&m_state);
 }
 
 } //namespace emu

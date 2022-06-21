@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Types.hpp"
-
 #include <string>
 
 

@@ -214,7 +214,7 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
     
         if(rd_rn == 15) {
             set_reg(rd_rn, get_reg(rd_rn) & ~1);
-            loadPipeline();
+            flushPipeline();
         }
     } else if(opcode == 1) {
         //CMP
@@ -230,7 +230,7 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
 
         if(rd_rn == 15) {
             set_reg(rd_rn, get_reg(rd_rn) & ~1);
-            loadPipeline();
+            flushPipeline();
         }
     }
 }
@@ -255,7 +255,7 @@ void CPU::thumbBranchExchange(u16 instruction) {
         set_reg(15, address & ~1);
     }
 
-    loadPipeline();
+    flushPipeline();
 }
 
 void CPU::thumbPCRelativeLoad(u16 instruction) {
@@ -382,7 +382,7 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
         //Set PC
         if(r) {
             set_reg(15, m_bus.read32(address) & ~1);
-            loadPipeline();
+            flushPipeline();
             address += 4;
         }
 
@@ -425,7 +425,7 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
 
         if(registers == 0) {
             set_reg(15, m_bus.read32(address));
-            loadPipeline();
+            flushPipeline();
             writeback = get_reg(rn) + 0x40;
         }
 
@@ -469,7 +469,7 @@ void CPU::thumbConditionalBranch(u16 instruction) {
     s32 immediate = bits::sign_extend<8, s32>(bits::get<0, 8>(instruction) << 1);
 
     set_reg(15, get_reg(15) + immediate);
-    loadPipeline();
+    flushPipeline();
 }
 
 void CPU::thumbSoftwareInterrupt(u16 instruction) {
@@ -480,14 +480,14 @@ void CPU::thumbSoftwareInterrupt(u16 instruction) {
     set_flag(FLAG_IRQ, true);
     m_state.exec = EXEC_ARM;
     set_reg(15, 8);
-    loadPipeline();
+    flushPipeline();
 }
 
 void CPU::thumbUnconditionalBranch(u16 instruction) {
     s32 immediate = bits::sign_extend<12, s32>(bits::get<0, 11>(instruction) << 1);
 
     set_reg(15, get_reg(15) + immediate);
-    loadPipeline();
+    flushPipeline();
 }
 
 void CPU::thumbLongBranch(u16 instruction) {
@@ -497,7 +497,7 @@ void CPU::thumbLongBranch(u16 instruction) {
         u32 lr = get_reg(14);
         set_reg(14, (get_reg(15) - 2) | 1);
         set_reg(15, lr + (bits::get<0, 11>(instruction) << 1));
-        loadPipeline();
+        flushPipeline();
     } else {
         set_reg(14, get_reg(15) + bits::sign_extend<23, s32>(bits::get<0, 11>(instruction) << 12));
     }

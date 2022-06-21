@@ -1,9 +1,9 @@
 #pragma once
 
-#include "common/Types.hpp"
 #include "core/mem/Bus.hpp"
 #include "core/debug/Debugger.hpp"
 #include "Types.hpp"
+#include "common/Types.hpp"
 
 
 namespace emu {
@@ -13,6 +13,22 @@ namespace emu {
  * and THUMB instruction sets.
  */
 class CPU {
+public:
+
+    CPU(Bus &bus);
+
+    void reset();
+
+    void step();
+    void flushPipeline();
+    
+    //Temp
+    auto getPC() -> u32 {
+        return m_state.pc;
+    }
+
+    void attachDebugger(dbg::Debugger &debugger);
+
 private:
 
     //Registers and other stuff
@@ -40,22 +56,6 @@ private:
     void execute_arm(u32 instruction);
     void execute_thumb(u16 instruction);
     void service_interrupt();
-
-public:
-
-    CPU(Bus &bus);
-
-    void reset();
-
-    void step();
-    void loadPipeline();
-    
-    //Temp
-    auto getPC() -> u32 {
-        return m_state.pc;
-    }
-
-    void attachDebugger(dbg::Debugger &debugger);
 };
 
 } //namespace emu

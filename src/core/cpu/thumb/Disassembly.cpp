@@ -2,7 +2,6 @@
 #include "common/StringUtils.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
-
 #include <cassert>
 
 

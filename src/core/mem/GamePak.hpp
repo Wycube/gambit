@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common/Types.hpp"
-
 #include <vector>
 
 
@@ -23,13 +22,6 @@ struct GamePakHeader {
 };
 
 class GamePak {
-private:
-
-    std::vector<u8> m_rom;
-    GamePakHeader m_header;
-
-    void parse_header();
-
 public:
 
     auto read8(u32 address) -> u8;
@@ -38,6 +30,13 @@ public:
     auto getHeader() -> GamePakHeader&;
     auto size() -> u32;
     void loadROM(std::vector<u8> &&rom);
+
+private:
+
+    std::vector<u8> m_rom;
+    GamePakHeader m_header;
+
+    void parseHeader();
 };
 
 } //namespace emu

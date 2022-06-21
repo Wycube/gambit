@@ -5,23 +5,12 @@
 #include "core/ppu/PPU.hpp"
 #include "core/mem/Bus.hpp"
 #include "core/cpu/CPU.hpp"
-
 #include <vector>
 
 
 namespace emu {
 
 class GBA {
-private:
-
-    Scheduler m_scheduler;
-    Keypad m_keypad;
-    PPU m_ppu;
-    Bus m_bus;
-    CPU m_cpu;
-
-    dbg::Debugger m_debugger;
-
 public:
 
     GBA();
@@ -40,6 +29,16 @@ public:
     auto getCurrentTimestamp() -> u32 {
         return m_scheduler.getCurrentTimestamp();
     }
+
+private:
+
+    Scheduler m_scheduler;
+    Keypad m_keypad;
+    PPU m_ppu;
+    Bus m_bus;
+    CPU m_cpu;
+
+    dbg::Debugger m_debugger;
 };
 
 } //namespace emu

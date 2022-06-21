@@ -1,8 +1,7 @@
 #pragma once
 
-#include "common/Types.hpp"
 #include "core/debug/Debugger.hpp"
-
+#include "common/Types.hpp"
 #include <functional>
 
 
@@ -17,10 +16,6 @@ struct Event {
 };
 
 class Scheduler {
-private:
-
-    std::vector<Event> m_events;
-    u32 m_current_timestamp;
 public:
 
     Scheduler();
@@ -34,6 +29,11 @@ public:
     auto getCurrentTimestamp() -> u32;
 
     void attachDebugger(dbg::Debugger &debugger);
+
+private:
+
+    std::vector<Event> m_events;
+    u32 m_current_timestamp;
 };
 
 } //namespace emu

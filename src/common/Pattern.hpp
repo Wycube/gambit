@@ -2,7 +2,6 @@
 
 #include "Types.hpp"
 #include "Log.hpp"
-
 #include <type_traits>
 #include <array>
 #include <cstring>
