@@ -30,7 +30,7 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba) {
         m_region_sizes[7] = m_gba.getGamePak().size();
-        m_debugger.setBreakPoint(0x08003E20);
+        //m_debugger.setBreakPoint(0x000000170);
 
         //Create OpenGL Texture
         glGenTextures(1, &m_vram_tex);
@@ -177,7 +177,11 @@ public:
         bool go_to_pc = ImGui::Button("Go to PC");
 
         if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoScrollbar)) {
-            ImGui::BeginTable("##Disassembly_Table", 3, ImGuiTableFlags_SizingFixedFit);
+            ImGui::BeginTable("##Disassembly_Table", 4);
+            ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+            ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+            ImGui::TableSetupColumn("col_2", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+            ImGui::TableSetupColumn("col_3");
          
             //THUMB or ARM
             bool thumb = (m_debugger.getCPUCPSR() >> 5) & 1;
@@ -191,7 +195,7 @@ public:
                     ImGui::TableSetColumnIndex(0);
 
                     u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
-                    ImGui::Text("%08X ", address);
+                    ImGui::Text("%08X: ", address);
 
                     ImGui::TableNextColumn();
 
@@ -214,7 +218,12 @@ public:
                     //Actual disassembly
                     ImGui::TableNextColumn();
                     std::string disassembled = thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address);
-                    ImGui::Text("%s", disassembled.c_str());
+
+                    //Seperate mnemonic and registers
+                    size_t space = disassembled.find_first_of(' ');
+                    ImGui::Text("%s", disassembled.substr(0, space).c_str());
+                    ImGui::TableNextColumn();
+                    if(space < disassembled.size()) ImGui::Text("%s", disassembled.substr(space).c_str());
                 }
             }
 

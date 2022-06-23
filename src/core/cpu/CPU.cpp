@@ -104,6 +104,10 @@ auto CPU::get_reg(u8 reg, u8 mode) -> u32 {
 }
 
 void CPU::set_reg(u8 reg, u32 value, u8 mode) {
+    if(reg == 15) {
+        value &= m_state.exec == EXEC_THUMB ? ~1 : ~3;
+    }
+
     get_reg_ref(reg, mode) = value;
 }
 

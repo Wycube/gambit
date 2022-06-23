@@ -3,7 +3,7 @@
 
 namespace emu {
 
-GBA::GBA() : m_ppu(m_scheduler, m_bus), m_bus(m_scheduler, m_keypad, m_ppu), m_cpu(m_bus), m_debugger(m_bus) {
+GBA::GBA() : m_dma(m_scheduler, m_bus), m_ppu(m_scheduler, m_bus), m_bus(m_scheduler, m_keypad, m_ppu, m_dma), m_cpu(m_bus), m_debugger(m_bus) {
     m_scheduler.attachDebugger(m_debugger);
     m_cpu.attachDebugger(m_debugger);
     m_ppu.attachDebugger(m_debugger);
@@ -11,6 +11,7 @@ GBA::GBA() : m_ppu(m_scheduler, m_bus), m_bus(m_scheduler, m_keypad, m_ppu), m_c
 
 void GBA::reset() {
     m_scheduler.reset();
+    m_dma.reset();
     m_ppu.reset();
     m_bus.reset();
     m_cpu.reset();
@@ -18,6 +19,11 @@ void GBA::reset() {
 
 void GBA::step(u32 cycles) {
     u32 start = m_scheduler.getCurrentTimestamp();
+
+    if(m_dma.running()) {
+        m_scheduler.step(cycles);
+        return;
+    }
 
     while(m_scheduler.getCurrentTimestamp() < start + cycles) {
         m_cpu.step();

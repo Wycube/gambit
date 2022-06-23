@@ -185,7 +185,8 @@ void CPU::armDataProcessing(u32 instruction) {
     if(((instruction >> 12) & 0xF) == 15) {
         if(s) {
             u8 old_mode = bits::get<0, 5>(m_state.cpsr);
-            m_state.cpsr = get_spsr(0);
+            m_state.cpsr = get_spsr();
+            m_state.exec = get_flag(FLAG_THUMB) ? EXEC_THUMB : EXEC_ARM;
 
             if(bits::get<0, 5>(m_state.cpsr) != old_mode) {
                 change_mode(mode_from_bits(bits::get<0, 5>(m_state.cpsr)));

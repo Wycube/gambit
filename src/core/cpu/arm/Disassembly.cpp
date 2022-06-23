@@ -459,13 +459,13 @@ auto addressMode5(u8 rn, u8 offset, bool p, bool u, bool w) -> std::string {
     disassembly += !p ? "]" : "";
     disassembly += ", ";
     
-    if(p && w) {
+    if(!p && !w) {
         //Shown as an integer in the range 0-255 surrounded by { }
         disassembly += "{" + std::to_string(offset) + "}";
     } else {
         disassembly += "#";
         disassembly += u ? '+' : '-';
-        disassembly += "0x" + common::hex(offset * 4); //In assembly the offset has to be a multiple of four from 0 - 255*4
+        disassembly += "0x" + common::hex(offset * 4); //In assembly the offset has to be a multiple of four
         disassembly += p ? w ? "]!" : "]" : "";
     }
 

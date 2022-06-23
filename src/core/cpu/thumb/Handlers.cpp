@@ -27,17 +27,17 @@ void CPU::thumbMoveShifted(u16 instruction) {
             carry = get_flag(FLAG_CARRY);
         }
 
-        carry = (get_reg(rm) >> (32 - immed_5)) & 0x1;
+        carry = (get_reg(rm) >> (32 - immed_5)) & 1;
         result = get_reg(rm) << immed_5;
     } else if(opcode == 1) {
         u8 shift = immed_5 == 0 ? 32 : immed_5;
 
-        carry = (get_reg(rm) >> (shift - 1)) & 0x1;
+        carry = (get_reg(rm) >> (shift - 1)) & 1;
         result = shift == 32 ? 0 : get_reg(rm) >> shift;
     } else if(opcode == 2) {
         u8 shift = immed_5 == 0 ? 32 : immed_5;
 
-        carry = (get_reg(rm) >> (shift - 1)) & 0x1;
+        carry = (get_reg(rm) >> (shift - 1)) & 1;
         result = bits::asr(get_reg(rm), shift);
     } else {
         //Opcode not suppose to equal 3
@@ -65,13 +65,23 @@ void CPU::thumbAddSubtract(u16 instruction) {
     if(s) {
         result = op_1 - op_2;
 
+        bool op_1_neg = op_1 & 0x80000000;
+        bool op_2_neg = op_2 & (i ? 4 : 0x80000000);
+        bool alu_neg = result & 0x80000000;
+        bool overflow = op_1_neg != op_2_neg && op_1_neg != alu_neg;
+
         set_flag(FLAG_CARRY, op_1 >= op_2);
-        set_flag(FLAG_OVERFLOW, (result & ~(1 << 31)) > (op_1 & ~(1 << 31)));
+        set_flag(FLAG_OVERFLOW, overflow); //(result & ~(1 << 31)) > (op_1 & ~(1 << 31)));
     } else {
         result = op_1 + op_2;
 
+        bool op_1_neg = op_1 & 0x80000000;
+        bool op_2_neg = op_2 & (i ? 4 : 0x80000000);
+        bool alu_neg = result & 0x80000000;
+        bool overflow = op_1_neg == op_2_neg && op_1_neg != alu_neg;
+
         set_flag(FLAG_CARRY, result < op_1);
-        set_flag(FLAG_OVERFLOW, (result & ~(1 << 31)) < (op_1 & ~(1 << 31)));
+        set_flag(FLAG_OVERFLOW, overflow); //(result & ~(1 << 31)) < (op_1 & ~(1 << 31)));
     }
 
     set_reg(rd, result);
@@ -185,9 +195,11 @@ void CPU::thumbALUOperation(u16 instruction) {
 
     //Write to the Carry flag for shift opcodes
     if(((op_2 & 0xFF) != 0) && ((opcode >= 0x2 && opcode <= 0x4) || opcode == 0x7)) {
-        if(opcode == 0x2) set_flag(FLAG_CARRY, (op_1 >> (32 - (op_2 & 0xFF))) & 0x1);
-        if(opcode == 0x3) set_flag(FLAG_CARRY, (op_1 >> ((op_2 & 0xFF) - 1)) & 0x1);
-        if(opcode == 0x4) set_flag(FLAG_CARRY, (op_1 >> ((op_2 & 0xFF) - 1)) & 0x1);
+        u8 shift_amount = (op_2 & 0xFF);
+
+        if(opcode == 0x2) set_flag(FLAG_CARRY, shift_amount > 32 ? false : (op_1 >> (32 - shift_amount)) & 1);
+        if(opcode == 0x3) set_flag(FLAG_CARRY, shift_amount > 32 ? false : (op_1 >> (shift_amount - 1)) & 1);
+        if(opcode == 0x4) set_flag(FLAG_CARRY, shift_amount >= 32 ? (op_1 >> 31) : (op_1 >> (shift_amount - 1)) & 1);
         if(opcode == 0x7) set_flag(FLAG_CARRY, result >> 31);
     }
 

@@ -2,6 +2,7 @@
 
 #include "core/Scheduler.hpp"
 #include "core/Keypad.hpp"
+#include "core/DMA.hpp"
 #include "core/ppu/PPU.hpp"
 #include "core/mem/Bus.hpp"
 #include "core/cpu/CPU.hpp"
@@ -34,6 +35,7 @@ private:
 
     Scheduler m_scheduler;
     Keypad m_keypad;
+    DMA m_dma;
     PPU m_ppu;
     Bus m_bus;
     CPU m_cpu;

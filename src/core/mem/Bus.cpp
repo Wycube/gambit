@@ -1,11 +1,12 @@
 #include "Bus.hpp"
 #include "core/ppu/PPU.hpp"
+#include "core/DMA.hpp"
 #include "common/Log.hpp"
 
 
 namespace emu {
 
-Bus::Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu) : m_scheduler(scheduler), m_keypad(keypad), m_ppu(ppu) {
+Bus::Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu, DMA &dma) : m_scheduler(scheduler), m_keypad(keypad), m_ppu(ppu), m_dma(dma) {
     reset();
 }
 
@@ -187,6 +188,9 @@ auto Bus::readIO(u32 address) -> u8 {
     if(address <= 0x56) {
         return m_ppu.readIO(address);
     }
+    if(address >= 0xB0 && address <= 0xE0) {
+        return m_dma.read8(address);
+    }
     if(address >= 0x130 && address <= 0x133) {
         return m_keypad.read8(address);
     }
@@ -198,6 +202,9 @@ void Bus::writeIO(u32 address, u8 value) {
     if(address <= 0x56) {
         m_ppu.writeIO(address, value);
         return;
+    }
+    if(address >= 0xB0 && address <= 0xE0) {
+        m_dma.write8(address, value);
     }
     if(address >= 0x130 && address <= 0x133) {
         m_keypad.write8(address, value);

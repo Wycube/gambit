@@ -11,11 +11,12 @@
 namespace emu {
 
 class PPU;
+class DMA;
 
 class Bus {
 public:
 
-    Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu);
+    Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu, DMA &dma);
 
     void reset();
 
@@ -54,6 +55,7 @@ private:
     Scheduler &m_scheduler;
     Keypad &m_keypad;
     PPU &m_ppu;
+    DMA &m_dma;
 
 
     auto readByte(u32 address) -> u8;
