@@ -4,6 +4,7 @@
 #include "core/cpu/thumb/Instruction.hpp"
 #include "core/Scheduler.hpp"
 #include "common/Log.hpp"
+#include "common/Bits.hpp"
 
 
 namespace emu {
@@ -40,7 +41,7 @@ auto Debugger::getCPURegister(u8 reg, u8 mode) -> u32 {
     reg &= 0xF;
 
     if(mode == 0) {
-        mode = m_cpu_state->mode;
+        mode = m_cpu_state->cpsr.mode;
     }
 
     if(reg < 13) {
@@ -68,32 +69,28 @@ auto Debugger::getCPURegister(u8 reg, u8 mode) -> u32 {
 }
 
 auto Debugger::getCPUCPSR() -> u32 {
-    return m_cpu_state->cpsr;
+    return m_cpu_state->cpsr.asInt();
 }
 
 auto Debugger::getCPUSPSR(u8 mode) -> u32 {
     if(mode == 0) {
-        mode = m_cpu_state->mode;
+        mode = m_cpu_state->cpsr.mode;
     }
 
     switch(mode) {
         case MODE_USER :
-        case MODE_SYSTEM : return m_cpu_state->cpsr;
-        case MODE_FIQ : return m_cpu_state->spsr[0];
-        case MODE_IRQ : return m_cpu_state->spsr[1];
-        case MODE_SUPERVISOR : return m_cpu_state->spsr[2];
-        case MODE_ABORT : return m_cpu_state->spsr[3];
-        case MODE_UNDEFINED : return m_cpu_state->spsr[4];
+        case MODE_SYSTEM : return m_cpu_state->cpsr.asInt();
+        case MODE_FIQ : return m_cpu_state->spsr[0].asInt();
+        case MODE_IRQ : return m_cpu_state->spsr[1].asInt();
+        case MODE_SUPERVISOR : return m_cpu_state->spsr[2].asInt();
+        case MODE_ABORT : return m_cpu_state->spsr[3].asInt();
+        case MODE_UNDEFINED : return m_cpu_state->spsr[4].asInt();
         default : return 0;
     }
 }
 
-auto Debugger::getCPUMode() -> PrivilegeMode {
-    return m_cpu_state->mode;
-}
-
-auto Debugger::getCPUExec() -> ExecutionState {
-    return m_cpu_state->exec;
+auto Debugger::getCPUMode() -> u8 {
+    return m_cpu_state->cpsr.mode;
 }
 
 void Debugger::attachPPUMem(u32 *framebuffer) {
@@ -126,7 +123,7 @@ auto Debugger::getCurrentCycle() -> u32 {
 }
 
 auto Debugger::atBreakPoint() -> bool {
-    if(m_cpu_state->exec == EXEC_THUMB) {
+    if(m_cpu_state->cpsr.t) {
         return (m_cpu_state->pc - 2) == m_break_point;
     } else {
         return (m_cpu_state->pc - 4) == m_break_point;

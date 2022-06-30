@@ -3,7 +3,7 @@
 
 namespace emu {
 
-GBA::GBA() : m_dma(m_scheduler, m_bus), m_ppu(m_scheduler, m_bus), m_bus(m_scheduler, m_keypad, m_ppu, m_dma), m_cpu(m_bus), m_debugger(m_bus) {
+GBA::GBA() : m_timer(m_scheduler), m_dma(m_scheduler, m_bus), m_ppu(m_scheduler, m_bus), m_bus(m_scheduler, m_keypad, m_timer, m_dma, m_ppu), m_cpu(m_bus), m_debugger(m_bus) {
     m_scheduler.attachDebugger(m_debugger);
     m_cpu.attachDebugger(m_debugger);
     m_ppu.attachDebugger(m_debugger);

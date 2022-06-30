@@ -130,7 +130,6 @@ const lest::test thumb_disassembly_tests[] = {
         EXPECT(emu::thumbDisassembleUnconditionalBranch(0xE3FD) == "b #0x7fe");
     },
 
-    //Long Branch Link Tests will go here
     CASE("Long Branch Link Instructions") {
         EXPECT(emu::thumbDisassembleLongBranch(0xF802, 0, 0xF000) == "bl #0x6");
         EXPECT(emu::thumbDisassembleLongBranch(0xF862, 0x1000, 0xF000) == "bl #0x10c6");
@@ -139,7 +138,7 @@ const lest::test thumb_disassembly_tests[] = {
         EXPECT(emu::thumbDisassembleLongBranch(0xF7FF, 0, 0) == "bl");
     },
 
-    CASE("Invalid Instructions") {
-        EXPECT(emu::thumbDisassembleInvalid(0xADD0) == "Invalid Instruction");
+    CASE("Undefined") {
+        EXPECT(emu::thumbDisassembleUndefined(0xB880) == "undefined");
     }
 };

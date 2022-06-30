@@ -9,8 +9,8 @@
 namespace emu {
 
 /* 
- * The CPU is an ARM7TDMI that uses the ARMv4TM architecture which supports the ARM
- * and THUMB instruction sets.
+ * The CPU is an ARM7TDMI that uses the ARMv4T architecture which supports 
+ * the 32-bit ARM and 16-bit THUMB instruction sets.
  */
 class CPU {
 public:
@@ -38,14 +38,12 @@ private:
     Bus &m_bus;
 
     auto get_reg_ref(u8 reg, u8 mode = 0) -> u32&;
+    auto get_reg_banked(u8 reg, u8 mode = 0) -> u32&;
     auto get_reg(u8 reg, u8 mode = 0) -> u32;
     void set_reg(u8 reg, u32 value, u8 mode = 0);
-    auto get_spsr(u8 mode = 0) -> u32&;
+    auto get_spsr(u8 mode = 0) -> StatusRegister&;
 
-    auto get_flag(Flag flag) -> bool;
-    void set_flag(Flag flag, bool set);
     auto passed(u8 condition) -> bool;
-    void change_mode(PrivilegeMode mode);
     auto mode_from_bits(u8 mode) -> PrivilegeMode;
     auto privileged() -> bool;
 

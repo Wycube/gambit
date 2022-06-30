@@ -64,8 +64,8 @@ include_directories(${PROJECT_SOURCE_DIR}/lib/glad/include)
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/glad)
 
 # Add Dear ImGui
-include_directories(${PROJECT_SOURCE_DIR}/lib/imgui-1.86)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/imgui-1.86)
+include_directories(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
+add_subdirectory(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
 
 # Tests (if enabled)
 if(BUILD_TESTS)

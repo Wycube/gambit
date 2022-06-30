@@ -1,29 +1,32 @@
 #pragma once
 
 #include "core/cpu/Types.hpp"
+#include "GamePak.hpp"
 #include "core/Scheduler.hpp"
 #include "core/Keypad.hpp"
-#include "GamePak.hpp"
+#include "core/Timer.hpp"
 #include "common/Types.hpp"
 #include <vector>
 
 
 namespace emu {
 
-class PPU;
 class DMA;
+class PPU;
 
 class Bus {
 public:
 
-    Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu, DMA &dma);
+    Bus(Scheduler &scheduler, Keypad &keypad, Timer &timer, DMA &dma, PPU &ppu);
 
     void reset();
 
     void cycle(u32 cycles = 1);
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16; 
+    auto readRotated16(u32 address) -> u32;
     auto read32(u32 address) -> u32;
+    auto readRotated32(u32 address) -> u32;
     void write8(u32 address, u8 value);
     void write16(u32 address, u16 value);
     void write32(u32 address, u32 value);
@@ -54,8 +57,9 @@ private:
     GamePak m_pak;
     Scheduler &m_scheduler;
     Keypad &m_keypad;
-    PPU &m_ppu;
+    Timer &m_timer;
     DMA &m_dma;
+    PPU &m_ppu;
 
 
     auto readByte(u32 address) -> u8;

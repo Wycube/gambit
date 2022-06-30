@@ -2,6 +2,7 @@
 #include "common/StringUtils.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
+#include <fmt/format.h>
 #include <cassert>
 
 
@@ -28,7 +29,7 @@ std::string (*thumbDisassemblyFuncs[21])(u16, u32, u16) = {
     thumbDisassembleSoftwareInterrupt,
     thumbDisassembleUnconditionalBranch,
     thumbDisassembleLongBranch,
-    thumbDisassembleInvalid
+    thumbDisassembleUndefined
 };
 
 
@@ -38,36 +39,24 @@ auto thumbDisassembleMoveShifted(u16 instruction, u32 address, u16 prev) -> std:
         "lsl", "lsr", "asr"
     };
 
-    u8 opcode = (instruction >> 11) & 0x3;
-    u8 immed_5 = (instruction >> 6) & 0x1F;
-    u8 rm = (instruction >> 3) & 0x7;
-    u8 rd = instruction & 0x7;
+    u8 opcode = bits::get<11, 2>(instruction);
+    u8 immed_5 = bits::get<6, 5>(instruction);
+    u8 rm = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
 
-    std::string disassembly;
-    disassembly = OPCODE_MNEMONICS[opcode];
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", r" + std::to_string(rm);
-    disassembly += ", #0x" + common::hex(immed_5 == 0 ? 32 : immed_5);
-
-    return disassembly;
+    return fmt::format("{} r{}, r{}, #0x{:x}", OPCODE_MNEMONICS[opcode], rd, rm, immed_5 == 0 ? 32 : immed_5);
 }
 
 //ADD|SUB <Rd>, <Rn>, #<immed_3>
 //ADD|SUB <Rd>, <Rn>, <Rm>
 auto thumbDisassembleAddSubtract(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool i = (instruction >> 10) & 0x1;
-    bool s = (instruction >> 9) & 0x1;
-    u8 rm_immed = (instruction >> 6) & 0x7;
-    u8 rn = (instruction >> 3) & 0x7;
-    u8 rd = instruction & 0x7;
+    bool i = bits::get_bit<10>(instruction);
+    bool s = bits::get_bit<9>(instruction);
+    u8 rm_immed = bits::get<6, 3>(instruction);
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
 
-    std::string disassembly;
-    disassembly = s ? "sub" : "add";
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", r" + std::to_string(rn);
-    disassembly += i ? ", #" + std::to_string(rm_immed) : ", r" + std::to_string(rm_immed);
-
-    return disassembly;
+    return fmt::format("{} r{}, r{}, {}{}", s ? "sub" : "add", rd, rn, i ? "#" : "r", rm_immed);
 }
 
 //MOV|CMP|ADD|SUB <Rd/Rn>, #<immed_8>
@@ -76,16 +65,11 @@ auto thumbDisassembleProcessImmediate(u16 instruction, u32 address, u16 prev) ->
         "mov", "cmp", "add", "sub"
     };
 
-    u8 opcode = (instruction >> 11) & 0x3;
-    u8 rd_rn = (instruction >> 8) & 0x7;
-    u8 immed_8 = instruction & 0xFF;
+    u8 opcode = bits::get<11, 2>(instruction);
+    u8 rd_rn = bits::get<8, 3>(instruction);
+    u8 immed_8 = bits::get<0, 8>(instruction);
 
-    std::string disassembly;
-    disassembly = OPCODE_MNEMONICS[opcode];
-    disassembly += " r" + std::to_string(rd_rn);
-    disassembly += ", #0x" + common::hex(immed_8);
-
-    return disassembly;
+    return fmt::format("{} r{}, #0x{:x}", OPCODE_MNEMONICS[opcode], rd_rn, immed_8);
 }
 
 //<opcode> <Rd/Rn>, <Rm>
@@ -95,79 +79,52 @@ auto thumbDisassembleALUOperation(u16 instruction, u32 address, u16 prev) -> std
         "tst", "neg", "cmp", "cmn", "orr", "mul", "bic", "mvn"
     };
 
-    u8 opcode = (instruction >> 6) & 0xF;
-    u8 rm = (instruction >> 3) & 0x7;
-    u8 rd_rn = instruction & 0x7;
+    u8 opcode = bits::get<6, 4>(instruction);
+    u8 rm = bits::get<3, 3>(instruction);
+    u8 rd_rn = bits::get<0, 3>(instruction);
 
-    std::string disassembly;
-    disassembly = OPCODE_MNEMONICS[opcode];
-    disassembly += " r" + std::to_string(rd_rn);
-    disassembly += ", r" + std::to_string(rm);
-
-    return disassembly;
+    return fmt::format("{} r{}, r{}", OPCODE_MNEMONICS[opcode], rd_rn, rm);
 }
 
-//ADD|CMP|MOV <Rd/Rn>, <Rm>
+//ADD|CMP|MOV <Rd/Rn>, <Rs>
 auto thumbDisassembleHiRegisterOp(u16 instruction, u32 address, u16 prev) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "add", "cmp", "mov"
     };
 
-    u8 opcode = (instruction >> 8) & 0x3;
-    u8 rm = (instruction >> 3) & 0xF;
-    u8 rd_rn = ((instruction >> 4) & 0x8) | (instruction & 0x7);
-
+    u8 opcode = bits::get<8, 2>(instruction);
+    u8 rs = bits::get_bit<6>(instruction) << 3 | bits::get<3, 3>(instruction);
+    u8 rd = bits::get_bit<7>(instruction) << 3 | bits::get<0, 3>(instruction);
     assert(opcode != 0x3);
 
-    std::string disassembly;
-    disassembly = OPCODE_MNEMONICS[opcode];
-    disassembly += " r" + std::to_string(rd_rn);
-    disassembly += ", r" + std::to_string(rm);
-
-    return disassembly;
+    return fmt::format("{} r{}, r{}", OPCODE_MNEMONICS[opcode], rd, rs);
 }
 
 //BX|BLX <Rm>
 auto thumbDisassembleBranchExchange(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool link = (instruction >> 7) & 0x1;
-    u8 rm = (instruction >> 3) & 0xF;
+    bool link = bits::get_bit<7>(instruction);
+    u8 rm = bits::get<3, 4>(instruction);
 
-    std::string disassembly;
-    disassembly = link ? "blx" : "bx";
-    disassembly += " r" + std::to_string(rm);
-
-    return disassembly;
+    return fmt::format("b{}x r{}", link ? "l" : "", rm);
 }
 
 //LDR <Rd>, [PC, #<immed_8>*4]
 auto thumbDisassemblePCRelativeLoad(u16 instruction, u32 address, u16 prev) -> std::string {
-    u8 rd = (instruction >> 8) & 0x7;
-    u8 immed_8 = instruction & 0xFF;
+    u8 rd = bits::get<8, 3>(instruction);
+    u16 offset = bits::get<0, 8>(instruction) << 2;
 
-    std::string disassembly;
-    disassembly = "ldr";
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", [pc, #0x" + common::hex(immed_8 * 4) + "]";
-
-    return disassembly;
+    return fmt::format("ldr r{}, [pc, #0x{:x}]", rd, offset);
 }
 
 //STR|LDR{B} <Rd>, [<Rn>, <Rm>]
 auto thumbDisassembleLoadStoreRegister(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool l = (instruction >> 11) & 0x1;
-    bool b = (instruction >> 10) & 0x1;
-    u8 rm = (instruction >> 6) & 0x7;
-    u8 rn = (instruction >> 3) & 0x7;
-    u8 rd = instruction & 0x7;
+    bool l = bits::get_bit<11>(instruction);
+    bool b = bits::get_bit<10>(instruction);
+    u8 rm = bits::get<6, 3>(instruction);
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
 
-    std::string disassembly;
-    disassembly = l ? "ldr" : "str";
-    disassembly += b ? "b" : "";
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", [r" + std::to_string(rn);
-    disassembly += ", r" + std::to_string(rm) + "]";
-
-    return disassembly;
+    return fmt::format("{}{} r{}, [r{}, r{}]", l ? "ldr" : "str", b ? "b" : "", rd, rn, rm);
 }
 
 //STRH|LDRSB|LDRH|LDRSH <Rd>, [<Rn>, <Rm>]
@@ -176,152 +133,102 @@ auto thumbDisassembleLoadStoreSigned(u16 instruction, u32 address, u16 prev) -> 
         "strh", "ldrsb", "ldrh", "ldrsh"
     };
 
-    u8 hs = (instruction >> 10) & 0x3;
-    u8 rm = (instruction >> 6) & 0x7;
-    u8 rn = (instruction >> 3) & 0x7;
-    u8 rd = instruction & 0x7;
+    u8 hs = bits::get<10, 2>(instruction);
+    u8 rm = bits::get<6, 3>(instruction);
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
 
-    std::string disassembly;
-    disassembly = MNEMONICS[hs];
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", [r" + std::to_string(rn);
-    disassembly += ", r" + std::to_string(rm) + "]";
-
-    return disassembly;
+    return fmt::format("{} r{}, [r{}, r{}]", MNEMONICS[hs], rd, rn, rm);
 }
 
 //STR|LDR <Rd>, [<Rn>, #<immed_5>*4]
 //STRB|LDRB <Rd>, [<Rn>, #<immed_5>]
 auto thumbDisassembleLoadStoreImmediate(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool b = (instruction >> 12) & 0x1;
-    bool l = (instruction >> 11) & 0x1;
-    u8 immed_5 = (instruction >> 6) & 0x1F;
-    immed_5 <<= b ? 0 : 2;
-    u8 rn = (instruction >> 3) & 0x7;
-    u8 rd = instruction & 0x7;
+    bool b = bits::get_bit<12>(instruction);
+    bool l = bits::get_bit<11>(instruction);
+    u8 offset = bits::get<6, 5>(instruction);
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
 
-    std::string disassembly;
-    disassembly = l ? "ldr" : "str";
-    disassembly += b ? "b" : "";
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", [r" + std::to_string(rn);
-    disassembly += ", #0x" + common::hex(immed_5) + "]";
+    if(!b) {
+        offset <<= 2;
+    }
 
-    return disassembly;
+    return fmt::format("{}{} r{}, [r{}, #0x{:x}]", l ? "ldr" : "str", b ? "b" : "", rd, rn, offset);
 }
 
 //STRH|LDRH <Rd>, [<Rn>, #<immed_5>*2]
 auto thumbDisassembleLoadStoreHalfword(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool l = (instruction >> 11) & 0x1;
-    u8 immed_5 = (instruction >> 6) & 0x1F;
-    u8 rn = (instruction >> 3) & 0x7;
-    u8 rd = instruction & 0x7;
+    bool l = bits::get_bit<11>(instruction);
+    u8 offset = bits::get<6, 5>(instruction) << 1;
+    u8 rn = bits::get<3, 3>(instruction);
+    u8 rd = bits::get<0, 3>(instruction);
 
-    std::string disassembly;
-    disassembly = l ? "ldrh" : "strh";
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", [r" + std::to_string(rn);
-    disassembly += ", #0x" + common::hex(immed_5 * 2) + "]";
-
-    return disassembly;
+    return fmt::format("{} r{}, [r{}, #0x{:x}]", l ? "ldrh" : "strh", rd, rn, offset);
 }
 
 //STR|LDR <Rd>, [SP, #<immed_8>*4]
 auto thumbDisassembleSPRelativeLoadStore(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool l = (instruction >> 11) & 0x1;
-    u8 rd = (instruction >> 8) & 0x7;
-    u8 immed_8 = instruction & 0xFF;
+    bool l = bits::get_bit<11>(instruction);
+    u8 rd = bits::get<8, 3>(instruction);
+    u16 offset = bits::get<0, 8>(instruction) << 2;
 
-    std::string disassembly;
-    disassembly = l ? "ldr" : "str";
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", [sp, #0x" + common::hex(immed_8 * 4) + "]";
-
-    return disassembly;
+    return fmt::format("{} r{}, [sp, #0x{:x}]", l ? "ldr" : "str", rd, offset);
 }
 
 //ADD <Rd>, PC|SP, #<immed_8>*4
 auto thumbDisassembleLoadAddress(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool sp = (instruction >> 11) & 0x1;
-    u8 rd = (instruction >> 8) & 0x7;
-    u8 immed_8 = instruction & 0xFF;
+    bool sp = bits::get_bit<11>(instruction);
+    u8 rd = bits::get<8, 3>(instruction);
+    u16 offset = bits::get<0, 8>(instruction) << 2;
 
-    std::string disassembly;
-    disassembly = "add";
-    disassembly += " r" + std::to_string(rd);
-    disassembly += ", ";
-    disassembly +=  sp ? "sp" : "pc";
-    disassembly += ", #0x" + common::hex(immed_8 * 4);
-
-    return disassembly;
+    return fmt::format("add r{}, {}, #0x{:x}", rd, sp ? "sp" : "pc", offset);
 }
 
 //ADD SP, #{-}<immed_7>*4
 auto thumbDisassembleAdjustSP(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool s = bits::get<7, 1>(instruction);
-    u8 immed_7 = bits::get<0, 7>(instruction);
+    bool s = bits::get_bit<7>(instruction);
+    u16 offset = bits::get<0, 7>(instruction) << 2;
 
-    std::string disassembly;
-    disassembly = "add sp, ";
-    disassembly += "#";
-    disassembly += s ? "-" : "";
-    disassembly += "0x" + common::hex(immed_7 * 4);
-
-    return disassembly;
+    return fmt::format("add sp, #{}0x{:x}", s ? "-" : "", offset);
 }
 
 //PUSH <registers> - If the R bit is set then LR is in the register list
 //POP <registers>  - If the R bit is set then PC is in the register list
 auto thumbDisassemblePushPopRegisters(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool l = (instruction >> 11) & 0x1;
-    bool r = (instruction >> 8) & 0x1;
-    u8 registers = instruction & 0xFF;
-
-    std::string disassembly;
-    disassembly = l ? "pop" : "push";
-    disassembly += " {";
+    bool l = bits::get_bit<11>(instruction);
+    bool r = bits::get_bit<8>(instruction);
+    u8 registers = bits::get<0, 8>(instruction);
+    std::string last_reg = l ? "pc" : "lr";
+    std::string register_list;
     
     //Generate a list of the registers based on the set bits
     for(int i = 0; i < 8; i++) {
-        bool set = (registers >> i) & 0x1;
-
-        if(set) {
-            //If there are 1s, or in this case registers in the list, add a comma
-            disassembly += (registers & ((1 << i) - 1)) != 0 ? ", " : "";
-            disassembly += "r" + std::to_string(i);
+        if(bits::get_bit(registers, i)) {
+            //If there are 1s, or in this case a register in the list before this one, add a comma
+            register_list += fmt::format("{}r{}", bits::get(0, i, registers) != 0 ? ", " : "", i);
         }
     }
-
-    disassembly += r ? l ? ", pc}" : ", lr}" : "}";
-
-    return disassembly;
+    
+    return fmt::format("{} {{{}{}{}}}", l ? "pop" : "push", register_list, registers != 0 && r ? ", " : "", r ? last_reg : "");
 }
 
 //STMIA|LDMIA <Rn>!, <registers>
 auto thumbDisassembleLoadStoreMultiple(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool l = (instruction >> 11) & 0x1;
-    u8 rn = (instruction >> 8) & 0x7;
-    u8 registers = instruction & 0xFF;
-
-    std::string disassembly;
-    disassembly = l ? "ldmia" : "stmia";
-    disassembly += " r" + std::to_string(rn) + "!";
-    disassembly += ", {";
+    bool l = bits::get_bit<11>(instruction);
+    u8 rn = bits::get<8, 3>(instruction);
+    u8 registers = bits::get<0, 8>(instruction);
+    std::string register_list;
 
     //Generate a list of the registers based on the set bits
     for(int i = 0; i < 8; i++) {
-        bool set = (registers >> i) & 0x1;
-
-        if(set) {
-            //If there are 1s, or in this case registers in the list, add a comma
-            disassembly += (registers & ((1 << i) - 1)) != 0 ? ", " : "";
-            disassembly += "r" + std::to_string(i);
+        if(bits::get_bit(registers, i)) {
+            //If there are 1s, or in this case a register in the list before this one, add a comma
+            register_list += fmt::format("{}r{}", bits::get(0, i, registers) != 0 ? ", " : "", i);
         }
     }
-
-    disassembly += "}";
-
-    return disassembly;
+    
+    return fmt::format("{}ia r{}!, {{{}}}", l ? "ldm" : "stm", rn, register_list);
 }
 
 //B<cond> #<target_address>
@@ -331,64 +238,40 @@ auto thumbDisassembleConditionalBranch(u16 instruction, u32 address, u16 prev) -
         "hi", "ls", "ge", "lt", "gt", "le", "",   "nv"
     };
 
-    u8 condition = (instruction >> 8) & 0xF;
-    s32 immediate = instruction & 0xFF;
-    immediate <<= 1;
-    immediate |= (immediate >> 8) & 0x1 ? 0xFFFFFF00 : 0; //Sign extend 8-bit to 32-bit
+    u8 condition = bits::get<8, 4>(instruction);
+    s32 immediate = bits::sign_extend<9, s32>(bits::get<0, 8>(instruction) << 1);
 
-    std::string disassembly;
-    disassembly = "b";
-    disassembly += CONDITION_CODES[condition];
-    disassembly += " #";
-    disassembly += "0x" + common::hex(address + 4 + immediate);
-
-    return disassembly;
+    return fmt::format("b{} #0x{:x}", CONDITION_CODES[condition], address + 4 + immediate);
 }
 
 //SWI <immed_8>
 auto thumbDisassembleSoftwareInterrupt(u16 instruction, u32 address, u16 prev) -> std::string {
-    u8 immed_8 = instruction & 0xFF;
+    u8 comment = bits::get<0, 8>(instruction);
 
-    std::string disassembly;
-    disassembly = "swi";
-    disassembly += " #" + std::to_string(immed_8);
-
-    return disassembly;
+    return fmt::format("swi #{}", comment);
 }
 
 //B #<target_address>
 auto thumbDisassembleUnconditionalBranch(u16 instruction, u32 address, u16 prev) -> std::string {
-    s32 immediate = bits::get<0, 11>(instruction);
-    immediate = bits::sign_extend<12, s32>(immediate << 1);
+    s32 immediate = bits::sign_extend<12, s32>(bits::get<0, 11>(instruction) << 1);
 
-    std::string disassembly;
-    disassembly = "b";
-    disassembly += " #";
-    disassembly += "0x" + common::hex(address + 4 + immediate);
-
-    return disassembly;
+    return fmt::format("b #0x{:x}", address + 4 + immediate);
 }
 
 //BL #<target_address>
 auto thumbDisassembleLongBranch(u16 instruction, u32 address, u16 prev) -> std::string {
-    bool second = bits::get<11, 1>(instruction);
-
-    std::string disassembly;
+    bool second = bits::get_bit<11>(instruction);
 
     if(second) {
-        //assert((bits::get<11, 5>(prev)) == 0x1E);
-
         s32 offset = bits::sign_extend<23, s32>((bits::get<0, 11>(prev) << 12) | (bits::get<0, 11>(instruction) << 1));
-        disassembly = "bl #0x" + common::hex(address + 2 + offset);
+        return fmt::format("bl #0x{:x}", address + 2 + offset);
     } else {
-        disassembly = "bl";
+        return "bl";
     }
-
-    return disassembly;
 }
 
-auto thumbDisassembleInvalid(u16 instruction, u32 address, u16 prev) -> std::string {
-    return "Invalid Instruction";
+auto thumbDisassembleUndefined(u16 instruction, u32 address, u16 prev) -> std::string {
+    return "undefined";
 }
 
 } //namespace emu

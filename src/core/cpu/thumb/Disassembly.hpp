@@ -29,6 +29,6 @@ auto thumbDisassembleConditionalBranch(u16 instruction, u32 address = 0, u16 pre
 auto thumbDisassembleSoftwareInterrupt(u16 instruction, u32 address = 0, u16 prev = 0) -> std::string;
 auto thumbDisassembleUnconditionalBranch(u16 instruction, u32 address = 0, u16 prev = 0) -> std::string;
 auto thumbDisassembleLongBranch(u16 instruction, u32 address = 0, u16 prev = 0) -> std::string;
-auto thumbDisassembleInvalid(u16 instruction, u32 address = 0, u16 prev = 0) -> std::string;
+auto thumbDisassembleUndefined(u16 instruction, u32 address = 0, u16 prev = 0) -> std::string;
 
 }; //namespace emu

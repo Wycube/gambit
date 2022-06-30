@@ -2,6 +2,7 @@
 #include "arm/Instruction.hpp"
 #include "thumb/Instruction.hpp"
 #include "common/Log.hpp"
+#include "common/Bits.hpp"
 
 
 namespace emu {
@@ -11,21 +12,41 @@ CPU::CPU(Bus &bus) : m_bus(bus) {
 }
 
 void CPU::reset() {
-    m_state.exec = EXEC_ARM;
-    m_state.cpsr = 0;
-    change_mode(MODE_SYSTEM);
+    //Setup register banks
+    for(int i = 0; i < 16; i++) {
+        m_state.banks[0][i] = &get_reg_ref(i, MODE_SYSTEM);
+    }
+    for(int i = 0; i < 16; i++) {
+        m_state.banks[1][i] = &get_reg_ref(i, MODE_FIQ);
+    }
+    for(int i = 0; i < 16; i++) {
+        m_state.banks[2][i] = &get_reg_ref(i, MODE_IRQ);
+    }
+    for(int i = 0; i < 16; i++) {
+        m_state.banks[3][i] = &get_reg_ref(i, MODE_SUPERVISOR);
+    }
+    for(int i = 0; i < 16; i++) {
+        m_state.banks[4][i] = &get_reg_ref(i, MODE_ABORT);
+    }
+    for(int i = 0; i < 16; i++) {
+        m_state.banks[5][i] = &get_reg_ref(i, MODE_UNDEFINED);
+    }
+
+    m_state.cpsr.fromInt(0);
+    m_state.cpsr.mode = MODE_SYSTEM;
     std::memset(m_state.spsr, 0, sizeof(m_state.spsr));
     std::memset(m_state.regs, 0, sizeof(m_state.regs));
     set_reg(13, 0x03007F00);
     set_reg(13, 0x03007FA0, MODE_IRQ);
     set_reg(13, 0x03007FE0, MODE_SUPERVISOR);
-    m_state.pc = 0x08000000;
+    set_reg(14, 0x08000000);
+    set_reg(15, 0x08000000);
 }
 
 void CPU::step() {
     service_interrupt();
 
-    if(m_state.exec == EXEC_ARM) {
+    if(!m_state.cpsr.t) {
         u32 instruction = m_state.pipeline[0];
 
         m_state.pipeline[0] = m_state.pipeline[1];
@@ -38,7 +59,7 @@ void CPU::step() {
         if(passed(instruction >> 28)) {
             execute_arm(instruction);
         }
-    } else if(m_state.exec == EXEC_THUMB) {
+    } else {
         u16 instruction = m_state.pipeline[0];
 
         m_state.pipeline[0] = m_state.pipeline[1];
@@ -53,11 +74,11 @@ void CPU::step() {
 }
 
 void CPU::flushPipeline() {
-    if(m_state.exec == EXEC_ARM) {
+    if(!m_state.cpsr.t) {
         m_state.pipeline[0] = m_bus.read32(m_state.pc);
         m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
         m_state.pc += 4;
-    } else if(m_state.exec == EXEC_THUMB) {
+    } else {
         m_state.pipeline[0] = m_bus.read16(m_state.pc);
         m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
         m_state.pc += 2;
@@ -72,7 +93,7 @@ auto CPU::get_reg_ref(u8 reg, u8 mode) -> u32& {
     reg &= 0xF;
 
     if(mode == 0) {
-        mode = m_state.mode;
+        mode = m_state.cpsr.mode;
     }
 
     if(reg < 13) {
@@ -99,21 +120,43 @@ auto CPU::get_reg_ref(u8 reg, u8 mode) -> u32& {
     }
 }
 
+auto CPU::get_reg_banked(u8 reg, u8 mode) -> u32& {
+    reg &= 0xF;
+
+    if(mode == 0) {
+        mode = m_state.cpsr.mode;
+    }
+
+    switch(mode) {
+        case MODE_USER :
+        case MODE_SYSTEM : return *m_state.banks[0][reg];
+        case MODE_FIQ : return *m_state.banks[1][reg];
+        case MODE_IRQ : return *m_state.banks[2][reg];
+        case MODE_SUPERVISOR : return *m_state.banks[3][reg];
+        case MODE_ABORT : return *m_state.banks[4][reg];
+        case MODE_UNDEFINED : return *m_state.banks[5][reg];
+        default : LOG_FATAL("Mode {:05X}, is not a valid mode!", mode);
+    }
+}
+
 auto CPU::get_reg(u8 reg, u8 mode) -> u32 {
-    return get_reg_ref(reg, mode);
+    return get_reg_banked(reg, mode);
+    //return get_reg_ref(reg, mode);
 }
 
 void CPU::set_reg(u8 reg, u32 value, u8 mode) {
+    //Automatically align PC
     if(reg == 15) {
-        value &= m_state.exec == EXEC_THUMB ? ~1 : ~3;
+        value = m_state.cpsr.t ? bits::align<u16>(value) : bits::align<u32>(value);
     }
 
-    get_reg_ref(reg, mode) = value;
+    //get_reg_ref(reg, mode) = value;
+    get_reg_banked(reg, mode) = value;
 }
 
-auto CPU::get_spsr(u8 mode) -> u32& {
+auto CPU::get_spsr(u8 mode) -> StatusRegister& {
     if(mode == 0) {
-        mode = m_state.mode;
+        mode = m_state.cpsr.mode;
     }
 
     switch(mode) {
@@ -128,44 +171,29 @@ auto CPU::get_spsr(u8 mode) -> u32& {
     }
 }
 
-auto CPU::get_flag(Flag flag) -> bool {
-    return m_state.cpsr & flag;
-}
-
-void CPU::set_flag(Flag flag, bool set) {
-    m_state.cpsr &= ~flag;
-    m_state.cpsr |= flag * set;
-}
-
 auto CPU::passed(u8 condition) -> bool {
     condition &= 0xF;
 
     switch(condition) {
-        case EQ : return get_flag(FLAG_ZERO);
-        case NE : return !get_flag(FLAG_ZERO);
-        case CS : return get_flag(FLAG_CARRY);
-        case CC : return !get_flag(FLAG_CARRY);
-        case MI : return get_flag(FLAG_NEGATIVE);
-        case PL : return !get_flag(FLAG_NEGATIVE);
-        case VS : return get_flag(FLAG_OVERFLOW);
-        case VC : return !get_flag(FLAG_OVERFLOW);
-        case HI : return get_flag(FLAG_CARRY) && !get_flag(FLAG_ZERO);
-        case LS : return !get_flag(FLAG_CARRY) || get_flag(FLAG_ZERO);
-        case GE : return get_flag(FLAG_NEGATIVE) == get_flag(FLAG_OVERFLOW);
-        case LT : return get_flag(FLAG_NEGATIVE) != get_flag(FLAG_OVERFLOW);
-        case GT : return !get_flag(FLAG_ZERO) && (get_flag(FLAG_NEGATIVE) == get_flag(FLAG_OVERFLOW));
-        case LE : return get_flag(FLAG_ZERO) || (get_flag(FLAG_NEGATIVE) != get_flag(FLAG_OVERFLOW));
+        case EQ : return m_state.cpsr.z;
+        case NE : return !m_state.cpsr.z;
+        case CS : return m_state.cpsr.c;
+        case CC : return !m_state.cpsr.c;
+        case MI : return m_state.cpsr.n;
+        case PL : return !m_state.cpsr.n;
+        case VS : return m_state.cpsr.v;
+        case VC : return !m_state.cpsr.v;
+        case HI : return m_state.cpsr.c && !m_state.cpsr.z;
+        case LS : return !m_state.cpsr.c || m_state.cpsr.z;
+        case GE : return m_state.cpsr.n == m_state.cpsr.v;
+        case LT : return m_state.cpsr.n != m_state.cpsr.v;
+        case GT : return !m_state.cpsr.z && (m_state.cpsr.n == m_state.cpsr.v);
+        case LE : return m_state.cpsr.z || (m_state.cpsr.n != m_state.cpsr.v);
         case AL : return true;
         case NV : return false; //reserved on armv4T
     }
 
     return false;
-}
-
-void CPU::change_mode(PrivilegeMode mode) {
-    m_state.mode = mode;
-    m_state.cpsr &= ~0x1F;
-    m_state.cpsr |= mode;
 }
 
 auto CPU::mode_from_bits(u8 mode) -> PrivilegeMode {
@@ -183,7 +211,7 @@ auto CPU::mode_from_bits(u8 mode) -> PrivilegeMode {
 
 //Returns true if the CPU is currently in a privileged mode (User is the only non-privileged mode though).
 auto CPU::privileged() -> bool {
-    return m_state.mode != MODE_USER;
+    return m_state.cpsr.mode != MODE_USER;
 }
 
 void CPU::execute_arm(u32 instruction) {
@@ -195,11 +223,15 @@ void CPU::execute_arm(u32 instruction) {
         case ARM_DATA_PROCESSING : armDataProcessing(instruction); break;
         case ARM_MULTIPLY : armMultiply(instruction); break;
         case ARM_MULTIPLY_LONG : armMultiplyLong(instruction); break;
-        case ARM_SINGLE_DATA_SWAP : armDataSwap(instruction); break;
+        case ARM_SINGLE_DATA_SWAP : armSingleDataSwap(instruction); break;
         case ARM_HALFWORD_DATA_TRANSFER : armHalfwordTransfer(instruction); break;
         case ARM_SINGLE_DATA_TRANSFER : armSingleTransfer(instruction); break;
+        case ARM_UNDEFINED : armUndefined(instruction); break;
         case ARM_BLOCK_DATA_TRANSFER : armBlockTransfer(instruction); break;
         case ARM_BRANCH : armBranch(instruction); break;
+        case ARM_COPROCESSOR_DATA_TRANSFER :
+        case ARM_COPROCESSOR_DATA_OPERATION :
+        case ARM_COPROCESSOR_REGISTER_TRANSFER : armUndefined(instruction); break;
         case ARM_SOFTWARE_INTERRUPT : armSoftwareInterrupt(instruction); break;
         default: armUnimplemented(instruction);
     }
@@ -229,6 +261,7 @@ void CPU::execute_thumb(u16 instruction) {
         case THUMB_SOFTWARE_INTERRUPT : thumbSoftwareInterrupt(instruction); break;
         case THUMB_UNCONDITIONAL_BRANCH : thumbUnconditionalBranch(instruction); break;
         case THUMB_LONG_BRANCH : thumbLongBranch(instruction); break;
+        case THUMB_UNDEFINED : thumbUndefined(instruction); break;
         default: thumbUnimplemented(instruction);
     }
 }
@@ -248,8 +281,9 @@ void CPU::service_interrupt() {
         bool request = (IF << i) & 1;
 
         if(enabled && request) {
-            m_state.exec = EXEC_ARM;
-            m_state.pc = 0x18;
+            LOG_DEBUG("Interrupt serviced from source {}", i);
+            m_state.cpsr.t = false;
+            m_state.pc = 0x00000018;
             flushPipeline();
             break;
         }

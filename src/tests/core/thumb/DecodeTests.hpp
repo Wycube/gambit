@@ -33,5 +33,6 @@ const lest::test thumb_decode_tests[] = {
     THUMB_DECODE_CASE("Conditional Branch", 0xD3CF, emu::THUMB_CONDITIONAL_BRANCH, "bcc #-0x5e"),
     THUMB_DECODE_CASE("Software Interrupt", 0xDF19, emu::THUMB_SOFTWARE_INTERRUPT, "swi #25"),
     THUMB_DECODE_CASE("Unconditional Branch", 0xE4EB, emu::THUMB_UNCONDITIONAL_BRANCH, "b #-0x626"),
-    THUMB_DECODE_CASE("Long Branch with Link", 0xF7FF, emu::THUMB_LONG_BRANCH, "bl")
+    THUMB_DECODE_CASE("Long Branch with Link", 0xF7FF, emu::THUMB_LONG_BRANCH, "bl"),
+    THUMB_DECODE_CASE("Undefined", 0xB880, emu::THUMB_UNDEFINED, "undefined")
 };

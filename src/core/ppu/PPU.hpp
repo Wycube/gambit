@@ -21,7 +21,7 @@ public:
 
     void reset();
 
-    void run(u32 current, u32 late);
+    //void run(u32 current, u32 late);
 
     auto readIO(u32 address) -> u8;
     auto readPalette(u32 address) -> u8;
@@ -38,7 +38,7 @@ private:
 
     LCDState m_state;
     u8 m_line;
-    u16 m_dot;
+    //u16 m_dot;
 
     //Memory
     u16 m_dispcnt;

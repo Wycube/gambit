@@ -58,10 +58,10 @@ const lest::test arm_disassembly_tests[] = {
     },
 
     CASE("Single Data Swap Instructions") {
-        EXPECT(emu::armDisassembleDataSwap(0xE1024095) == "swp r4, r5, [r2]");
-        EXPECT(emu::armDisassembleDataSwap(0x610FA092) == "swpvs r10, r2, [r15]");
-        EXPECT(emu::armDisassembleDataSwap(0xC14C3099) == "swpgtb r3, r9, [r12]");
-        EXPECT(emu::armDisassembleDataSwap(0xE1401098) == "swpb r1, r8, [r0]");
+        EXPECT(emu::armDisassembleSingleDataSwap(0xE1024095) == "swp r4, r5, [r2]");
+        EXPECT(emu::armDisassembleSingleDataSwap(0x610FA092) == "swpvs r10, r2, [r15]");
+        EXPECT(emu::armDisassembleSingleDataSwap(0xC14C3099) == "swpgtb r3, r9, [r12]");
+        EXPECT(emu::armDisassembleSingleDataSwap(0xE1401098) == "swpb r1, r8, [r0]");
     },
 
     CASE("Halfword Data Transfer Instructions") {
@@ -117,9 +117,5 @@ const lest::test arm_disassembly_tests[] = {
     CASE("Software Interrupt Instructions") {
         EXPECT(emu::armDisassembleSoftwareInterrupt(0xEF000041) == "swi #65");
         EXPECT(emu::armDisassembleSoftwareInterrupt(0x1F07BFAD) == "swine #507821");
-    },
-
-    CASE("Invalid Instructions") {
-        EXPECT(emu::armDisassembleInvalid(0xDEADBEEF) == "Invalid Instruction");
     }
 };

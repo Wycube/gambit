@@ -2,8 +2,6 @@
 #include "common/Version.hpp"
 #include "common/Types.hpp"
 #include "common/Log.hpp"
-#include "common/Pattern.hpp"
-#include "common/StringUtils.hpp"
 #include "DebuggerUI.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -97,6 +95,7 @@ int main(int argc, char *argv[]) {
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui::StyleColorsDark();
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -158,19 +157,20 @@ int main(int argc, char *argv[]) {
     bool show_about = false;
     bool show_pak_info = false;
 
-    // u32 cycles_start = gba.getCurrentTimestamp();
-    // auto start = std::chrono::steady_clock::now();
+    u32 cycles_start = gba.getCurrentTimestamp();
+    auto start = std::chrono::steady_clock::now();
+    u32 clock_speed = 0;
 
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        // if(std::chrono::steady_clock::now() > (start + std::chrono::seconds(1))) {
-        //     start = std::chrono::steady_clock::now();
-        //     LOG_DEBUG("{}hz", gba.getCurrentTimestamp() - cycles_start);
-        //     cycles_start = gba.getCurrentTimestamp();
-        // }
+        if(std::chrono::steady_clock::now() > (start + std::chrono::seconds(1))) {
+            start = std::chrono::steady_clock::now();
+            clock_speed = gba.getCurrentTimestamp() - cycles_start;
+            cycles_start = gba.getCurrentTimestamp();
+        }
 
-        for(int i = 0; i < 500; i++) {
+        for(int i = 0; i < 700; i++) {
             if(debug_ui.running()) {
                 gba.step();
             }
@@ -180,8 +180,11 @@ int main(int argc, char *argv[]) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::BeginMainMenuBar();
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
 
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+        ImGui::BeginMainMenuBar();
         if(ImGui::BeginMenu("Debug")) {
             if(ImGui::MenuItem("CPU")) {
                 show_cpu_debug = true;
@@ -209,8 +212,17 @@ int main(int argc, char *argv[]) {
 
             ImGui::EndMenu();
         }
-
         ImGui::EndMainMenuBar();
+
+        ImGui::SetNextWindowSize(ImVec2(width, height - ImGui::GetFrameHeight() * 2));
+        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetFrameHeight()));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        if(ImGui::Begin("##GBA Screen", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoDecoration)) {
+            debug_ui.drawScreen();
+        }
+        ImGui::End();
+        ImGui::PopStyleVar(2);
+
 
         if(show_cpu_debug) {
             if(ImGui::Begin("CPU Debugger", &show_cpu_debug)) debug_ui.drawCPUDebugger();
@@ -263,13 +275,22 @@ int main(int argc, char *argv[]) {
             ImGui::End();
         }
 
-        ImGui::SetNextWindowPos(ImVec2(5.0f, ImGui::GetIO().DisplaySize.y - ImGui::GetTextLineHeight() * 3));
-        ImGui::SetNextWindowBgAlpha(0.5f);
-        if(ImGui::Begin("##InfoPanel_Window", 0, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs)) {
-            ImGui::LabelText("##FPS_Label", "FPS: %.1f", ImGui::GetIO().Framerate);
-            ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+        if(ImGui::BeginViewportSideBar("##StatusBar", ImGui::GetMainViewport(), ImGuiDir_Down, ImGui::GetFrameHeight(), ImGuiWindowFlags_MenuBar)) {
+            if(ImGui::BeginMenuBar()) {
+                ImGui::SetNextItemWidth(ImGui::CalcTextSize("FPS: 0000.0 ").x);
+                ImGui::LabelText("##FPS_Label", "FPS: %6.1f", ImGui::GetIO().Framerate);
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+                ImGui::SetNextItemWidth(ImGui::CalcTextSize("Clock Speed: 00000000 ").x);
+                ImGui::LabelText("##HZ_Label", "Clock Speed: %8i", clock_speed);
+                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+                ImGui::LabelText("##PERCENT_Label", "%.1f%%", (float)clock_speed / 16777216.0f * 100.0f);
+
+                ImGui::EndMenuBar();
+            }
         }
         ImGui::End();
+        ImGui::PopStyleVar();
 
         ImGui::Render();
         glClear(GL_COLOR_BUFFER_BIT);

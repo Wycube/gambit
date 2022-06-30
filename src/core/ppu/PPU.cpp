@@ -12,66 +12,67 @@ PPU::PPU(Scheduler &scheduler, Bus &bus) : m_scheduler(scheduler), m_bus(bus) {
 void PPU::reset() {
     m_scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960);
     m_state = DRAWING;
-    m_dot = 0;
-    m_line = 0;
+    m_dispcnt = 0x80;
+    m_dispstat = 0;
+    m_line = 126;
 }
 
-void PPU::run(u32 current, u32 late) {
-    m_dot++;
+// void PPU::run(u32 current, u32 late) {
+//     m_dot++;
 
-    if(m_state != VBLANK && m_line >= 160) {
-        m_state = VBLANK;
-        m_dispstat |= 1;
+//     if(m_state != VBLANK && m_line >= 160) {
+//         m_state = VBLANK;
+//         m_dispstat |= 1;
 
-        if(bits::get<3, 1>(m_dispstat)) {
-            m_bus.requestInterrupt(INT_LCD_VB);
-        }
-    } else if(m_state == VBLANK && m_line >= 227) {
-        m_state = DRAWING;
-        m_line = 0;
-        m_dot = 0;
-        m_dispstat &= ~3;
-    } else if(m_state == DRAWING && m_dot >= 240) {
-        m_state = HBLANK;
-        m_dispstat |= 2;
+//         if(bits::get<3, 1>(m_dispstat)) {
+//             m_bus.requestInterrupt(INT_LCD_VB);
+//         }
+//     } else if(m_state == VBLANK && m_line >= 227) {
+//         m_state = DRAWING;
+//         m_line = 0;
+//         m_dot = 0;
+//         m_dispstat &= ~3;
+//     } else if(m_state == DRAWING && m_dot >= 240) {
+//         m_state = HBLANK;
+//         m_dispstat |= 2;
 
-        u8 mode = bits::get<0, 3>(m_dispcnt);
-        if(mode == 0) {
-            writeLineMode0();
-        } else if(mode == 3) {
-            writeLineMode3();
-        } else if(mode == 4) {
-            writeLineMode4();
-        } else if(mode == 5) {
-            writeLineMode5();
-        }
+//         u8 mode = bits::get<0, 3>(m_dispcnt);
+//         if(mode == 0) {
+//             writeLineMode0();
+//         } else if(mode == 3) {
+//             writeLineMode3();
+//         } else if(mode == 4) {
+//             writeLineMode4();
+//         } else if(mode == 5) {
+//             writeLineMode5();
+//         }
 
-        //Request H-Blank interrupt if enabled
-        if(bits::get<4, 1>(m_dispstat)) {
-            m_bus.requestInterrupt(INT_LCD_HB);
-        }
-    } else if(m_dot >= 308) {
-        m_line++;
-        m_dot = 0;
+//         //Request H-Blank interrupt if enabled
+//         if(bits::get<4, 1>(m_dispstat)) {
+//             m_bus.requestInterrupt(INT_LCD_HB);
+//         }
+//     } else if(m_dot >= 308) {
+//         m_line++;
+//         m_dot = 0;
 
-        m_state = m_state == VBLANK ? VBLANK : DRAWING;
+//         m_state = m_state == VBLANK ? VBLANK : DRAWING;
 
-        m_dispstat &= ~3;
-        m_dispstat |= m_state == VBLANK;
-    }
+//         m_dispstat &= ~3;
+//         m_dispstat |= m_state == VBLANK;
+//     }
 
-    m_dispstat &= ~4;
-    if(m_line == bits::get<8, 8>(m_dispstat)) {
-        m_dispstat |= 4;
+//     m_dispstat &= ~4;
+//     if(m_line == bits::get<8, 8>(m_dispstat)) {
+//         m_dispstat |= 4;
         
-        if(bits::get<5, 1>(m_dispstat)) {
-            m_bus.requestInterrupt(INT_LCD_VC);
-        }
-    }
+//         if(bits::get<5, 1>(m_dispstat)) {
+//             m_bus.requestInterrupt(INT_LCD_VC);
+//         }
+//     }
 
-    //LOG_DEBUG("PPU: Dot({}), Line({}), State({})", m_dot, m_line, m_state);
-    m_scheduler.addEvent("PPU Update", [this] (u32 a, u32 b) { run(a, b); }, 4 - (late % 4));
-}
+//     //LOG_DEBUG("PPU: Dot({}), Line({}), State({})", m_dot, m_line, m_state);
+//     m_scheduler.addEvent("PPU Update", [this] (u32 a, u32 b) { run(a, b); }, 4 - (late % 4));
+// }
 
 auto PPU::readIO(u32 address) -> u8 {
     return _readIO(address);

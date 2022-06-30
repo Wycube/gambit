@@ -1,12 +1,12 @@
 #include "Bus.hpp"
-#include "core/ppu/PPU.hpp"
 #include "core/DMA.hpp"
+#include "core/ppu/PPU.hpp"
 #include "common/Log.hpp"
 
 
 namespace emu {
 
-Bus::Bus(Scheduler &scheduler, Keypad &keypad, PPU &ppu, DMA &dma) : m_scheduler(scheduler), m_keypad(keypad), m_ppu(ppu), m_dma(dma) {
+Bus::Bus(Scheduler &scheduler, Keypad &keypad, Timer &timer, DMA &dma, PPU &ppu) : m_scheduler(scheduler), m_keypad(keypad), m_timer(timer), m_dma(dma), m_ppu(ppu) {
     reset();
 }
 
@@ -28,15 +28,33 @@ auto Bus::read8(u32 address) -> u8 {
 auto Bus::read16(u32 address) -> u16 {
     cycle();
     //LOG_DEBUG("16-bit read at 0x{:08X}", address);
+    u32 aligned = bits::align<u16>(address);
 
-    return readByte(address) | (readByte(address + 1) << 8);
+    return readByte(aligned) | (readByte(aligned + 1) << 8);
+}
+
+auto Bus::readRotated16(u32 address) -> u32 {
+    cycle();
+    //LOG_DEBUG("16-bit read at 0x{:08X}", address);
+    u32 aligned = bits::align<u16>(address);
+
+    return bits::ror(readByte(aligned) | (readByte(aligned + 1) << 8), (address & 1) * 8);
 }
 
 auto Bus::read32(u32 address) -> u32 {
     cycle();
     //LOG_DEBUG("32-bit read at 0x{:08X}", address);
+    u32 aligned = bits::align<u32>(address);
     
-    return readByte(address) | (readByte(address + 1) << 8) | (readByte(address + 2) << 16) | (readByte(address + 3) << 24);
+    return readByte(aligned) | (readByte(aligned + 1) << 8) | (readByte(aligned + 2) << 16) | (readByte(aligned + 3) << 24);
+}
+
+auto Bus::readRotated32(u32 address) -> u32 {
+    cycle();
+    //LOG_DEBUG("32-bit read at 0x{:08X}", address);
+    u32 aligned = bits::align<u32>(address);
+    
+    return bits::ror(readByte(aligned) | (readByte(aligned + 1) << 8) | (readByte(aligned + 2) << 16) | (readByte(aligned + 3) << 24), (address & 3) * 8);
 }
 
 void Bus::write8(u32 address, u8 value) {
@@ -49,7 +67,8 @@ void Bus::write8(u32 address, u8 value) {
 void Bus::write16(u32 address, u16 value) {
     cycle();
     //LOG_DEBUG("16-bit write of 0x{:02X} to 0x{:08X}", value, address);
-    
+    address = bits::align<u16>(address);
+
     writeByte(address, value & 0xFF);
     writeByte(address + 1, (value >> 8) & 0xFF);
 }
@@ -57,6 +76,7 @@ void Bus::write16(u32 address, u16 value) {
 void Bus::write32(u32 address, u32 value) {
     cycle();
     //LOG_DEBUG("32-bit write of 0x{:02X} to 0x{:08X}", value, address);
+    address = bits::align<u32>(address);
 
     writeByte(address, value & 0xFF);
     writeByte(address + 1, (value >> 8) & 0xFF);
@@ -191,6 +211,9 @@ auto Bus::readIO(u32 address) -> u8 {
     if(address >= 0xB0 && address <= 0xE0) {
         return m_dma.read8(address);
     }
+    if(address >= 0x100 && address <= 0x10F) {
+        return m_timer.read8(address);
+    }
     if(address >= 0x130 && address <= 0x133) {
         return m_keypad.read8(address);
     }
@@ -205,6 +228,9 @@ void Bus::writeIO(u32 address, u8 value) {
     }
     if(address >= 0xB0 && address <= 0xE0) {
         m_dma.write8(address, value);
+    }
+    if(address >= 0x100 && address <= 0x10F) {
+        return m_timer.write8(address, value);
     }
     if(address >= 0x130 && address <= 0x133) {
         m_keypad.write8(address, value);

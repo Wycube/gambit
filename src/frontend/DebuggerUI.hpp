@@ -3,12 +3,11 @@
 #include "core/GBA.hpp"
 #include "core/debug/Debugger.hpp"
 #include "common/StringUtils.hpp"
-#include "common/Bits.hpp"
+#include "common/Log.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <glad/gl.h>
-#include <cmath>
 
 
 auto get_mode_str(u8 mode_bits) -> std::string {
@@ -30,7 +29,8 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba) {
         m_region_sizes[7] = m_gba.getGamePak().size();
-        //m_debugger.setBreakPoint(0x000000170);
+        //m_debugger.setBreakPoint(0x080004E8);
+        // m_debugger.setBreakPoint(0x08001340);
 
         //Create OpenGL Texture
         glGenTextures(1, &m_vram_tex);
@@ -62,6 +62,14 @@ public:
         }
 
         return m_running;
+    }
+
+    void drawScreen() {
+        glBindTexture(GL_TEXTURE_2D, m_vram_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        ImGui::Image((void*)(intptr_t)m_vram_tex, ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y));
     }
 
     void drawPPUState() {
@@ -238,7 +246,6 @@ public:
         ImGui::EndChild();
 
         ImGui::EndGroup();
-        //ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0xFF000000);
     }
 
     void drawMemoryViewer() {

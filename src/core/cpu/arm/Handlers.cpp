@@ -13,184 +13,145 @@ void CPU::armUnimplemented(u32 instruction) {
 }
 
 void CPU::armBranchExchange(u32 instruction) {
-    u32 rm = get_reg(instruction & 0xF);
+    u32 rn = bits::get<0, 4>(instruction & 0xF);
 
-    m_state.exec = rm & 0x1 ? EXEC_THUMB : EXEC_ARM;
-    m_state.cpsr = (m_state.cpsr & ~(1 << 5)) | ((rm & 0x1) << 5);
-    m_state.pc = rm & (m_state.exec == EXEC_THUMB ? ~1 : ~3); //Align the address
+    m_state.cpsr.t = get_reg(rn) & 1;
+    set_reg(15, get_reg(rn));
     flushPipeline();
 }
 
 void CPU::armPSRTransfer(u32 instruction) {
-    bool r = (instruction >> 22) & 0x1;
-    bool s = (instruction >> 21) & 0x1;
-    u8 fields = (instruction >> 16) & 0xF;
+    bool r = bits::get_bit<22>(instruction);
+    bool s = bits::get_bit<21>(instruction);
+    StatusRegister &psr = r ? get_spsr() : m_state.cpsr;
 
     if(s) {
-        bool i = (instruction >> 25) & 0x1;
-        u32 operand = 0;
+        bool i = bits::get_bit<25>(instruction);
+        u8 fields = bits::get<16, 4>(instruction);
+        u32 operand;
 
         if(i) {
-            u8 shift_imm = (instruction >> 8) & 0xF;
-            operand = bits::ror(instruction & 0xFF, shift_imm << 1);
+            u8 shift_imm = bits::get<8, 4>(instruction);
+            operand = bits::ror(bits::get<0, 8>(instruction), shift_imm << 1);
         } else {
-            operand = get_reg(instruction & 0xF);
+            operand = get_reg(bits::get<0, 4>(instruction));
         }
 
-        u32 psr = r ? get_spsr() : m_state.cpsr;
-
-        if((fields & 1) && privileged()) {
-            u8 old_mode = bits::get<0, 5>(psr);
-            psr &= ~0xFF;
-            psr |= operand & 0xFF;
-
-            if(!r && bits::get<0, 5>(psr) != old_mode) {
-                change_mode(mode_from_bits(bits::get<0, 5>(psr)));
-            }
+        //Control Field (Bits 0-7: Mode, IRQ disable, FIQ disable, Thumb bit cannot be changed)
+        if(bits::get<0, 1>(fields) && privileged()) {
+            psr.i = bits::get_bit<7>(operand);
+            psr.f = bits::get_bit<6>(operand);
+            psr.mode = bits::get<0, 5>(operand);
         }
-        if(((fields >> 1) & 1) && privileged()) {
-            psr &= ~(0xFF << 8);
-            psr |= operand & (0xFF << 8);
+        //Status Field (Bits 8-15: Reserved bits)
+        if(bits::get<1, 1>(fields) && privileged()) {
+            psr.reserved &= ~0xFF;
+            psr.reserved |= bits::get<8, 8>(operand);
         }
-        if(((fields >> 2) & 1) && privileged()) {
-            psr &= ~(0xFF << 16);
-            psr |= operand & (0xFF << 16);
+        //Extension Field (Bits 16-23: Reserved bits)
+        if(bits::get<2, 1>(fields) && privileged()) {
+            psr.reserved &= ~0xFF00;
+            psr.reserved |= bits::get<16, 8>(operand);
         }
-        if((fields >> 3) & 1) {
-            psr &= ~(0xFF << 24);
-            psr |= operand & (0xFF << 24);
-        }
-
-        if(r) {
-            get_spsr() = psr;
-        } else {
-            m_state.cpsr = psr;
+        //Flags Field (Bits 24-31: Negative, Zero, Carry, Overflow, some reserved bits)
+        if(bits::get<3, 1>(fields)) {
+            psr.n = bits::get_bit<31>(operand);
+            psr.z = bits::get_bit<30>(operand);
+            psr.c = bits::get_bit<29>(operand);
+            psr.v = bits::get_bit<28>(operand);
+            psr.reserved &= ~0xF0000;
+            psr.reserved |= bits::get<24, 4>(operand);
         }
     } else {
-        u8 rd = (instruction >> 12) & 0xF;
-        set_reg(rd, r ? get_spsr(0) : m_state.cpsr);
+        u8 rd = bits::get<12, 4>(instruction);
+        set_reg(rd, psr.asInt());
     }
 }
 
-auto CPU::addressMode1(u32 instruction) -> std::pair<u32, bool> {
-    bool i = (instruction >> 25) & 0x1;
+auto CPU::addressMode1(u32 instruction, bool &carry) -> u32 {
+    bool i = bits::get_bit<25>(instruction);
 
     if(i) {
-        u8 rotate_imm = (instruction >> 8) & 0xF;
-        u8 immed_8 = instruction & 0xFF;
+        u8 rotate_imm = bits::get<8, 4>(instruction);
+        u8 immed_8 = bits::get<0, 8>(instruction);
         u32 result = bits::ror(immed_8, rotate_imm * 2);
+        carry = rotate_imm == 0 ? m_state.cpsr.c : result >> 31;
 
-        bool shifter_carry_out = rotate_imm == 0 ? get_flag(FLAG_CARRY) : result >> 31;
-
-        return std::pair(result, shifter_carry_out);
+        return result;
     } else {
-        bool r = (instruction >> 4) & 0x1;
-        u64 rm = get_reg(instruction & 0xF);
+        u8 opcode = bits::get<5, 2>(instruction);
+        bool r = bits::get_bit<4>(instruction);
+        u8 rm = bits::get<0, 4>(instruction);
+        u8 shift = r ? get_reg(bits::get<8, 4>(instruction)) & 0xFF : bits::get<7, 5>(instruction);
+        u32 operand = get_reg(rm);
+        u32 result;
 
         //Specific case for shift by register
-        if(r && (instruction & 0xF) == 15) {
-            rm += 4;
+        if(r && rm == 15) {
+            operand += 4;
         }
 
-        u8 op = (instruction >> 5) & 0x3;
-        u8 shift_imm = r ? get_reg((instruction >> 8) & 0xF) & 0xFF : (instruction >> 7) & 0x1F;
-        u64 result;
-        bool shifter_carry_out;
+        if(shift == 0) {
+            if(r || opcode == 0) {
+                return operand;
+            }
 
-        if(r && shift_imm == 0) {
-            return std::pair(rm, get_flag(FLAG_CARRY));
+            shift = 32;
         }
 
-        switch(op) {
-            case 0 : result = rm << shift_imm; //LSL
-                shifter_carry_out = shift_imm == 0 ? get_flag(FLAG_CARRY) : (rm >> (32 - shift_imm)) & 0x1;
-            break;
-            case 1 : result = shift_imm == 0 && !r ? 0 : rm >> shift_imm; //LSR
-                shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> (shift_imm - 1)) & 0x1;
-            break;
-            case 2 : result = shift_imm == 0 && !r ? ~(rm >> 31) + 1 : bits::asr(rm, shift_imm); //ASR
-                shifter_carry_out = shift_imm == 0 ? rm >> 31 : (rm >> ((shift_imm > 32 ? 32 : shift_imm) - 1)) & 0x1;
-            break;
-            case 3 : result = shift_imm == 0 && !r ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : bits::ror(rm, shift_imm); //RRX and ROR
-                shifter_carry_out = shift_imm == 0 ? rm & 0x1 : (result >> 31) & 0x1; //(rm >> (shift_imm - 1)) & 0x1;
-            break;
+        switch(opcode) {
+            case 0 : result = bits::lsl_c(operand, shift, carry); break;
+            case 1 : result = bits::lsr_c(operand, shift, carry); break;
+            case 2 : result = bits::asr_c(operand, shift, carry, !r); break;
+            case 3 : result = shift == 32 && !r ? bits::rrx_c(operand, carry) : bits::ror_c(operand, shift, carry); break;
         }
 
-        return std::pair(result & 0xFFFFFFFF, shifter_carry_out);
+        return result;
     }
 }
 
-//TODO: Refactor these functions  ^  |
-//                                |  v
-
 void CPU::armDataProcessing(u32 instruction) {
-    u8 opcode = (instruction >> 21) & 0xF;
-    bool s = (instruction >> 20) & 0x1;
-    u8 rn = (instruction >> 16) & 0xF;
-    u32 operand_1 = get_reg(rn);
+    u8 opcode = bits::get<21, 4>(instruction);
+    bool s = bits::get_bit<20>(instruction);
+    u8 rn = bits::get<16, 4>(instruction);
+    u8 rd = bits::get<12, 4>(instruction);
+    bool carry_out = m_state.cpsr.c;
+    u32 op_1 = get_reg(rn);
+    u32 op_2 = addressMode1(instruction, carry_out);
+    u32 result;
 
     //Special case for PC as rn
-    if(rn == 15 && !((instruction >> 25) & 0x1) && (instruction >> 4) & 0x1) {
-        operand_1 += 4;
+    if(rn == 15 && !bits::get_bit<25>(instruction) && bits::get_bit<4>(instruction)) {
+        op_1 += 4;
     }
 
-    std::pair shifter_out = addressMode1(instruction);
-    u32 shifter_operand = shifter_out.first;
-    u32 alu_out;
-
-    //Do the operation with the registers
     switch(opcode) {
-        case 0x0 : alu_out = operand_1 & shifter_operand; //AND
-        break;
-        case 0x1 : alu_out = operand_1 ^ shifter_operand; //EOR
-        break;
-        case 0x2 : alu_out = operand_1 - shifter_operand; //SUB
-        break;
-        case 0x3 : alu_out = shifter_operand - operand_1; //RSB
-        break;
-        case 0x4 : alu_out = operand_1 + shifter_operand; //ADD
-        break;
-        case 0x5 : alu_out = operand_1 + shifter_operand + get_flag(FLAG_CARRY); //ADC
-        break;
-        case 0x6 : alu_out = operand_1 - shifter_operand - !get_flag(FLAG_CARRY); //SBC
-        break;
-        case 0x7 : alu_out = shifter_operand - operand_1 - !get_flag(FLAG_CARRY); //RSC
-        break;
-        case 0x8 : alu_out = operand_1 & shifter_operand; //TST
-        break;
-        case 0x9 : alu_out = operand_1 ^ shifter_operand; //TEQ
-        break;
-        case 0xA : alu_out = operand_1 - shifter_operand; //CMP
-        break;
-        case 0xB : alu_out = operand_1 + shifter_operand; //CMN
-        break;
-        case 0xC : alu_out = operand_1 | shifter_operand; //ORR
-        break;
-        case 0xD : alu_out = shifter_operand; //MOV
-        break;
-        case 0xE : alu_out = operand_1 & ~shifter_operand; //BIC
-        break;
-        case 0xF : alu_out = ~shifter_operand; //MVN
-        break;
+        case 0x0 : result = op_1 & op_2; break;  //AND
+        case 0x1 : result = op_1 ^ op_2; break;  //EOR
+        case 0x2 : result = op_1 - op_2; break;  //SUB
+        case 0x3 : result = op_2 - op_1; break;  //RSB
+        case 0x4 : result = op_1 + op_2; break;  //ADD
+        case 0x5 : result = op_1 + op_2 + m_state.cpsr.c; break;  //ADC
+        case 0x6 : result = op_1 - op_2 - !m_state.cpsr.c; break; //SBC
+        case 0x7 : result = op_2 - op_1 - !m_state.cpsr.c; break; //RSC
+        case 0x8 : result = op_1 & op_2; break;  //TST
+        case 0x9 : result = op_1 ^ op_2; break;  //TEQ
+        case 0xA : result = op_1 - op_2; break;  //CMP
+        case 0xB : result = op_1 + op_2; break;  //CMN
+        case 0xC : result = op_1 | op_2; break;  //ORR
+        case 0xD : result = op_2; break;         //MOV
+        case 0xE : result = op_1 & ~op_2; break; //BIC
+        case 0xF : result = ~op_2; break;        //MVN
     }
 
-    // if(instruction == 0x13811010) {
-    //     printf("Yeet the address is %08X\n", m_state.pc);
-    // }
-
+    //TST, TEQ, CMP, and CMN only affect flags
     if(opcode < 0x8 || opcode > 0xB) {
-        set_reg((instruction >> 12) & 0xF, alu_out);
+        set_reg(rd, result);
     }
 
-    if(((instruction >> 12) & 0xF) == 15) {
+    if(rd == 15) {
         if(s) {
-            u8 old_mode = bits::get<0, 5>(m_state.cpsr);
             m_state.cpsr = get_spsr();
-            m_state.exec = get_flag(FLAG_THUMB) ? EXEC_THUMB : EXEC_ARM;
-
-            if(bits::get<0, 5>(m_state.cpsr) != old_mode) {
-                change_mode(mode_from_bits(bits::get<0, 5>(m_state.cpsr)));
-            }
         }
 
         if(opcode < 0x8 || opcode > 0xB) {
@@ -198,138 +159,166 @@ void CPU::armDataProcessing(u32 instruction) {
         }
     }
 
-    //Writeback
     if(s) {
-        set_flag(FLAG_NEGATIVE, alu_out >> 31);
-        set_flag(FLAG_ZERO, alu_out == 0);
+        m_state.cpsr.n = result >> 31;
+        m_state.cpsr.z = result == 0;
 
         if(opcode < 2 || (opcode > 7 && opcode != 0xA && opcode != 0xB)) {
-            set_flag(FLAG_CARRY, shifter_out.second);
+            m_state.cpsr.c = carry_out;
         } else {
             bool use_carry = opcode == 5 || opcode == 6 || opcode == 7;
             bool subtract = opcode == 2 || opcode == 3 || opcode == 6 || opcode == 7 || opcode == 0xA;
-            bool reverse = opcode == 3 || opcode == 7;
-            bool carry;
+            u32 r_op_1 = op_1;
+            u32 r_op_2 = op_2;
+
+            //Reserve opcodes (RSB, RSC)
+            if(opcode == 3 || opcode == 7) {
+                r_op_1 = op_2;
+                r_op_2 = op_1;
+            }
 
             if(subtract) {
-                carry = (u64)(reverse ? shifter_operand : operand_1) >= (u64)(reverse ? operand_1 : shifter_operand) + (u64)(use_carry ? !get_flag(FLAG_CARRY) : 0);
+                m_state.cpsr.c = (u64)r_op_1 >= (u64)r_op_2 + (u64)(use_carry ? !m_state.cpsr.c : 0);
             } else {
-                carry = (u64)alu_out < (u64)operand_1 + (u64)(use_carry ? get_flag(FLAG_CARRY) : 0);
+                m_state.cpsr.c = result < r_op_1 + (use_carry ? m_state.cpsr.c : 0);
             }
-            set_flag(FLAG_CARRY, carry);
 
-            bool op_1_neg = (reverse ? shifter_operand & 0x80000000 : operand_1 & 0x80000000);
-            bool op_2_neg = (reverse ? operand_1 & 0x80000000 : shifter_operand & 0x80000000);
-            bool alu_neg = alu_out & 0x80000000;
-            bool overflow = (subtract ? op_1_neg != op_2_neg && op_1_neg != alu_neg : op_1_neg == op_2_neg && op_1_neg != alu_neg);
-            set_flag(FLAG_OVERFLOW, overflow);
+            //This checks if a and b are equal
+            //and not equal to c for additions, and if
+            //a and b are not equal and a is equal to c for 
+            //subtractions. The original version was this:
+            // subtract ? a != b && a != c : a == b && a != c
+            bool a = r_op_1 >> 31;
+            bool b = r_op_2 >> 31;
+            bool c = result >> 31;
+            m_state.cpsr.v = a ^ (b ^ !subtract) && a ^ c;
         }
     }
 }
 
 void CPU::armMultiply(u32 instruction) {
-    bool accumulate = bits::get<21, 1>(instruction);
-    bool s = bits::get<20, 1>(instruction);
+    bool a = bits::get_bit<21>(instruction);
+    bool s = bits::get_bit<20>(instruction);
     u8 rd = bits::get<16, 4>(instruction);
     u8 rn = bits::get<12, 4>(instruction);
     u8 rs = bits::get<8, 4>(instruction);
     u8 rm = bits::get<0, 4>(instruction);
+    u32 result;
 
-    if(accumulate) {
-        set_reg(rd, get_reg(rm) * get_reg(rs) + get_reg(rn));
+    if(a) {
+        result = get_reg(rm) * get_reg(rs) + get_reg(rn);
     } else {
-        set_reg(rd, get_reg(rm) * get_reg(rs));
+        result = get_reg(rm) * get_reg(rs);
     }
+
+    set_reg(rd, result);
 
     //Note: The carry flag is destroyed on ARMv4, not
     //sure how though, so I will leave it unchanged.
     if(s) {
-        set_flag(FLAG_NEGATIVE, get_reg(rd) >> 31);
-        set_flag(FLAG_ZERO, get_reg(rd) == 0);
+        m_state.cpsr.n = result >> 31;
+        m_state.cpsr.z = result == 0;
     }
 }
 
 void CPU::armMultiplyLong(u32 instruction) {
+    bool sign = bits::get_bit<22>(instruction);
+    bool a = bits::get_bit<21>(instruction);
+    bool s = bits::get_bit<20>(instruction);
     u8 rd_hi = bits::get<16, 4>(instruction);
     u8 rd_lo = bits::get<12, 4>(instruction);
     u8 rs = bits::get<8, 4>(instruction);
     u8 rm = bits::get<0, 4>(instruction);
-    bool sign = bits::get<22, 1>(instruction);
-    bool accumulate = bits::get<21, 1>(instruction);
-    bool s = bits::get<20, 1>(instruction);
     u64 result;
 
-    //TODO: Make sure rd != rm and rd, rm, rn, or rs != r15
-
     if(sign) {
-        result = bits::sign_extend<32, s64>(get_reg(rm)) * bits::sign_extend<32, s64>(get_reg(rs)) + (accumulate ? ((s64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
+        result = bits::sign_extend<32, s64>(get_reg(rm)) * bits::sign_extend<32, s64>(get_reg(rs)) + (a ? ((s64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
     } else {
-        result = (u64)get_reg(rm) * (u64)get_reg(rs) + (accumulate ? ((u64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
+        result = (u64)get_reg(rm) * (u64)get_reg(rs) + (a ? ((u64)get_reg(rd_hi) << 32) | (get_reg(rd_lo)) : 0);
     }
 
     set_reg(rd_hi, bits::get<32, 32>(result));
     set_reg(rd_lo, bits::get<0, 32>(result));
 
+    //Note: The carry flag is destroyed on ARMv4, like multiply,
+    //and apparently the overflow flag as well.
     if(s) {
-        set_flag(FLAG_NEGATIVE, result >> 63);
-        set_flag(FLAG_ZERO, result == 0);
+        m_state.cpsr.n = result >> 63;
+        m_state.cpsr.z = result == 0;
     }
 }
 
-void CPU::armDataSwap(u32 instruction) {
-    bool b = bits::get<22, 1>(instruction);
+void CPU::armSingleDataSwap(u32 instruction) {
+    bool b = bits::get_bit<22>(instruction);
     u8 rn = bits::get<16, 4>(instruction);
     u8 rd = bits::get<12, 4>(instruction);
     u8 rm = bits::get<0, 4>(instruction);
 
-    u32 data_32 = bits::ror(m_bus.read32(get_reg(rn) & ~3), (get_reg(rn) & 3) * 8);
+    u32 data_32 = m_bus.readRotated32(get_reg(rn));
 
-    b ? m_bus.write8(get_reg(rn), get_reg(rm) & 0xFF) : m_bus.write32(get_reg(rn) & ~3, get_reg(rm));
+    if(b) {
+        m_bus.write8(get_reg(rn), get_reg(rm) & 0xFF);
+    } else {
+        m_bus.write32(get_reg(rn), get_reg(rm));
+    }
+
     set_reg(rd, b ? data_32 & 0xFF : data_32);
 }
 
 void CPU::armHalfwordTransfer(u32 instruction) {
+    bool p = bits::get_bit<24>(instruction);
+    bool u = bits::get_bit<23>(instruction);
+    bool i = bits::get_bit<22>(instruction);
+    bool w = bits::get_bit<21>(instruction);
+    bool l = bits::get_bit<20>(instruction);
     u8 rn = bits::get<16, 4>(instruction);
     u8 rd = bits::get<12, 4>(instruction);
-    bool p = bits::get<24, 1>(instruction);
-    bool u = bits::get<23, 1>(instruction);
-    bool i = bits::get<22, 1>(instruction);
-    bool w = bits::get<21, 1>(instruction);
-    bool l = bits::get<20, 1>(instruction);
     u8 sh = bits::get<5, 2>(instruction);
+    u32 address = get_reg(rn);
+    u32 offset;
+    u32 data;
  
-    u32 offset = 0;
     if(i) {
-        offset = (bits::get<8, 4>(instruction) << 4) | (bits::get<0, 4>(instruction));
+        offset = bits::get<8, 4>(instruction) << 4 | bits::get<0, 4>(instruction);
     } else {
         offset = get_reg(bits::get<0, 4>(instruction));
     }
 
-    u32 offset_address = u ? get_reg(rn) + offset : get_reg(rn) - offset;
-    u32 address = p ? offset_address : get_reg(rn);
-    u32 data = 0;
+    u32 offset_address = u ? address + offset : address - offset;
+
+    if(p) {
+        address = offset_address;
+    }
 
     if(sh != 2) {
-        data = l ? bits::ror(m_bus.read16(address & ~1), (address & 1) * 8) : get_reg(rd);
+        data = l ? m_bus.readRotated16(address) : get_reg(rd);
     } else {
         //Should not happen with a store
         data = m_bus.read8(address);
     }
 
     if(l) {
-        u32 extended = sh == 2 ? bits::sign_extend<8, u32>(data) : sh == 3 ? (address & 1) ? bits::sign_extend<8, u32>(data) : bits::sign_extend<16, u32>(data) : data;
+        u32 extended;
         
+        if(sh == 2) {
+            extended = bits::sign_extend<8, u32>(data);
+        } else if(sh == 3) {
+            extended = address & 1 ? bits::sign_extend<8, u32>(data) : bits::sign_extend<16, u32>(data);
+        } else {
+            extended = data;
+        }
+
         if(!p || w) {
             set_reg(rn, offset_address);
         }
 
         set_reg(rd, extended);
     } else if(sh == 1) {
-        m_bus.write16(address & ~1, data);
-
         if(!p || w) {
             set_reg(rn, offset_address);
         }
+
+        m_bus.write16(address, data);
     }
 }
 
@@ -339,19 +328,19 @@ auto CPU::addressMode2(u16 addr_mode, bool i) -> u32 {
     if(!i) {
         offset = addr_mode;
     } else {
-        u8 shift_imm = addr_mode >> 7;
-        u8 shift = (addr_mode >> 5) & 0x3;
-        u32 rm = get_reg(addr_mode & 0xF);
+        u8 shift_imm = bits::get<7, 5>(addr_mode);
+        u8 opcode = bits::get<5, 2>(addr_mode);
+        u32 operand = get_reg(bits::get<0, 4>(addr_mode));
+
+        if(opcode != 0 && shift_imm == 0) {
+            shift_imm = 32;
+        }
         
-        switch(shift) {
-            case 0x0 : offset = rm << shift_imm; //LSL
-            break;
-            case 0x1 : offset = shift_imm == 0 ? 0 : rm >> shift_imm; //LSR
-            break;
-            case 0x2 : offset = shift_imm == 0 ? ~(rm >> 31) + 1 : bits::asr(rm, shift_imm); //ASR
-            break;
-            case 0x3 : offset = shift_imm == 0 ? (get_flag(FLAG_CARRY) << 31) | (rm >> 1) : bits::ror(rm, shift_imm); //RRX and ROR
-            break;
+        switch(opcode) {
+            case 0x0 : offset = bits::lsl(operand, shift_imm); break; //LSL
+            case 0x1 : offset = bits::lsr(operand, shift_imm); break; //LSR
+            case 0x2 : offset = bits::asr(operand, shift_imm); break; //ASR
+            case 0x3 : offset = shift_imm == 32 ? bits::rrx(operand, m_state.cpsr.c) : bits::ror(operand, shift_imm); break; //RRX and ROR
         }
     }
 
@@ -359,23 +348,26 @@ auto CPU::addressMode2(u16 addr_mode, bool i) -> u32 {
 }
 
 void CPU::armSingleTransfer(u32 instruction) {
+    bool i = bits::get_bit<25>(instruction);
+    bool p = bits::get_bit<24>(instruction);
+    bool u = bits::get_bit<23>(instruction);
+    bool b = bits::get_bit<22>(instruction);
+    bool w = bits::get_bit<21>(instruction);
+    bool l = bits::get_bit<20>(instruction);
     u8 rn = bits::get<16, 4>(instruction);
     u8 rd = bits::get<12, 4>(instruction);
-    bool i = bits::get<25, 1>(instruction);
-    bool p = bits::get<24, 1>(instruction);
-    bool u = bits::get<23, 1>(instruction);
-    bool b = bits::get<22, 1>(instruction);
-    bool w = bits::get<21, 1>(instruction);
-    bool l = bits::get<20, 1>(instruction);
     u32 offset = addressMode2(instruction & 0xFFF, i);
     u32 address = get_reg(rn);
+    u32 offset_address = address;
+
+    if(u) {
+        offset_address += offset;
+    } else {
+        offset_address -= offset;
+    }
 
     if(p) {
-        if(u) {
-            address += offset;
-        } else {
-            address -= offset;
-        }
+        address = offset_address;
     }
 
     if(l) {
@@ -384,57 +376,71 @@ void CPU::armSingleTransfer(u32 instruction) {
         if(b) {
             value = m_bus.read8(address);
         } else {
-            value = bits::ror(m_bus.read32(address & ~3), (address & 3) * 8);
+            value = m_bus.readRotated32(address);
         }
 
         //Writeback is optional with pre-indexed addressing
         if(!p || w) {
-            set_reg(rn, get_reg(rn) + (u ? offset : -offset));
+            set_reg(rn, offset_address);
         }
 
+        set_reg(rd, value);
+
         if(rd == 15) {
-            m_state.pc = value & ~3;
             flushPipeline();
-        } else {
-            set_reg(rd, value);
         }
     } else {
-        u32 value = rd == 15 ? m_state.pc + 4 : get_reg(rd);
+        u32 value = get_reg(rd);
+
+        if(rd == 15) {
+            value += 4;
+        }
 
         if(b) {
             m_bus.write8(address, value & 0xFF);
         } else {
-            m_bus.write32(address & ~3, value);
+            m_bus.write32(address, value);
         }
 
         if(!p || w) {
-            set_reg(rn, get_reg(rn) + (u ? offset : -offset));
+            set_reg(rn, offset_address);
         }
     }
 }
 
-//TODO: Handle empty rlist and whatever other weird edge-cases this instruction has
-void CPU::armBlockTransfer(u32 instruction) {
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 pu = bits::get<23, 2>(instruction);
-    bool s = bits::get<22, 1>(instruction);
-    bool w = bits::get<21, 1>(instruction);
-    bool l = bits::get<20, 1>(instruction);
-    u16 registers = bits::get<0, 16>(instruction);
+void CPU::armUndefined(u32 instruction) {
+    LOG_DEBUG("Undefined ARM Instruction at Address: {:08X}", m_state.pc - 8);
 
+    set_reg(14, get_reg(15) - 4, MODE_UNDEFINED);
+    get_spsr(MODE_UNDEFINED) = m_state.cpsr;
+    m_state.cpsr.mode = MODE_UNDEFINED;
+    m_state.cpsr.i = true;
+    set_reg(15, 0x00000004);
+    flushPipeline();
+}
+
+void CPU::armBlockTransfer(u32 instruction) {
+    u8 pu = bits::get<23, 2>(instruction);
+    bool s = bits::get_bit<22>(instruction);
+    bool w = bits::get_bit<21>(instruction);
+    bool l = bits::get_bit<20>(instruction);
+    u8 rn = bits::get<16, 4>(instruction);
+    u16 registers = bits::get<0, 16>(instruction);
     u32 address = get_reg(rn);
+    u32 writeback = get_reg(rn) + (4 * bits::popcount<u16>(registers) * (pu & 1 ? 1 : -1));
+    u8 mode = s && !(l && bits::get<15, 1>(registers)) ? MODE_USER : 0;
+    
+
     if(pu == 0 || pu == 2) {
-        address -= 4 * bits::popcount_16(registers);
+        address -= 4 * bits::popcount<u16>(registers);
     }
     if(pu == 0 || pu == 3) {
         address += 4;
     }
-    u32 writeback = get_reg(rn) + (4 * bits::popcount_16(registers) * (pu & 1 ? 1 : -1));
-    u8 mode = s && !(l && bits::get<15, 1>(registers)) ? MODE_USER : 0;
 
     if(l) {
         for(int i = 0; i < 15; i++) {
-            if(bits::get(i, 1, registers)) {
+            if(bits::get_bit(registers, i)) {
                 set_reg(i, m_bus.read32(address), mode);
                 address += 4;
             }
@@ -446,7 +452,6 @@ void CPU::armBlockTransfer(u32 instruction) {
 
             if(registers && s) {
                 m_state.cpsr = get_spsr();
-                change_mode(mode_from_bits(bits::get<0, 5, u8>(m_state.cpsr)));
             }
         }
 
@@ -464,7 +469,7 @@ void CPU::armBlockTransfer(u32 instruction) {
         bool lowest_set = false;
 
         for(int i = 0; i < 15; i++) {
-            if(bits::get(i, 1, registers)) {
+            if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && w && lowest_set) {
                     m_bus.write32(address, writeback);
@@ -498,27 +503,27 @@ void CPU::armBlockTransfer(u32 instruction) {
 }
 
 void CPU::armBranch(u32 instruction) {
-    bool l = bits::get<24, 1>(instruction); //(instruction >> 24) & 0x1;
-    // s32 immediate = instruction & 0xFFFFFF;
-    // immediate |= (immediate >> 23) & 0x1 ? 0xFF000000 : 0; //Sign extend 24-bit to 32-bit
-    s32 immediate = bits::sign_extend<24, s32>(bits::get<0, 24>(instruction));
-    immediate <<= 2;
+    bool l = bits::get<24, 1>(instruction);
+    //Sign extend 24-bit to 32-bit and multiply by 4 so it is word-aligned.
+    s32 immediate = bits::sign_extend<24, s32>(bits::get<0, 24>(instruction)) << 2;
 
     //Store next instruction's address in the link register
     if(l) {
-        set_reg(14, m_state.pc - 4);
+        set_reg(14, get_reg(15) - 4);
     }
 
-    m_state.pc += immediate;
+    set_reg(15, get_reg(15) + immediate);
     flushPipeline();
 }
 
 void CPU::armSoftwareInterrupt(u32 instruction) {
+    LOG_DEBUG("SWI {} called from ARM at Address: {:08X}", bits::get<16, 8>(instruction), m_state.pc - 8);
+
+    set_reg(14, get_reg(15) - 4, MODE_SUPERVISOR);
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
-    get_reg_ref(14, MODE_SUPERVISOR) = m_state.pc - 4;
-    change_mode(MODE_SUPERVISOR);
-    set_flag(FLAG_IRQ, true);
-    m_state.pc = 0x8;
+    m_state.cpsr.mode = MODE_SUPERVISOR;
+    m_state.cpsr.i = true;
+    set_reg(15, 0x00000008);
     flushPipeline();
 }
 

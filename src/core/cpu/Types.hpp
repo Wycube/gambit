@@ -1,11 +1,12 @@
 #pragma once
 
 #include "common/Types.hpp"
+#include "common/Bits.hpp"
 
 
 namespace emu {
 
-enum PrivilegeMode {
+enum PrivilegeMode : u8 {
     MODE_USER       = 0x10,
     MODE_FIQ        = 0x11,
     MODE_IRQ        = 0x12,
@@ -16,8 +17,8 @@ enum PrivilegeMode {
 };
 
 enum ExecutionState {
-    EXEC_ARM,
-    EXEC_THUMB
+    EXEC_ARM   = 0,
+    EXEC_THUMB = 1
 };
 
 enum Flag : u32 {
@@ -47,17 +48,39 @@ enum InterruptSource : u16 {
     INT_GAMEPAK = 1 << 13  //Game Pak (external IRQ source)
 };
 
+struct StatusRegister {
+    bool n : 1, z : 1, c : 1, v : 1;
+    bool i : 1, f : 1, t : 1;
+    u8 mode : 5;
+    u32 reserved : 20;
+
+    auto asInt() -> u32 {
+        return (n << 31 | z << 30 | c << 29 | v << 28 | reserved << 8 | i << 7 | f << 6 | t << 5 | mode);
+    }
+
+    void fromInt(u32 value) {
+        n = bits::get_bit<31>(value);
+        z = bits::get_bit<30>(value);
+        c = bits::get_bit<29>(value);
+        v = bits::get_bit<28>(value);
+        reserved = bits::get<8, 20>(value);
+        i = bits::get_bit<7>(value);
+        f = bits::get_bit<6>(value);
+        t = bits::get_bit<5>(value);
+        mode = bits::get<0, 5>(value);
+    }
+};
+
 struct CPUState {
     u32 regs[13];
     u32 banked_regs[12];
     u32 fiq_regs[5];
     u32 pc;
-    u32 cpsr;
-    u32 spsr[5];
+    u32 *banks[6][16];
+    StatusRegister cpsr;
+    StatusRegister spsr[5];
 
     u32 pipeline[2];
-    PrivilegeMode mode;
-    ExecutionState exec;
 };
 
 } //namespace emu

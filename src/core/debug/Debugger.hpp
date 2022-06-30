@@ -29,8 +29,7 @@ public:
     auto getCPURegister(u8 reg, u8 mode = 0) -> u32;
     auto getCPUCPSR() -> u32;
     auto getCPUSPSR(u8 mode = 0) -> u32;
-    auto getCPUMode() -> PrivilegeMode;
-    auto getCPUExec() -> ExecutionState;
+    auto getCPUMode() -> u8;
 
     void attachPPUMem(u32 *framebuffer);
     auto getFramebuffer() -> u32*;

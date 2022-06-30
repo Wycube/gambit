@@ -37,7 +37,7 @@ auto generate_exclusion_mask(const char *pattern, size_t index, const size_t len
  * Seperated angle brackets act together.
  */
 template<typename T, typename = std::enable_if<std::is_integral<T>::value>, size_t _count>
-auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
+auto match_bits(T value, const char *(&patterns)[_count], size_t no_match = _count) -> size_t {
     for(size_t i = 0; i < _count; i++) {
         size_t length = std::strlen(patterns[i]);
         
@@ -82,7 +82,7 @@ auto match_bits(T value, const char *(&patterns)[_count]) -> size_t {
         if(match) return i;
     }
 
-    return _count;
+    return no_match;
 }
 
 
@@ -137,7 +137,7 @@ constexpr auto generate_multiple_masks() -> std::array<PatternMask<T>, _count> {
 }
 
 template<size_t _count, size_t _length, const char patterns[_count][_length], typename T, typename = std::enable_if<std::is_integral<T>::value>>
-auto const_match_bits(T value) -> size_t {
+auto const_match_bits(T value, size_t no_match = _count) -> size_t {
     static constexpr std::array<PatternMask<T>, _count> pattern_masks = generate_multiple_masks<_count, _length, patterns, T>();
 
     for(size_t i = 0; i < _count; i++) {
@@ -153,7 +153,7 @@ auto const_match_bits(T value) -> size_t {
         }
     }
 
-    return _count;
+    return no_match;
 }
 
 } //namespace common
