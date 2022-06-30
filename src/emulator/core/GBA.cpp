@@ -3,10 +3,11 @@
 
 namespace emu {
 
-GBA::GBA() : m_timer(m_scheduler), m_dma(m_scheduler, m_bus), m_ppu(m_scheduler, m_bus), m_bus(m_scheduler, m_keypad, m_timer, m_dma, m_ppu), m_cpu(m_bus), m_debugger(m_bus) {
+GBA::GBA(VideoDevice &video_device) 
+: m_video_device(video_device), m_timer(m_scheduler), m_dma(m_scheduler, m_bus), m_ppu(m_video_device, m_scheduler, m_bus), 
+m_bus(m_scheduler, m_keypad, m_timer, m_dma, m_ppu), m_cpu(m_bus), m_debugger(m_bus) {
     m_scheduler.attachDebugger(m_debugger);
     m_cpu.attachDebugger(m_debugger);
-    m_ppu.attachDebugger(m_debugger);
 }
 
 void GBA::reset() {
@@ -41,6 +42,10 @@ void GBA::loadROM(std::vector<u8> &&rom) {
 
 void GBA::loadBIOS(const std::vector<u8> &bios) {
     m_bus.loadBIOS(bios);
+}
+
+auto GBA::getVideoDevice() -> VideoDevice& {
+    return m_video_device;
 }
 
 auto GBA::getKeypad() -> Keypad& {

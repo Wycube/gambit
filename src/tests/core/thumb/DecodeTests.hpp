@@ -1,7 +1,6 @@
 #pragma once
 
-#include "core/cpu/thumb/Instruction.hpp"
-
+#include "emulator/core/cpu/thumb/Instruction.hpp"
 #include <lest/lest.hpp>
 
 

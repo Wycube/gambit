@@ -74,5 +74,5 @@ endif()
 
 # Add frontend and emulator library
 add_subdirectory(${PROJECT_SOURCE_DIR}/src/common)
-add_subdirectory(${PROJECT_SOURCE_DIR}/src/core)
+add_subdirectory(${PROJECT_SOURCE_DIR}/src/emulator/core)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src/frontend)

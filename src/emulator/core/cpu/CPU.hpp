@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/mem/Bus.hpp"
-#include "core/debug/Debugger.hpp"
+#include "emulator/core/mem/Bus.hpp"
+#include "emulator/core/debug/Debugger.hpp"
 #include "Types.hpp"
 #include "common/Types.hpp"
 

@@ -1,4 +1,4 @@
-#include "core/GBA.hpp"
+#include "emulator/core/GBA.hpp"
 #include "common/Version.hpp"
 #include "common/Types.hpp"
 #include "common/Log.hpp"
@@ -136,7 +136,9 @@ int main(int argc, char *argv[]) {
     rom_file.close();
     bios_file.close();
 
-    emu::GBA gba;
+    OGLVideoDevice video_device;
+
+    emu::GBA gba(video_device);
     gba.loadBIOS(bios);
     gba.loadROM(std::move(rom));
 

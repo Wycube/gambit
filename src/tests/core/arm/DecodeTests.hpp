@@ -1,7 +1,6 @@
 #pragma once
 
-#include "core/cpu/arm/Instruction.hpp"
-
+#include "emulator/core/cpu/arm/Instruction.hpp"
 #include <lest/lest.hpp>
 
 

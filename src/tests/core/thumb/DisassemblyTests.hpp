@@ -1,7 +1,6 @@
 #pragma once
 
-#include "core/cpu/thumb/Disassembly.hpp"
-
+#include "emulator/core/cpu/thumb/Disassembly.hpp"
 #include <lest/lest.hpp>
 
 

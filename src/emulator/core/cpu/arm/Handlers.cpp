@@ -1,4 +1,4 @@
-#include "core/cpu/CPU.hpp"
+#include "emulator/core/cpu/CPU.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
@@ -13,7 +13,7 @@ void CPU::armUnimplemented(u32 instruction) {
 }
 
 void CPU::armBranchExchange(u32 instruction) {
-    u32 rn = bits::get<0, 4>(instruction & 0xF);
+    u32 rn = bits::get<0, 4>(instruction);
 
     m_state.cpsr.t = get_reg(rn) & 1;
     set_reg(15, get_reg(rn));

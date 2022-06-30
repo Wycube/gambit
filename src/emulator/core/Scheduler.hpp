@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/debug/Debugger.hpp"
+#include "emulator/core/debug/Debugger.hpp"
 #include "common/Types.hpp"
 #include <functional>
 

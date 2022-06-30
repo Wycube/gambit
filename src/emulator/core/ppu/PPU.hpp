@@ -1,23 +1,17 @@
 #pragma once
 
-#include "core/Scheduler.hpp"
-#include "core/mem/Bus.hpp"
-#include "core/debug/Debugger.hpp"
+#include "emulator/core/Scheduler.hpp"
+#include "emulator/core/mem/Bus.hpp"
+#include "emulator/device/VideoDevice.hpp"
 #include "Backgrounds.hpp"
 
 
 namespace emu {
 
-enum LCDState : u8 {
-    VBLANK = 0,
-    HBLANK = 1,
-    DRAWING = 2
-};
-
 class PPU {
 public:
 
-    PPU(Scheduler &scheduler, Bus &bus);
+    PPU(VideoDevice &video_device, Scheduler &scheduler, Bus &bus);
 
     void reset();
 
@@ -32,13 +26,9 @@ public:
     void writeVRAM(u32 address, u8 value);
     void writeOAM(u32 address, u8 value);
 
-    void attachDebugger(dbg::Debugger &debugger);
-
 private:
 
-    LCDState m_state;
     u8 m_line;
-    //u16 m_dot;
 
     //Memory
     u16 m_dispcnt;
@@ -53,9 +43,7 @@ private:
     BitmapBackground m_bg2;
     RotScaleBackground m_bg3;
 
-    u32 m_internal_framebuffer[240 * 160];
-    u32 m_present_framebuffer[240 * 160];
-
+    VideoDevice &m_video_device;
     Scheduler &m_scheduler;
     Bus &m_bus;
 

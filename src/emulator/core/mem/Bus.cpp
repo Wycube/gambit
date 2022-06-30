@@ -1,6 +1,6 @@
 #include "Bus.hpp"
-#include "core/DMA.hpp"
-#include "core/ppu/PPU.hpp"
+#include "emulator/core/DMA.hpp"
+#include "emulator/core/ppu/PPU.hpp"
 #include "common/Log.hpp"
 
 

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "core/cpu/Types.hpp"
 #include "GamePak.hpp"
-#include "core/Scheduler.hpp"
-#include "core/Keypad.hpp"
-#include "core/Timer.hpp"
+#include "emulator/core/cpu/Types.hpp"
+#include "emulator/core/Scheduler.hpp"
+#include "emulator/core/Keypad.hpp"
+#include "emulator/core/Timer.hpp"
 #include "common/Types.hpp"
 #include <vector>
 

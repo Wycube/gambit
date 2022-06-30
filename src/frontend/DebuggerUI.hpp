@@ -1,7 +1,8 @@
 #pragma once
 
-#include "core/GBA.hpp"
-#include "core/debug/Debugger.hpp"
+#include "device/OGLVideoDevice.hpp"
+#include "emulator/core/GBA.hpp"
+#include "emulator/core/debug/Debugger.hpp"
 #include "common/StringUtils.hpp"
 #include "common/Log.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -27,32 +28,10 @@ auto get_mode_str(u8 mode_bits) -> std::string {
 class DebuggerUI {
 public:
 
-    DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba) {
+    DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.getVideoDevice())) {
         m_region_sizes[7] = m_gba.getGamePak().size();
         //m_debugger.setBreakPoint(0x080004E8);
         // m_debugger.setBreakPoint(0x08001340);
-
-        //Create OpenGL Texture
-        glGenTextures(1, &m_vram_tex);
-        glBindTexture(GL_TEXTURE_2D, m_vram_tex);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
-        
-        #if _DEBUG
-        //Label the texture
-        glObjectLabel(GL_TEXTURE, m_vram_tex, -1, "GBA Screen Texture");
-        #endif
-
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-
-    ~DebuggerUI() {
-        if(m_vram_tex != 0) {
-            glDeleteTextures(1, &m_vram_tex);
-        }
     }
 
     auto running() -> bool {
@@ -65,11 +44,7 @@ public:
     }
 
     void drawScreen() {
-        glBindTexture(GL_TEXTURE_2D, m_vram_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-        ImGui::Image((void*)(intptr_t)m_vram_tex, ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y));
+        ImGui::Image((void*)(intptr_t)m_video_device.getTextureID(), ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y));
     }
 
     void drawPPUState() {
@@ -77,11 +52,7 @@ public:
         ImGui::Text("DSPCNT: %04X", m_debugger.read16(0x4000000));
 
         //Update texture
-        glBindTexture(GL_TEXTURE_2D, m_vram_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 240, 160, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, m_debugger.getFramebuffer());
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-        ImGui::Image((void*)(intptr_t)m_vram_tex, ImVec2(ImGui::GetContentRegionAvail().x, (160.0f / 240.0f) * ImGui::GetContentRegionAvail().x));
+        ImGui::Image((void*)(intptr_t)m_video_device.getTextureID(), ImVec2(ImGui::GetContentRegionAvail().x, (160.0f / 240.0f) * ImGui::GetContentRegionAvail().x));
     }
 
     void drawCPUDebugger() {
@@ -317,12 +288,10 @@ private:
 
     emu::dbg::Debugger &m_debugger;
     emu::GBA &m_gba;
+    OGLVideoDevice &m_video_device;
 
     //CPU Registers mode
     int m_mode = 0;
-
-    //VRAM Texture
-    u32 m_vram_tex = 0;
 
     //Memory Viewer
     int m_memory_region = 0;

@@ -1,4 +1,4 @@
-#include "core/cpu/CPU.hpp"
+#include "emulator/core/cpu/CPU.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"

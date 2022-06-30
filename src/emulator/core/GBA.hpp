@@ -1,12 +1,13 @@
 #pragma once
 
-#include "core/Scheduler.hpp"
-#include "core/Keypad.hpp"
-#include "core/Timer.hpp"
-#include "core/DMA.hpp"
-#include "core/ppu/PPU.hpp"
-#include "core/mem/Bus.hpp"
-#include "core/cpu/CPU.hpp"
+#include "emulator/core/Scheduler.hpp"
+#include "emulator/core/Keypad.hpp"
+#include "emulator/core/Timer.hpp"
+#include "emulator/core/DMA.hpp"
+#include "emulator/core/ppu/PPU.hpp"
+#include "emulator/core/mem/Bus.hpp"
+#include "emulator/core/cpu/CPU.hpp"
+#include "emulator/device/VideoDevice.hpp"
 #include <vector>
 
 
@@ -15,7 +16,7 @@ namespace emu {
 class GBA {
 public:
 
-    GBA();
+    GBA(VideoDevice &video_device);
 
     void reset();
 
@@ -23,6 +24,8 @@ public:
     auto getGamePak() -> GamePak&;
     void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);
+
+    auto getVideoDevice() -> VideoDevice&;
 
     auto getKeypad() -> Keypad&;
     auto getDebugger() -> dbg::Debugger&;
@@ -34,6 +37,7 @@ public:
 
 private:
 
+    VideoDevice &m_video_device;
     Scheduler m_scheduler;
     Keypad m_keypad;
     Timer m_timer;
@@ -41,7 +45,6 @@ private:
     PPU m_ppu;
     Bus m_bus;
     CPU m_cpu;
-
     dbg::Debugger m_debugger;
 };
 

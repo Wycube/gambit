@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/Scheduler.hpp"
-#include "core/mem/Bus.hpp"
+#include "emulator/core/Scheduler.hpp"
+#include "emulator/core/mem/Bus.hpp"
 #include "common/Types.hpp"
 
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/Scheduler.hpp"
+#include "emulator/core/Scheduler.hpp"
 #include "common/Types.hpp"
 
 

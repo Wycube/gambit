@@ -1,8 +1,8 @@
 #include "Debugger.hpp"
-#include "core/mem/Bus.hpp"
-#include "core/cpu/arm/Instruction.hpp"
-#include "core/cpu/thumb/Instruction.hpp"
-#include "core/Scheduler.hpp"
+#include "emulator/core/mem/Bus.hpp"
+#include "emulator/core/cpu/arm/Instruction.hpp"
+#include "emulator/core/cpu/thumb/Instruction.hpp"
+#include "emulator/core/Scheduler.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
 
@@ -91,14 +91,6 @@ auto Debugger::getCPUSPSR(u8 mode) -> u32 {
 
 auto Debugger::getCPUMode() -> u8 {
     return m_cpu_state->cpsr.mode;
-}
-
-void Debugger::attachPPUMem(u32 *framebuffer) {
-    m_ppu_framebuffer = framebuffer;
-}
-
-auto Debugger::getFramebuffer() -> u32* {
-    return m_ppu_framebuffer;
 }
 
 void Debugger::attachScheduler(std::vector<Event> *scheduler_events, u32 *scheduler_timestamp) {
