@@ -20,74 +20,48 @@ void Bus::cycle(u32 cycles) {
 
 auto Bus::read8(u32 address) -> u8 {
     cycle();
-    //LOG_DEBUG("8-bit read at 0x{:08X}", address);
-
-    return readByte(address);
+    return read<u8>(address);
 }
 
 auto Bus::read16(u32 address) -> u16 {
     cycle();
-    //LOG_DEBUG("16-bit read at 0x{:08X}", address);
-    u32 aligned = bits::align<u16>(address);
-
-    return readByte(aligned) | (readByte(aligned + 1) << 8);
+    return read<u16>(bits::align<u16>(address));
 }
 
 auto Bus::readRotated16(u32 address) -> u32 {
     cycle();
-    //LOG_DEBUG("16-bit read at 0x{:08X}", address);
-    u32 aligned = bits::align<u16>(address);
-
-    return bits::ror(readByte(aligned) | (readByte(aligned + 1) << 8), (address & 1) * 8);
+    return bits::ror(read<u16>(bits::align<u16>(address)), (address & 1) * 8);
 }
 
 auto Bus::read32(u32 address) -> u32 {
     cycle();
-    //LOG_DEBUG("32-bit read at 0x{:08X}", address);
-    u32 aligned = bits::align<u32>(address);
-    
-    return readByte(aligned) | (readByte(aligned + 1) << 8) | (readByte(aligned + 2) << 16) | (readByte(aligned + 3) << 24);
+    return read<u32>(bits::align<u32>(address));
 }
 
 auto Bus::readRotated32(u32 address) -> u32 {
     cycle();
-    //LOG_DEBUG("32-bit read at 0x{:08X}", address);
-    u32 aligned = bits::align<u32>(address);
-    
-    return bits::ror(readByte(aligned) | (readByte(aligned + 1) << 8) | (readByte(aligned + 2) << 16) | (readByte(aligned + 3) << 24), (address & 3) * 8);
+    return bits::ror(read<u32>(bits::align<u32>(address)), (address & 3) * 8);
 }
 
 void Bus::write8(u32 address, u8 value) {
     cycle();
-    //LOG_DEBUG("8-bit write of 0x{:02X} to 0x{:08X}", value, address);
-    
-    writeByte(address, value);
+    write<u8>(address, value);
 }
 
 void Bus::write16(u32 address, u16 value) {
     cycle();
-    //LOG_DEBUG("16-bit write of 0x{:02X} to 0x{:08X}", value, address);
-    address = bits::align<u16>(address);
-
-    writeByte(address, value & 0xFF);
-    writeByte(address + 1, (value >> 8) & 0xFF);
+    write<u16>(bits::align<u16>(address), value);
 }
 
 void Bus::write32(u32 address, u32 value) {
     cycle();
-    //LOG_DEBUG("32-bit write of 0x{:02X} to 0x{:08X}", value, address);
-    address = bits::align<u32>(address);
-
-    writeByte(address, value & 0xFF);
-    writeByte(address + 1, (value >> 8) & 0xFF);
-    writeByte(address + 2, (value >> 16) & 0xFF);
-    writeByte(address + 3, (value >> 24) & 0xFF);
+    write<u32>(bits::align<u32>(address), value);
 }
 
 void Bus::requestInterrupt(InterruptSource source) {
     //Set the flag in IF at address 0x04000202
-    m_mem.io[2] |= source;
-    m_mem.io[3] |= source >> 8;
+    m_mem.io[0x202] |= source;
+    m_mem.io[0x203] |= source >> 8;
 }
 
 auto Bus::getLoadedPak() -> GamePak& {
@@ -107,59 +81,73 @@ void Bus::loadBIOS(const std::vector<u8> &bios) {
 }
 
 auto Bus::debugRead8(u32 address) -> u8 {
-    return readByte(address);
+    return read<u8>(address);
 }
 
 auto Bus::debugRead16(u32 address) -> u16 {
-    return debugRead8(address) | (debugRead8(address + 1) << 8);
+    return read<u16>(address);
 }
 
 auto Bus::debugRead32(u32 address) -> u32 {
-    return debugRead8(address) | (debugRead8(address + 1) << 8) | (debugRead8(address + 2) << 16) | (debugRead8(address + 3) << 24);
+    return read<u32>(address);
 }
 
 void Bus::debugWrite8(u32 address, u8 value) {
-    writeByte(address, value);
+    write<u8>(address, value);
 }
 
 void Bus::debugWrite16(u32 address, u16 value) {
-    debugWrite8(address, value & 0xFF);
-    debugWrite8(address + 1, (value >> 8) & 0xFF);
+    write<u16>(address, value);
 }
 
 void Bus::debugWrite32(u32 address, u32 value) {
-    debugWrite8(address, value & 0xFF);
-    debugWrite8(address + 1, (value >> 8) & 0xFF);
-    debugWrite8(address + 2, (value >> 16) & 0xFF);
-    debugWrite8(address + 3, (value >> 24) & 0xFF);
+    write<u32>(address, value);
 }
 
-auto Bus::readByte(u32 address) -> u8 {
+template<typename T>
+auto Bus::read(u32 address) -> T {
+    static_assert(std::is_integral_v<T>);
+    static_assert(sizeof(T) <= 4);
+    
     u32 sub_address = address & 0xFFFFFF;
+    u8 *memory_region = nullptr;
+    u32 region_size = 0;
+    T value = 0;
 
     switch((address >> 24) & 0xF) {
-        case 0x0 : return m_mem.bios[sub_address]; //BIOS
+        case 0x0 : //BIOS
+            memory_region = m_mem.bios;
+            region_size = sizeof(m_mem.bios);
         break;
         case 0x1 : //Not Used
         break;
-        case 0x2 : return m_mem.ewram[sub_address % sizeof(m_mem.ewram)]; //On-Board WRAM
+        case 0x2 : //On-Board WRAM
+            memory_region = m_mem.ewram;
+            region_size = sizeof(m_mem.ewram);
         break;
-        case 0x3 : return m_mem.iwram[sub_address % sizeof(m_mem.iwram)]; //On-Chip WRAM
+        case 0x3 : //On-Chip WRAM
+            memory_region = m_mem.iwram;
+            region_size = sizeof(m_mem.iwram);
         break;
-        case 0x4 : return readIO(sub_address);
+        case 0x4 : 
+            for(int i = 0; i < sizeof(T); i++) {
+                value |= (readIO((sub_address + i) % sizeof(m_mem.io)) << i * 8);
+            }
+
+            return value;
         break;
-        case 0x5 : return m_ppu.readPalette(sub_address); //BG/OBJ Palette RAM
+        case 0x5 : return m_ppu.readPalette<T>(sub_address); //Palette RAM
         break;
-        case 0x6 : return m_ppu.readVRAM(sub_address); //VRAM
+        case 0x6 : return m_ppu.readVRAM<T>(sub_address); //VRAM
         break;
-        case 0x7 : return m_ppu.readOAM(sub_address); //OAM - OBJ Attributes
+        case 0x7 : return m_ppu.readOAM<T>(sub_address); //OAM - OBJ Attributes
         break;
         case 0x8 : 
         case 0x9 : //Pak ROM Waitstate 0
         case 0xA : 
         case 0xB : //Pak ROM Waitstate 1
         case 0xC : 
-        case 0xD : return m_pak.read8(sub_address); //Pak ROM Waitstate 2
+        case 0xD : return m_pak.read<T>(sub_address); //Pak ROM Waitstate 2
         break;
         case 0xE : //Pak SRAM
         break;
@@ -167,40 +155,71 @@ auto Bus::readByte(u32 address) -> u8 {
         break;
     }
 
-    return 0xFF;
+    if(memory_region == nullptr) {
+        return 0;
+    }
+
+    for(int i = 0; i < sizeof(T); i++) {
+        value |= (memory_region[(sub_address + i) % region_size] << i * 8);
+    }
+
+    return value;
 }
 
-void Bus::writeByte(u32 address, u8 value) {
+template<typename T>
+void Bus::write(u32 address, T value) {
+    static_assert(std::is_integral_v<T>);
+    static_assert(sizeof(T) <= 4);
+    
     u32 sub_address = address & 0xFFFFFF;
+    u8 *memory_region = nullptr;
+    u32 region_size = 0;
 
     switch((address >> 24) & 0xF) {
-        case 0x0 : m_mem.bios[sub_address] = value; //BIOS
+        case 0x0 : //BIOS
+            memory_region = m_mem.bios;
+            region_size = sizeof(m_mem.bios);
         break;
         case 0x1 : //Not Used
         break;
-        case 0x2 : m_mem.ewram[sub_address % sizeof(m_mem.ewram)] = value; //On-Board WRAM
+        case 0x2 : //On-Board WRAM
+            memory_region = m_mem.ewram;
+            region_size = sizeof(m_mem.ewram);
         break;
-        case 0x3 : m_mem.iwram[sub_address % sizeof(m_mem.iwram)] = value; //On-Chip WRAM
+        case 0x3 : //On-Chip WRAM
+            memory_region = m_mem.iwram;
+            region_size = sizeof(m_mem.iwram);
         break;
-        case 0x4 : writeIO(sub_address, value);
+        case 0x4 : 
+            for(int i = 0; i < sizeof(T); i++) {
+                writeIO((sub_address + i) % sizeof(m_mem.io), (value >> i * 8) & 0xFF);
+            }
         break;
-        case 0x5 : m_ppu.writePalette(sub_address, value); //BG/OBJ Palette RAM
+        case 0x5 : m_ppu.writePalette<T>(sub_address, value); //Palette RAM
         break;
-        case 0x6 : m_ppu.writeVRAM(sub_address, value); //VRAM
+        case 0x6 : m_ppu.writeVRAM<T>(sub_address, value); //VRAM
         break;
-        case 0x7 : m_ppu.writeOAM(sub_address, value); //OAM - OBJ Attributes
+        case 0x7 : m_ppu.writeOAM<T>(sub_address, value); //OAM - OBJ Attributes
         break;
         case 0x8 : 
         case 0x9 : //Pak ROM Waitstate 0
         case 0xA : 
         case 0xB : //Pak ROM Waitstate 1
         case 0xC : 
-        case 0xD : m_pak.write8(sub_address, value); //Pak ROM Waitstate 2
+        case 0xD : m_pak.write<T>(sub_address, value); //Pak ROM Waitstate 2
         break;
         case 0xE : //Pak SRAM
         break;
         case 0xF : //Not Used
         break;
+    }
+
+    if(memory_region == nullptr) {
+        return;
+    }
+
+    for(int i = 0; i < sizeof(T); i++) {
+        memory_region[(sub_address + i) % region_size] = (value >> i * 8) & 0xFF;
     }
 }
 
@@ -208,6 +227,12 @@ auto Bus::readIO(u32 address) -> u8 {
     if(address <= 0x56) {
         return m_ppu.readIO(address);
     }
+
+    //BIOS SOUNDBIAS Stub
+    if(address == 0x89) {
+        return 2;
+    }
+
     if(address >= 0xB0 && address <= 0xE0) {
         return m_dma.read8(address);
     }
@@ -234,6 +259,16 @@ void Bus::writeIO(u32 address, u8 value) {
     }
     if(address >= 0x130 && address <= 0x133) {
         m_keypad.write8(address, value);
+        return;
+    }
+    if((address & ~3) == 0x208) {
+        if(address == 0x208) {
+            m_mem.io[address] = value & 1;
+        }
+        return;
+    }
+    if((address & ~1) == 0x202) {
+        m_mem.io[address] &= ~value;
         return;
     }
 

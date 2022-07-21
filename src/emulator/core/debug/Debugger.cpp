@@ -11,7 +11,9 @@ namespace emu {
 
 namespace dbg {
 
-Debugger::Debugger(Bus &bus) : m_bus(bus) { }
+Debugger::Debugger(Bus &bus) : m_bus(bus) {
+    m_bg_map = new u32[4 * 1024 * 1024];
+}
 
 auto Debugger::read8(u32 address) -> u8 {
     return m_bus.debugRead8(address);
@@ -33,7 +35,7 @@ auto Debugger::thumbDisassembleAt(u32 address) -> std::string {
     return thumbDecodeInstruction(m_bus.debugRead16(address), address, m_bus.debugRead16(address - 2)).disassembly;
 }
 
-void Debugger::attachCPUState(CPUState *state) {
+void Debugger::attachCPUState(const CPUState *state) {
     m_cpu_state = state;
 }
 
@@ -93,7 +95,7 @@ auto Debugger::getCPUMode() -> u8 {
     return m_cpu_state->cpsr.mode;
 }
 
-void Debugger::attachScheduler(std::vector<Event> *scheduler_events, u32 *scheduler_timestamp) {
+void Debugger::attachScheduler(const std::vector<Event> *scheduler_events, const u32 *scheduler_timestamp) {
     m_scheduler_events = scheduler_events;
     m_scheduler_timestamp = scheduler_timestamp;
 }
@@ -103,7 +105,7 @@ auto Debugger::numEvents() -> u32 {
 }
 
 auto Debugger::getEventTag(u32 index) -> std::string {
-    return m_scheduler_events->at(index).debug_tag;
+    return m_scheduler_events->at(index).tag;
 }
 
 auto Debugger::getEventCycles(u32 index) -> u32 {
@@ -114,20 +116,47 @@ auto Debugger::getCurrentCycle() -> u32 {
     return *m_scheduler_timestamp;
 }
 
-auto Debugger::atBreakPoint() -> bool {
-    if(m_cpu_state->cpsr.t) {
-        return (m_cpu_state->pc - 2) == m_break_point;
-    } else {
-        return (m_cpu_state->pc - 4) == m_break_point;
+void Debugger::attachPPU(const u8 *vram) {
+    m_ppu_vram = vram;
+}
+
+void Debugger::setRunning(bool run) {
+    m_running = run;
+}
+
+auto Debugger::running() -> bool {
+    return m_running;
+}
+
+auto Debugger::checkBreakpoints() -> bool {
+    u32 pc = m_cpu_state->cpsr.t ? m_cpu_state->pc - 2 : m_cpu_state->pc - 4;
+
+    for(const auto &breakpoint : m_breakpoints) {
+        if(breakpoint == pc) {
+            setRunning(false);
+            LOG_DEBUG("Hit breakpoint at pc={:08X}", pc);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Debugger::addBreakpoint(u32 address) {
+    m_breakpoints.push_back(address);
+}
+
+void Debugger::removeBreakpoint(u32 address) {
+    for(int i = 0; i < m_breakpoints.size(); i++) {
+        if(m_breakpoints[i] == address) {
+            m_breakpoints.erase(m_breakpoints.begin() + i);
+            break;
+        }
     }
 }
 
-void Debugger::setBreakPoint(u32 address) {
-    m_break_point = address;
-}
-
-auto Debugger::getBreakPoint() -> u32 {
-    return m_break_point;
+auto Debugger::getBreakpoints() -> const std::vector<u32>& {
+    return m_breakpoints;
 }
 
 } //namespace dbg

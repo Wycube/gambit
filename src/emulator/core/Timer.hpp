@@ -6,10 +6,13 @@
 
 namespace emu {
 
+class Bus;
+
+
 class Timer {
 public:
 
-    Timer(Scheduler &scheduler);
+    Timer(Scheduler &scheduler, Bus &bus);
 
     void reset();
 
@@ -18,10 +21,21 @@ public:
 
 private:
 
-    u16 m_tmcnt_l[4];
-    u16 m_tmcnt_h[4];
+    u32 m_timer_start[4];
+    u16 m_timer_counter[4];
+    u16 m_timer_reload[4];
+    u16 m_tmcnt[4];
 
     Scheduler &m_scheduler;
+    Bus &m_bus;
+
+    auto isTimerRunning(int timer) -> bool;
+    auto getTimerIntermediateValue(int timer, bool running) -> u16;
+    void updateTimer(int timer, u8 old_tmcnt);
+    void startTimer(int timer);
+    void stopTimer(int timer);
+    void timerOverflowEvent(int timer, u32 current, u32 cycles_late);
+    void timerOverflow(int timer);
 };
 
 } //namespace emu

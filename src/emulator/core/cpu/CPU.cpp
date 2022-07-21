@@ -39,7 +39,7 @@ void CPU::reset() {
     set_reg(13, 0x03007F00);
     set_reg(13, 0x03007FA0, MODE_IRQ);
     set_reg(13, 0x03007FE0, MODE_SUPERVISOR);
-    set_reg(14, 0x08000000);
+    set_reg(14, 0x00000000);
     set_reg(15, 0x08000000);
 }
 
@@ -53,9 +53,9 @@ void CPU::step() {
         m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
         m_state.pc += 4;
 
-        ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
+        // ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
 
-        //LOG_INFO("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", m_state.pc - 8, instruction, decoded.disassembly);
+        // LOG_INFO("PC: {:08X} | Instruction: {:08X}", m_state.pc - 8, instruction);
         if(passed(instruction >> 28)) {
             execute_arm(instruction);
         }
@@ -66,7 +66,7 @@ void CPU::step() {
         m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
         m_state.pc += 2;
 
-        ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
+        // ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
 
         //LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
         execute_thumb(instruction);
@@ -271,19 +271,23 @@ void CPU::service_interrupt() {
     u16 IF = m_bus.debugRead16(0x04000202);
     bool IME = m_bus.debugRead8(0x04000208) & 1;
 
-    if(!IME || IE == 0 || IF == 0) {
+    if(!IME || IE == 0 || IF == 0 || m_state.cpsr.i) {
         return;
     }
 
     //Check for any interrupts that are enabled and requested
     for(int i = 0; i < 14; i++) {
-        bool enabled = (IE << i) & 1;
-        bool request = (IF << i) & 1;
+        bool enabled = bits::get_bit(IE, i);
+        bool request = bits::get_bit(IF, i);
 
         if(enabled && request) {
-            LOG_DEBUG("Interrupt serviced from source {}", i);
+            LOG_DEBUG("Interrupt serviced from source {} at pc = 0x{:08X}", i, m_state.pc);
+            get_spsr(MODE_IRQ) = m_state.cpsr;
+            m_state.cpsr.mode = MODE_IRQ;
+            set_reg(14, m_state.cpsr.t ? get_reg(15) + 2 : get_reg(15));
             m_state.cpsr.t = false;
-            m_state.pc = 0x00000018;
+            m_state.cpsr.i = true;
+            set_reg(15, 0x00000018);
             flushPipeline();
             break;
         }

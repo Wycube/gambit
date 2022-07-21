@@ -145,7 +145,7 @@ void CPU::armDataProcessing(u32 instruction) {
     }
 
     //TST, TEQ, CMP, and CMN only affect flags
-    if(opcode < 0x8 || opcode > 0xB) {
+    if(rd != 15 && (opcode < 0x8 || opcode > 0xB)) {
         set_reg(rd, result);
     }
 
@@ -154,12 +154,15 @@ void CPU::armDataProcessing(u32 instruction) {
             m_state.cpsr = get_spsr();
         }
 
+        //Set r15 here so if it is switched into thumb, it won't be word-aligned before
+        set_reg(rd, result);
+
         if(opcode < 0x8 || opcode > 0xB) {
             flushPipeline();
         }
     }
 
-    if(s) {
+    if(s && rd != 15) {
         m_state.cpsr.n = result >> 31;
         m_state.cpsr.z = result == 0;
 
@@ -180,7 +183,7 @@ void CPU::armDataProcessing(u32 instruction) {
             if(subtract) {
                 m_state.cpsr.c = (u64)r_op_1 >= (u64)r_op_2 + (u64)(use_carry ? !m_state.cpsr.c : 0);
             } else {
-                m_state.cpsr.c = result < r_op_1 + (use_carry ? m_state.cpsr.c : 0);
+                m_state.cpsr.c = (u64)op_1 + (u64)op_2 + (use_carry ? m_state.cpsr.c : 0) > 0xFFFFFFFF;
             }
 
             //This checks if a and b are equal

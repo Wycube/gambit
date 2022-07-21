@@ -3,6 +3,14 @@
 
 namespace emu {
 
+template auto GamePak::read<u8>(u32 address) -> u8;
+template auto GamePak::read<u16>(u32 address) -> u16;
+template auto GamePak::read<u32>(u32 address) -> u32;
+template void GamePak::write<u8>(u32 address, u8 value);
+template void GamePak::write<u16>(u32 address, u16 value);
+template void GamePak::write<u32>(u32 address, u32 value);
+
+
 auto GamePak::read8(u32 address) -> u8 {
     if(address >= m_rom.size()) {
        return 0;
@@ -13,6 +21,32 @@ auto GamePak::read8(u32 address) -> u8 {
 
 void GamePak::write8(u32 address, u8 value) {
     //RAM
+}
+
+template<typename T>
+auto GamePak::read(u32 address) -> T {
+    if(address >= m_rom.size()) {
+       return 0;
+    }
+
+    T value = 0;
+
+    for(int i = 0; i < sizeof(T); i++) {
+        value |= (m_rom[address + i] << i * 8);
+    }
+
+    return value;
+}
+
+template<typename T>
+void GamePak::write(u32 address, T value) {
+    if(address >= m_rom.size()) {
+       return;
+    }
+
+    for(int i = 0; i < sizeof(T); i++) {
+        m_rom[address + i] = (value >> i * 8) & 0xFF;
+    }
 }
 
 auto GamePak::getHeader() -> GamePakHeader& {

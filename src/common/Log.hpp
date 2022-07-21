@@ -27,21 +27,21 @@ enum LogLevel {
 // private:
 
 //     std::thread m_thread;
-//     std::mutex m_stop_mutex;
-//     bool m_stop = false;
-
 //     std::fstream m_log_file;
 //     std::queue<std::string> m_queue;
-//     std::mutex m_message_mutex;
+//     std::mutex m_mutex;
+//     std::condition_variable m_cv;
+//     bool m_stop = false;
 //     bool m_new_message = false;
 
 //     void log_to_file();
 
 // public:
 
-//     void init();
-//     void queueMessage(const std::string &message);
-//     void close();
+//     Logger();
+//     ~Logger();
+
+//     void queueMessage(std::string &&message);
 // };
 
 

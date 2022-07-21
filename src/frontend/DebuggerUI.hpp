@@ -30,17 +30,9 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.getVideoDevice())) {
         m_region_sizes[7] = m_gba.getGamePak().size();
-        //m_debugger.setBreakPoint(0x080004E8);
-        // m_debugger.setBreakPoint(0x08001340);
-    }
-
-    auto running() -> bool {
-        if(m_running && m_debugger.atBreakPoint()) {
-            LOG_DEBUG("Break Point at 0x{:08X} hit!", m_debugger.getBreakPoint());
-            m_running = false;
-        }
-
-        return m_running;
+        //BIOS
+        // m_debugger.addBreakpoint(0x08000000);
+        // m_debugger.addBreakpoint(0x000019C8);
     }
 
     void drawScreen() {
@@ -50,13 +42,54 @@ public:
     void drawPPUState() {
         ImGui::Text("Mode: %i", m_debugger.read8(0x4000000) & 0x7);
         ImGui::Text("DSPCNT: %04X", m_debugger.read16(0x4000000));
+        ImGui::Text("WININ: %04X", m_debugger.read16(0x40000048));
+        ImGui::Text("WINOUT: %04X", m_debugger.read16(0x400004A));
 
         //Update texture
         ImGui::Image((void*)(intptr_t)m_video_device.getTextureID(), ImVec2(ImGui::GetContentRegionAvail().x, (160.0f / 240.0f) * ImGui::GetContentRegionAvail().x));
     }
 
+    void drawBreakpoints() {
+        bool running = m_debugger.running();
+
+        if(running) {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        }
+
+        const std::vector<u32> &bkpts = m_debugger.getBreakpoints();
+
+        ImGui::Text("Breakpoints");
+        ImGui::Separator();
+
+        static u32 address_input;
+        ImGui::InputScalar("##NewBreakpointAddress_InputU32", ImGuiDataType_U32, &address_input, 0, 0, "%08X", ImGuiInputTextFlags_CharsHexadecimal);
+        address_input &= ~1;
+        ImGui::SameLine();
+
+        if(ImGui::Button("Add")) {
+            m_debugger.addBreakpoint(address_input);
+        }
+        ImGui::Separator();
+
+        for(int i = bkpts.size() - 1; i >= 0; i--) {
+            if(ImGui::Button("Delete")) {
+                m_debugger.removeBreakpoint(bkpts[i]);
+                continue;
+            }
+
+            ImGui::SameLine();
+            ImGui::Text("%i : 0x%08X", i, bkpts[i]);
+        }
+
+        if(running) {
+            ImGui::PopItemFlag();
+        }
+    }
+
     void drawCPUDebugger() {
-        if(m_running) {
+        bool running = m_debugger.running();
+
+        if(running) {
             ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         }
 
@@ -64,14 +97,14 @@ public:
             m_gba.step();
         }
 
-        if(m_running) {
+        if(running) {
             ImGui::PopItemFlag();
         }
 
         ImGui::SameLine();
 
-        if((!m_running && ImGui::Button("Run")) || (m_running && ImGui::Button("Pause"))) {
-            m_running = !m_running;
+        if((!running && ImGui::Button("Run")) || (running && ImGui::Button("Pause"))) {
+            m_gba.getDebugger().setRunning(!running);
         }
 
 
@@ -155,7 +188,7 @@ public:
 
         bool go_to_pc = ImGui::Button("Go to PC");
 
-        if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoScrollbar)) {
+        if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             ImGui::BeginTable("##Disassembly_Table", 4);
             ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
             ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
@@ -298,6 +331,4 @@ private:
     const char *m_regions = "BIOS\0EWRAM\0IWRAM\0MMIO\0Palette RAM\0VRAM\0OAM\0Cartridge ROM\0";
     u32 m_region_sizes[8] = {16_KiB, 256_KiB, 32_KiB, 1023, 1_KiB, 96_KiB, 1_KiB, 32_MiB};
     u32 m_region_start[8] = {0, 0x02000000, 0x03000000, 0x04000000, 0x05000000, 0x06000000, 0x07000000, 0x08000000};
-
-    bool m_running = false;
 };

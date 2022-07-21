@@ -36,7 +36,7 @@ public:
     void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);
 
-    //For Debugger
+    //Same as other read/writes but doesn't tick the scheduler
     auto debugRead8(u32 address) -> u8;
     auto debugRead16(u32 address) -> u16;
     auto debugRead32(u32 address) -> u32;
@@ -61,9 +61,11 @@ private:
     DMA &m_dma;
     PPU &m_ppu;
 
+    template<typename T>
+    auto read(u32 address) -> T;
+    template<typename T>
+    void write(u32 address, T value);
 
-    auto readByte(u32 address) -> u8;
-    void writeByte(u32 address, u8 value);
     auto readIO(u32 address) -> u8;
     void writeIO(u32 address, u8 value);
 };

@@ -54,11 +54,11 @@ struct StatusRegister {
     u8 mode : 5;
     u32 reserved : 20;
 
-    auto asInt() -> u32 {
+    auto asInt() const -> u32 {
         return (n << 31 | z << 30 | c << 29 | v << 28 | reserved << 8 | i << 7 | f << 6 | t << 5 | mode);
     }
 
-    void fromInt(u32 value) {
+    const void fromInt(u32 value) {
         n = bits::get_bit<31>(value);
         z = bits::get_bit<30>(value);
         c = bits::get_bit<29>(value);

@@ -27,6 +27,11 @@ public:
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
 
+    template<typename T>
+    auto read(u32 address) -> T;
+    template<typename T>
+    void write(u32 address, T value);
+    
     auto getHeader() -> GamePakHeader&;
     auto size() -> u32;
     void loadROM(std::vector<u8> &&rom);

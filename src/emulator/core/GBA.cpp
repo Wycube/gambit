@@ -4,30 +4,52 @@
 namespace emu {
 
 GBA::GBA(VideoDevice &video_device) 
-: m_video_device(video_device), m_timer(m_scheduler), m_dma(m_scheduler, m_bus), m_ppu(m_video_device, m_scheduler, m_bus), 
+: m_video_device(video_device), m_timer(m_scheduler, m_bus), m_dma(m_scheduler, m_bus), m_ppu(m_video_device, m_scheduler, m_bus, m_dma), 
 m_bus(m_scheduler, m_keypad, m_timer, m_dma, m_ppu), m_cpu(m_bus), m_debugger(m_bus) {
     m_scheduler.attachDebugger(m_debugger);
     m_cpu.attachDebugger(m_debugger);
+    m_ppu.attachDebugger(m_debugger);
 }
 
 void GBA::reset() {
     m_scheduler.reset();
+    m_keypad.reset();
+    m_timer.reset();
     m_dma.reset();
     m_ppu.reset();
     m_bus.reset();
     m_cpu.reset();
 }
 
-void GBA::step(u32 cycles) {
-    u32 start = m_scheduler.getCurrentTimestamp();
-
+void GBA::step() {
     if(m_dma.running()) {
-        m_scheduler.step(cycles);
+        m_scheduler.runToNext();
         return;
     }
 
-    while(m_scheduler.getCurrentTimestamp() < start + cycles) {
+    m_cpu.step();
+}
+
+void GBA::run(u32 cycles) {
+    u32 target = m_scheduler.getCurrentTimestamp() + cycles;
+
+    while(m_scheduler.getCurrentTimestamp() < target) {
+        if(!m_debugger.running()) {
+            break;
+        }
+
+        if(m_dma.running()) {
+            if(m_scheduler.nextEventTime() < target) {
+                m_scheduler.runToNext();
+            } else {
+                m_scheduler.step(target - m_scheduler.getCurrentTimestamp());
+            }
+
+            continue;
+        }
+         
         m_cpu.step();
+        m_debugger.checkBreakpoints();
     }
 }
 

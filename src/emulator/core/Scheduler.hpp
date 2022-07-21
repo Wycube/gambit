@@ -10,7 +10,7 @@ namespace emu {
 using EventFunc = std::function<void (u32, u32)>;
 
 struct Event {
-    std::string debug_tag;
+    std::string tag;
     EventFunc callback;
     u32 scheduled_timestamp;
 };
@@ -22,10 +22,12 @@ public:
 
     void reset();
 
-    void addEvent(std::string debug_tag, EventFunc callback, u32 cycles_from_now);
-    //auto removeEvent(Event event) -> bool;
+    void addEvent(const std::string &tag, EventFunc callback, u32 cycles_from_now);
+    void removeEvent(const std::string &tag);
 
     void step(u32 cycles);
+    void runToNext();
+    auto nextEventTime() -> u32;
     auto getCurrentTimestamp() -> u32;
 
     void attachDebugger(dbg::Debugger &debugger);

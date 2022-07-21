@@ -10,11 +10,20 @@ void Scheduler::reset() {
     m_events.clear();
 }
 
-void Scheduler::addEvent(std::string debug_tag, EventFunc callback, u32 cycles_from_now) {
-    m_events.push_back(Event{debug_tag, callback, m_current_timestamp + cycles_from_now});
+void Scheduler::addEvent(const std::string &tag, EventFunc callback, u32 cycles_from_now) {
+    m_events.push_back(Event{tag, callback, m_current_timestamp + cycles_from_now});
     std::sort(m_events.begin(), m_events.end(), [](const Event &a, const Event &b) {
-        return a.scheduled_timestamp >= b.scheduled_timestamp;
+        return a.scheduled_timestamp > b.scheduled_timestamp;
     });
+}
+
+void Scheduler::removeEvent(const std::string &tag) {
+    for(auto iter = m_events.begin(); iter != m_events.end(); iter++) {
+        if(iter->tag == tag) {
+            m_events.erase(iter);
+            break;
+        }
+    }
 }
 
 void Scheduler::step(u32 cycles) {
@@ -30,6 +39,22 @@ void Scheduler::step(u32 cycles) {
             events_to_run = false;
         }
     }
+}
+
+void Scheduler::runToNext() {
+    if(m_events.empty()) {
+        return;
+    }
+
+    step(m_events.back().scheduled_timestamp - m_current_timestamp);
+}
+
+auto Scheduler::nextEventTime() -> u32 {
+    if(m_events.empty()) {
+        return 0;
+    }
+
+    return m_events.back().scheduled_timestamp;
 }
 
 auto Scheduler::getCurrentTimestamp() -> u32 {

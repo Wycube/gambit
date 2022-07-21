@@ -17,7 +17,6 @@ protected:
     u32 m_internal_framebuffer[240 * 160];
 };
 
-
 class NullVideoDevice final : public VideoDevice {
 public:
 

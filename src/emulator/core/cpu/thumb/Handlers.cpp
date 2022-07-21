@@ -99,9 +99,8 @@ void CPU::thumbProcessImmediate(u16 instruction) {
         }
 
         bool a = op_1 >> 31;
-        bool b = immed_8 >> 7;
         bool c = result >> 31;
-        m_state.cpsr.v = a ^ (b ^ !subtract) && a ^ c;
+        m_state.cpsr.v = a ^ !subtract && a ^ c;
     }
 }
 
@@ -153,7 +152,7 @@ void CPU::thumbALUOperation(u16 instruction) {
         if(subtract) {
             m_state.cpsr.c = (u64)op_1 >= (u64)op_2 + (u64)(use_carry ? !m_state.cpsr.c : 0);
         } else {
-            m_state.cpsr.c = result < op_1 + (use_carry ? m_state.cpsr.c : 0);
+            m_state.cpsr.c = (u64)op_1 + (u64)op_2 + (use_carry ? m_state.cpsr.c : 0) > 0xFFFFFFFF;
         }
 
         bool a = op_1 >> 31;

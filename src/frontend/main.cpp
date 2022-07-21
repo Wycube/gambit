@@ -7,13 +7,26 @@
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
 #include <imgui.h>
-#include <imgui_internal.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <signal.h>
 
+
+static emu::GBA *s_gba;
+
+void signal_handler(int signal) {
+    LOG_ERROR("Signal {} received", signal);
+
+    emu::dbg::Debugger &debug = s_gba->getDebugger();
+    bool thumb = debug.getCPUCPSR() & emu::FLAG_THUMB;
+    u32 pc = debug.getCPURegister(15) - (thumb ? 2 : 4);
+
+    LOG_DEBUG("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", pc, thumb ? debug.read16(pc) : debug.read32(pc), thumb ? debug.thumbDisassembleAt(pc) : debug.armDisassembleAt(pc));
+    std::_Exit(-2);
+}
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -31,6 +44,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             case GLFW_KEY_S : pressed |= emu::KeypadInput::BUTTON_B; break;
             case GLFW_KEY_Z : pressed |= emu::KeypadInput::START; break;
             case GLFW_KEY_X : pressed |= emu::KeypadInput::SELECT; break;
+            case GLFW_KEY_Q : pressed |= emu::KeypadInput::BUTTON_L; break;
+            case GLFW_KEY_W : pressed |= emu::KeypadInput::BUTTON_R; break;
         }
     }
 
@@ -44,6 +59,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             case GLFW_KEY_S : pressed &= ~emu::KeypadInput::BUTTON_B; break;
             case GLFW_KEY_Z : pressed &= ~emu::KeypadInput::START; break;
             case GLFW_KEY_X : pressed &= ~emu::KeypadInput::SELECT; break;
+            case GLFW_KEY_Q : pressed &= ~emu::KeypadInput::BUTTON_L; break;
+            case GLFW_KEY_W : pressed &= ~emu::KeypadInput::BUTTON_R; break;
         }
     }
 
@@ -70,36 +87,6 @@ int main(int argc, char *argv[]) {
     } else {
         bios_path = argv[2];
     }
-
-    if(glfwInit() == GLFW_FALSE) {
-        LOG_ERROR("GLFW failed to initialize!");
-        return -1;
-    }
-    
-    GLFWwindow *window = glfwCreateWindow(1080, 720, "", 0, 0);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(0);
-
-    //Setup input callback
-    glfwSetKeyCallback(window, key_callback);
-
-    int version = gladLoadGL(glfwGetProcAddress);
-    if(version == 0) {
-        LOG_ERROR("Glad failed to initialize!");
-        return -1;
-    }
-
-    LOG_INFO("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    ImGui::StyleColorsDark();
-
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 460");
 
     std::fstream rom_file(argv[1], std::ios_base::in | std::ios_base::binary);
     std::fstream bios_file(bios_path, std::ios_base::in | std::ios_base::binary);
@@ -136,11 +123,49 @@ int main(int argc, char *argv[]) {
     rom_file.close();
     bios_file.close();
 
+    signal(SIGSEGV, signal_handler);
+    signal(SIGINT, signal_handler);
+    signal(SIGABRT, signal_handler);
+
+    if(glfwInit() == GLFW_FALSE) {
+        LOG_ERROR("GLFW failed to initialize!");
+        return -1;
+    }
+    
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    GLFWwindow *window = glfwCreateWindow(1080, 720, "", 0, 0);
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(0);
+
+    //Setup input callback
+    glfwSetKeyCallback(window, key_callback);
+
+    int version = gladLoadGL(glfwGetProcAddress);
+    if(version == 0) {
+        LOG_ERROR("Glad failed to initialize!");
+        return -1;
+    }
+
+    LOG_INFO("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
+
     OGLVideoDevice video_device;
 
     emu::GBA gba(video_device);
     gba.loadBIOS(bios);
     gba.loadROM(std::move(rom));
+
+    s_gba = &gba;
 
     char game_title[13];
     std::memcpy(game_title, gba.getGamePak().getHeader().title, 12);
@@ -152,6 +177,7 @@ int main(int argc, char *argv[]) {
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 
     DebuggerUI debug_ui(gba);
+    bool show_bkpts_debug = false;
     bool show_cpu_debug = true;
     bool show_mem_debug = false;
     bool show_vram_debug = false;
@@ -171,12 +197,8 @@ int main(int argc, char *argv[]) {
             clock_speed = gba.getCurrentTimestamp() - cycles_start;
             cycles_start = gba.getCurrentTimestamp();
         }
-
-        for(int i = 0; i < 700; i++) {
-            if(debug_ui.running()) {
-                gba.step();
-            }
-        }
+        
+        gba.run(10000);
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -188,6 +210,9 @@ int main(int argc, char *argv[]) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
         ImGui::BeginMainMenuBar();
         if(ImGui::BeginMenu("Debug")) {
+            if(ImGui::MenuItem("Breakpoints")) {
+                show_bkpts_debug = true;
+            }
             if(ImGui::MenuItem("CPU")) {
                 show_cpu_debug = true;
             }
@@ -225,6 +250,11 @@ int main(int argc, char *argv[]) {
         ImGui::End();
         ImGui::PopStyleVar(2);
 
+
+        if(show_bkpts_debug) {
+            if(ImGui::Begin("Breakpoints", &show_bkpts_debug)) debug_ui.drawBreakpoints();
+            ImGui::End();
+        }
 
         if(show_cpu_debug) {
             if(ImGui::Begin("CPU Debugger", &show_cpu_debug)) debug_ui.drawCPUDebugger();
