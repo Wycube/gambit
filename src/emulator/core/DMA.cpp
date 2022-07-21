@@ -60,7 +60,7 @@ void DMA::write8(u32 address, u8 value) {
 
     if(bits::get_bit<15>(control) && !old_enable) {
         if(bits::get<12, 2>(control) == 3) {
-            LOG_WARNING("DMA start timing {} not supported yet", bits::get<12, 2>(control));
+            LOG_WARNING("DMA {} start timing {} not supported yet", dma_n, bits::get<12, 2>(control));
             return;
         }
 
@@ -135,11 +135,13 @@ void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
 
 template<typename T>
 void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
+
     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
     u32 &source = m_channel[dma_n]._source;
     u32 &destination = m_channel[dma_n]._destination;
     u32 control = m_channel[dma_n].control;
     int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length;
+    LOG_DEBUG("WOAH, DMA-ing from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
 
     for(int i = 0; i < length; i++) {
         if constexpr(sizeof(T) == 2) {
@@ -153,13 +155,13 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
         }
     }
 
-    //TODO: Repeat Bit
+    //TODO: Repeat Bit, more than this at least
     if(bits::get_bit<9>(control)) {
         if(bits::get<5, 2>(control) == 3) {
             m_channel[dma_n]._destination = m_channel[dma_n].destination;
         }
     } else {
-        m_channel[dma_n].control &= ~0x80;
+        m_channel[dma_n].control &= ~0x8000;
     }
 
     m_channel[dma_n].active = false;
