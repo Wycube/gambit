@@ -8,6 +8,7 @@
 #include "emulator/core/mem/Bus.hpp"
 #include "emulator/core/cpu/CPU.hpp"
 #include "emulator/device/VideoDevice.hpp"
+#include "emulator/device/InputDevice.hpp"
 #include <vector>
 
 
@@ -16,7 +17,7 @@ namespace emu {
 class GBA {
 public:
 
-    GBA(VideoDevice &video_device);
+    GBA(VideoDevice &video_device, InputDevice &input_device);
 
     void reset();
 
@@ -27,6 +28,7 @@ public:
     void loadBIOS(const std::vector<u8> &bios);
 
     auto getVideoDevice() -> VideoDevice&;
+    auto getInputDevice() -> InputDevice&;
 
     auto getKeypad() -> Keypad&;
     auto getDebugger() -> dbg::Debugger&;
@@ -39,6 +41,7 @@ public:
 private:
 
     VideoDevice &m_video_device;
+    InputDevice &m_input_device;
     Scheduler m_scheduler;
     Keypad m_keypad;
     Timer m_timer;

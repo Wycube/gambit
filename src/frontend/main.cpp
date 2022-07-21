@@ -3,6 +3,8 @@
 #include "common/Types.hpp"
 #include "common/Log.hpp"
 #include "DebuggerUI.hpp"
+#include "device/OGLVideoDevice.hpp"
+#include "device/GLFWInputDevice.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
@@ -27,47 +29,6 @@ void signal_handler(int signal) {
     LOG_DEBUG("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", pc, thumb ? debug.read16(pc) : debug.read32(pc), thumb ? debug.thumbDisassembleAt(pc) : debug.armDisassembleAt(pc));
     std::_Exit(-2);
 }
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    emu::GBA *gba = reinterpret_cast<emu::GBA*>(glfwGetWindowUserPointer(window));
-    
-    u16 pressed = ~gba->getKeypad().get_keys();
-
-    if(action == GLFW_PRESS) {
-        switch(key) {
-            case GLFW_KEY_UP : pressed |= emu::KeypadInput::UP; break;
-            case GLFW_KEY_DOWN : pressed |= emu::KeypadInput::DOWN; break;
-            case GLFW_KEY_RIGHT : pressed |= emu::KeypadInput::RIGHT; break;
-            case GLFW_KEY_LEFT : pressed |= emu::KeypadInput::LEFT; break;
-            case GLFW_KEY_A : pressed |= emu::KeypadInput::BUTTON_A; break;
-            case GLFW_KEY_S : pressed |= emu::KeypadInput::BUTTON_B; break;
-            case GLFW_KEY_Z : pressed |= emu::KeypadInput::START; break;
-            case GLFW_KEY_X : pressed |= emu::KeypadInput::SELECT; break;
-            case GLFW_KEY_Q : pressed |= emu::KeypadInput::BUTTON_L; break;
-            case GLFW_KEY_W : pressed |= emu::KeypadInput::BUTTON_R; break;
-        }
-    }
-
-    if(action == GLFW_RELEASE) {
-        switch(key) {
-            case GLFW_KEY_UP : pressed &= ~emu::KeypadInput::UP; break;
-            case GLFW_KEY_DOWN : pressed &= ~emu::KeypadInput::DOWN; break;
-            case GLFW_KEY_RIGHT : pressed &= ~emu::KeypadInput::RIGHT; break;
-            case GLFW_KEY_LEFT : pressed &= ~emu::KeypadInput::LEFT; break;
-            case GLFW_KEY_A : pressed &= ~emu::KeypadInput::BUTTON_A; break;
-            case GLFW_KEY_S : pressed &= ~emu::KeypadInput::BUTTON_B; break;
-            case GLFW_KEY_Z : pressed &= ~emu::KeypadInput::START; break;
-            case GLFW_KEY_X : pressed &= ~emu::KeypadInput::SELECT; break;
-            case GLFW_KEY_Q : pressed &= ~emu::KeypadInput::BUTTON_L; break;
-            case GLFW_KEY_W : pressed &= ~emu::KeypadInput::BUTTON_R; break;
-        }
-    }
-
-
-    gba->getKeypad().set_keys(pressed);
-}
-
 
 int main(int argc, char *argv[]) {
     LOG_INFO("Version: {}", common::GIT_DESC);
@@ -139,7 +100,7 @@ int main(int argc, char *argv[]) {
     glfwSwapInterval(0);
 
     //Setup input callback
-    glfwSetKeyCallback(window, key_callback);
+    // glfwSetKeyCallback(window, key_callback);
 
     int version = gladLoadGL(glfwGetProcAddress);
     if(version == 0) {
@@ -160,8 +121,9 @@ int main(int argc, char *argv[]) {
     ImGui_ImplOpenGL3_Init("#version 130");
 
     OGLVideoDevice video_device;
+    GLFWInputDevice input_device(window);
 
-    emu::GBA gba(video_device);
+    emu::GBA gba(video_device, input_device);
     gba.loadBIOS(bios);
     gba.loadROM(std::move(rom));
 
@@ -171,7 +133,6 @@ int main(int argc, char *argv[]) {
     std::memcpy(game_title, gba.getGamePak().getHeader().title, 12);
     game_title[12] = '\0';
     glfwSetWindowTitle(window, fmt::format("gba  [{}] - {}", common::GIT_DESC, game_title).c_str());
-
     glfwSetWindowUserPointer(window, &gba);
 
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
