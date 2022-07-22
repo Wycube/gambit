@@ -21,22 +21,24 @@ auto Background::getTextPixel(int x, int y, const u8 *vram, const u8 *palette) -
     int tile_x = x / 8;
     int tile_y = y / 8;
     int screen_block = (tile_x / 32) + (tile_y / 32) * (map_width / 32);
-    int tile_pixel_x = (x % 8) >> !color_mode;
-    int tile_pixel_y = y % 8;
 
     u32 tile_index = screen_block * 1024 + (tile_x % 32) + (tile_y % 32) * 32;
     u32 map_data_address = map_data_base + tile_index * 2;
     u16 tile_entry = (vram[map_data_address + 1] << 8) | vram[map_data_address];
-    bool flip_x = bits::get_bit<10>(tile_entry);
-    bool flip_y = bits::get_bit<11>(tile_entry);
+    bool mirror_x = bits::get_bit<10>(tile_entry);
+    bool mirror_y = bits::get_bit<11>(tile_entry);
+    int tile_pixel_x = x % 8;
+    int tile_pixel_y = y % 8;
 
-    if(flip_x) tile_pixel_x = (tile_width - 1) - tile_pixel_x;
-    if(flip_y) tile_pixel_y = 7 - tile_pixel_y;
+    if(mirror_x) tile_pixel_x = 7 - tile_pixel_x;
+    if(mirror_y) tile_pixel_y = 7 - tile_pixel_y;
+    tile_pixel_x >>= !color_mode;
 
     u8 palette_selected = bits::get<12, 4>(tile_entry);
     u8 palette_index = vram[char_data_base + bits::get<0, 10>(tile_entry) * tile_width * 8 + tile_pixel_x + tile_pixel_y * tile_width];
     if(!color_mode) {
-        palette_index = (palette_index >> (x & 1) * 4) & 0xF;
+        bool odd = (x & 1) ^ mirror_x;
+        palette_index = (palette_index >> odd * 4) & 0xF;
 
         if(palette_index == 0) {
             return 0;
