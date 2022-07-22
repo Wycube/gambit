@@ -284,11 +284,14 @@ void PPU::hblankEnd(u32 current, u32 late) {
 
 void PPU::writeObjects() {
     std::vector<u32> active_objs;
+    static const int WIDTH_LUT[16]  = {8, 16, 32, 64, 16, 32, 32, 64, 8, 8, 16, 32, 0, 0, 0, 0};
+    static const int HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 64, 0, 0, 0, 0};
 
     for(int i = 0; i < 128; i++) {
         if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 0 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
             int y = m_state.oam[i * 8];
-            if(y <= m_state.line && y + 8 > m_state.line) {
+            int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+            if(y <= m_state.line && y + height > m_state.line) {
                 active_objs.push_back(i);
             }
         }
@@ -296,24 +299,42 @@ void PPU::writeObjects() {
 
     for(int i = 0; i < 240; i++) {
         for(u32 obj : active_objs) {
+            int x = (m_state.oam[obj * 8 + 3] & 1 << 8) | m_state.oam[obj * 8 + 2];
             int y = m_state.oam[obj * 8];
-            int x = m_state.oam[obj * 8 + 2];
-            if(x <= i && x + 8 > i) {
+            int width = WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
+            int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
+            if(x <= i && x + width > i) {
+                bool mirror_x = bits::get_bit<4>(m_state.oam[obj * 8 + 3]);
+                bool mirror_y = bits::get_bit<5>(m_state.oam[obj * 8 + 3]);
                 int local_x = i - x;
                 int local_y = m_state.line - y;
+
+                if(mirror_x) local_x = width - local_x;
+                if(mirror_y) local_y = height - local_y;
+
+                int tile_x = local_x / 8;
+                int tile_y = local_y / 8;
+                local_x %= 8;
+                local_y %= 8;
                 int tile_index = (m_state.oam[obj * 8 + 5] & 3 << 8) | m_state.oam[obj * 8 + 4];
+                tile_index += tile_x + tile_y * (width / 8);
                 bool color_mode = bits::get_bit<5>(m_state.oam[obj * 8 + 1]);
                 u8 tile_width = color_mode ? 8 : 4;
 
                 u8 palette_index = m_state.vram[0x10000 + tile_index * 32 + (local_x >> !color_mode) + local_y * tile_width];
 
-                if(palette_index == 0) {
-                    continue;
-                }
-
                 if(!color_mode) {
                     palette_index = (palette_index >> (local_x & 1) * 4) & 0xF;
+
+                    if(palette_index == 0) {
+                        continue;
+                    }
+
                     palette_index += bits::get<4, 4>(m_state.oam[obj * 8 + 5]) * 16;
+                }
+
+                if(palette_index == 0) {
+                    continue;
                 }
 
                 u16 color = (m_state.palette[0x200 + palette_index * 2 + 1] << 8) | m_state.palette[0x200 + palette_index * 2];
