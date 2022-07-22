@@ -37,87 +37,6 @@ void PPU::reset() {
 }
 
 auto PPU::readIO(u32 address) -> u8 {
-    return _readIO(address);
-}
-
-void PPU::writeIO(u32 address, u8 value) {
-    _writeIO(address, value);
-}
-
-template<typename T>
-auto PPU::readPalette(u32 address) -> T {
-    T value = 0;
-    
-    for(int i = 0; i < sizeof(T); i++) {
-        value |= (m_state.palette[(address + i) % sizeof(m_state.palette)] << i * 8);
-    }
-
-    return value;
-}
-
-template<typename T>
-auto PPU::readVRAM(u32 address) -> T {
-    address %= 128_KiB;
-    T value = 0;
-
-    if(address >= 96_KiB) {
-        for(int i = 0; i < sizeof(T); i++) {
-            value |= (m_state.vram[address - 32_KiB + i] << i * 8);
-        }
-    } else {
-        for(int i = 0; i < sizeof(T); i++) {
-            value |= (m_state.vram[address + i] << i * 8);
-        }
-    }
-
-    return value;
-}
-
-template<typename T>
-auto PPU::readOAM(u32 address) -> T {
-    T value = 0;
-    
-    for(int i = 0; i < sizeof(T); i++) {
-        value |= (m_state.oam[(address + i) % sizeof(m_state.oam)] << i * 8);
-    }
-
-    return value;
-}
-
-template<typename T>
-void PPU::writePalette(u32 address, T value) {
-    for(int i = 0; i < sizeof(T); i++) {
-        m_state.palette[(address + i) % sizeof(m_state.palette)] = (value >> i * 8) & 0xFF;
-    }
-}
-
-template<typename T>
-void PPU::writeVRAM(u32 address, T value) {
-    if constexpr(sizeof(T) == 1) {
-        return;
-    }
-
-    address %= 128_KiB;
-
-    if(address >= 96_KiB) {
-        for(int i = 0; i < sizeof(T); i++) {
-            m_state.vram[address - 32_KiB + i] = (value >> i * 8) & 0xFF;
-        }
-    } else {
-        for(int i = 0; i < sizeof(T); i++) {
-            m_state.vram[address + i] = (value >> i * 8) & 0xFF;
-        }
-    }
-}
-
-template<typename T>
-void PPU::writeOAM(u32 address, T value) {
-    for(int i = 0; i < sizeof(T); i++) {
-        m_state.oam[(address + i) % sizeof(m_state.oam)] = (value >> i * 8) & 0xFF;
-    }
-}
-
-auto PPU::_readIO(u32 address) -> u8 {
     switch(address) {
         case 0x00 : return bits::get<0, 8>(m_state.dispcnt); //DISPCNT (LCD Control)
         case 0x01 : return bits::get<8, 8>(m_state.dispcnt);
@@ -142,7 +61,7 @@ auto PPU::_readIO(u32 address) -> u8 {
     return 0;
 }
 
-void PPU::_writeIO(u32 address, u8 value) {
+void PPU::writeIO(u32 address, u8 value) {
     switch(address) {
         case 0x00 : m_state.dispcnt = (m_state.dispcnt & ~0xFF) | value; break;
         case 0x01 : m_state.dispcnt = (m_state.dispcnt & 0xFF) | (value << 8); break;
@@ -219,6 +138,79 @@ void PPU::_writeIO(u32 address, u8 value) {
     }
 }
 
+template<typename T>
+auto PPU::readPalette(u32 address) -> T {
+    T value = 0;
+    
+    for(int i = 0; i < sizeof(T); i++) {
+        value |= (m_state.palette[(address + i) % sizeof(m_state.palette)] << i * 8);
+    }
+
+    return value;
+}
+
+template<typename T>
+auto PPU::readVRAM(u32 address) -> T {
+    address %= 128_KiB;
+    T value = 0;
+
+    if(address >= 96_KiB) {
+        for(int i = 0; i < sizeof(T); i++) {
+            value |= (m_state.vram[address - 32_KiB + i] << i * 8);
+        }
+    } else {
+        for(int i = 0; i < sizeof(T); i++) {
+            value |= (m_state.vram[address + i] << i * 8);
+        }
+    }
+
+    return value;
+}
+
+template<typename T>
+auto PPU::readOAM(u32 address) -> T {
+    T value = 0;
+    
+    for(int i = 0; i < sizeof(T); i++) {
+        value |= (m_state.oam[(address + i) % sizeof(m_state.oam)] << i * 8);
+    }
+
+    return value;
+}
+
+template<typename T>
+void PPU::writePalette(u32 address, T value) {
+    for(int i = 0; i < sizeof(T); i++) {
+        m_state.palette[(address + i) % sizeof(m_state.palette)] = (value >> i * 8) & 0xFF;
+    }
+}
+
+template<typename T>
+void PPU::writeVRAM(u32 address, T value) {
+    if constexpr(sizeof(T) == 1) {
+        return;
+    }
+
+    address %= 128_KiB;
+
+    if(address >= 96_KiB) {
+        for(int i = 0; i < sizeof(T); i++) {
+            m_state.vram[address - 32_KiB + i] = (value >> i * 8) & 0xFF;
+        }
+    } else {
+        for(int i = 0; i < sizeof(T); i++) {
+            m_state.vram[address + i] = (value >> i * 8) & 0xFF;
+        }
+    }
+}
+
+template<typename T>
+void PPU::writeOAM(u32 address, T value) {
+    for(int i = 0; i < sizeof(T); i++) {
+        m_state.oam[(address + i) % sizeof(m_state.oam)] = (value >> i * 8) & 0xFF;
+    }
+}
+
 void PPU::hblankStart(u32 current, u32 late) {
     m_state.dispstat |= 2;
 
@@ -241,6 +233,7 @@ void PPU::hblankStart(u32 current, u32 late) {
         } else if(mode == 5) {
             writeLineMode5();
         }
+        writeObjects();
     }
 
     m_scheduler.addEvent("Hblank End", [this](u32 a, u32 b) { hblankEnd(a, b); }, 272 - late);
@@ -285,6 +278,51 @@ void PPU::hblankEnd(u32 current, u32 late) {
         if(bits::get_bit<3>(m_state.dispstat)) {
             LOG_DEBUG("VBLANK interrupt requested");
             m_bus.requestInterrupt(INT_LCD_VB);
+        }
+    }
+}
+
+void PPU::writeObjects() {
+    std::vector<u32> active_objs;
+
+    for(int i = 0; i < 128; i++) {
+        if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 0 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
+            int y = m_state.oam[i * 8];
+            if(y <= m_state.line && y + 8 > m_state.line) {
+                active_objs.push_back(i);
+            }
+        }
+    }
+
+    for(int i = 0; i < 240; i++) {
+        for(u32 obj : active_objs) {
+            int y = m_state.oam[obj * 8];
+            int x = m_state.oam[obj * 8 + 2];
+            if(x <= i && x + 8 > i) {
+                int local_x = i - x;
+                int local_y = m_state.line - y;
+                int tile_index = (m_state.oam[obj * 8 + 5] & 3 << 8) | m_state.oam[obj * 8 + 4];
+                bool color_mode = bits::get_bit<5>(m_state.oam[obj * 8 + 1]);
+                u8 tile_width = color_mode ? 8 : 4;
+
+                u8 palette_index = m_state.vram[0x10000 + tile_index * 32 + (local_x >> !color_mode) + local_y * tile_width];
+
+                if(palette_index == 0) {
+                    continue;
+                }
+
+                if(!color_mode) {
+                    palette_index = (palette_index >> (local_x & 1) * 4) & 0xF;
+                    palette_index += bits::get<4, 4>(m_state.oam[obj * 8 + 5]) * 16;
+                }
+
+                u16 color = (m_state.palette[0x200 + palette_index * 2 + 1] << 8) | m_state.palette[0x200 + palette_index * 2];
+                u8 red = bits::get<0, 5>(color) * 8;
+                u8 green = bits::get<5, 5>(color) * 8;
+                u8 blue = bits::get<10, 5>(color) * 8;
+
+                m_video_device.setPixel(i, m_state.line, (red << 24) | (green << 16) | (blue << 8) | 0xFF);
+            }
         }
     }
 }

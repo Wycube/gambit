@@ -36,17 +36,6 @@ public:
 
 private:
 
-    // u8 m_line;
-
-    // //Memory
-    // u16 m_dispcnt;
-    // u16 m_dispstat;
-    // u8 m_palette[1_KiB];
-    // u8 m_vram[96_KiB];
-    // u8 m_oam[1_KiB];
-
-    // Background m_bg[4];
-    // Window m_win;
     PPUState m_state;
 
     VideoDevice &m_video_device;
@@ -54,13 +43,10 @@ private:
     Bus &m_bus;
     DMA &m_dma;
 
-    auto _readIO(u32 address) -> u8;
-    void _writeIO(u32 address, u8 value);
-
     void hblankStart(u32 current, u32 late);
     void hblankEnd(u32 current, u32 late);
-    void vblank(u32 current, u32 late);
 
+    void writeObjects();
     void writeLineMode0();
     void writeLineMode1();
     void writeLineMode3();
