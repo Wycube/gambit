@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GamePak.hpp"
+#include "EEPROM.hpp"
 #include "emulator/core/cpu/Types.hpp"
 #include "emulator/core/Scheduler.hpp"
 #include "emulator/core/Keypad.hpp"
@@ -51,10 +52,10 @@ private:
         u8 ewram[256_KiB]; //02000000 - 0203FFFF
         u8 iwram[32_KiB];  //03000000 - 03007FFF
         u8 io[1023];       //04000000 - 040003FE
-        //Rest of general memory
     } m_mem;
 
     GamePak m_pak;
+    EEPROM m_eeprom;
     Scheduler &m_scheduler;
     Keypad &m_keypad;
     Timer &m_timer;

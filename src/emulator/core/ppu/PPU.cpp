@@ -283,6 +283,10 @@ void PPU::hblankEnd(u32 current, u32 late) {
 }
 
 void PPU::writeObjects() {
+    if(!bits::get_bit<12>(m_state.dispcnt)) {
+        return;
+    }
+
     std::vector<u32> active_objs;
     static const int WIDTH_LUT[16]  = {8, 16, 32, 64, 16, 32, 32, 64, 8, 8, 16, 32, 0, 0, 0, 0};
     static const int HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 64, 0, 0, 0, 0};
@@ -304,20 +308,21 @@ void PPU::writeObjects() {
             int width = WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
             int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
             if(x <= i && x + width > i) {
-                bool mirror_x = bits::get_bit<4>(m_state.oam[obj * 8 + 3]);
-                bool mirror_y = bits::get_bit<5>(m_state.oam[obj * 8 + 3]);
                 int local_x = i - x;
                 int local_y = m_state.line - y;
-
-                if(mirror_x) local_x = width - local_x;
-                if(mirror_y) local_y = height - local_y;
-
                 int tile_x = local_x / 8;
                 int tile_y = local_y / 8;
                 local_x %= 8;
                 local_y %= 8;
-                int tile_index = (m_state.oam[obj * 8 + 5] & 3 << 8) | m_state.oam[obj * 8 + 4];
-                tile_index += tile_x + tile_y * (width / 8);
+                int tile_index = ((m_state.oam[obj * 8 + 5] & 3) << 8) | m_state.oam[obj * 8 + 4];
+                bool linear_mapping = bits::get_bit<6>(m_state.dispcnt);
+
+                if(linear_mapping) {
+                    tile_index += tile_x + tile_y * (width / 8);
+                } else {
+                    tile_index += tile_x + tile_y * 32;
+                }
+
                 bool color_mode = bits::get_bit<5>(m_state.oam[obj * 8 + 1]);
                 u8 tile_width = color_mode ? 8 : 4;
 
@@ -352,7 +357,7 @@ void PPU::writeLineMode0() {
     bool enabled_bgs[4] = {bits::get_bit<8>(m_state.dispcnt), bits::get_bit<9>(m_state.dispcnt), bits::get_bit<10>(m_state.dispcnt), bits::get_bit<11>(m_state.dispcnt)};
     u8 sorted_bgs[4] = {0, 1, 2, 3};
 
-    std::stable_sort(&sorted_bgs[0], &sorted_bgs[3], [this](const u8 &a, const u8 &b) {
+    std::sort(&sorted_bgs[0], &sorted_bgs[3], [this](const u8 &a, const u8 &b) {
         return bits::get<0, 2>(m_state.bg[a].control) < bits::get<0, 2>(m_state.bg[b].control);
     });
     
@@ -360,11 +365,13 @@ void PPU::writeLineMode0() {
         u8 palette_index = 0;
         
         for(int j = 0; j < 4; j++) {
-            if(!enabled_bgs[j] || !m_state.win.isPixelDisplayed(i, m_state.line, j, m_state.dispcnt)) {
+            int bg = sorted_bgs[j];
+
+            if(!enabled_bgs[bg] || !m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
                 continue;
             }
 
-            palette_index = m_state.bg[sorted_bgs[j]].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
+            palette_index = m_state.bg[bg].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
 
             //0 is the transparent index
             if(palette_index != 0) {
@@ -384,14 +391,34 @@ void PPU::writeLineMode0() {
 void PPU::writeLineMode1() {
     m_state.bg[2].updateAffineParams();
 
-    u8 palette_index;
+    bool enabled_bgs[3] = {bits::get_bit<8>(m_state.dispcnt), bits::get_bit<9>(m_state.dispcnt), bits::get_bit<10>(m_state.dispcnt)};
+    u8 sorted_bgs[3] = {0, 1, 2};
+
+    std::sort(&sorted_bgs[0], &sorted_bgs[2], [this](const u8 &a, const u8 &b) {
+        return bits::get<0, 2>(m_state.bg[a].control) < bits::get<0, 2>(m_state.bg[b].control);
+    });
+
 
     for(int i = 0; i < 240; i++) {
-        // u8 palette_index = m_bg[2].getAffinePixel(i, m_line, m_vram, m_palette);
-        palette_index = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
+        u8 palette_index = 0;
 
-        if(palette_index == 0) {
-            palette_index = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram, m_state.palette);
+        for(int j = 0; j < 3; j++) {
+            int bg = sorted_bgs[j];
+
+            if(!enabled_bgs[bg] || !m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
+                continue;
+            }
+
+            if(bg == 2) {
+                palette_index = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram, m_state.palette);
+            } else {
+                palette_index = m_state.bg[bg].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
+            }
+
+            //0 is the transparent index
+            if(palette_index != 0) {
+                break;
+            }
         }
 
         u16 color_16 = (m_state.palette[palette_index * 2 + 1] << 8) | m_state.palette[palette_index * 2];

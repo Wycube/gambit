@@ -52,7 +52,7 @@ void log_debug(const std::string &message, LogLevel level, const char *file, con
 
 // extern log::Logger s_logger;
 
-#define LOG_MESSAGE(level, message, ...) common::log::log(fmt::format(message, ##__VA_ARGS__), level)
+#define LOG_MESSAGE(level, message, ...) //common::log::log(fmt::format(message, ##__VA_ARGS__), level)
 #ifdef _DEBUG
     #define DEBUG_LOG(level, message, ...) common::log::log_debug(fmt::format(message, ##__VA_ARGS__), level, __FILE__, __func__, __LINE__)
 #else

@@ -4,6 +4,7 @@
 
 GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {
     glfwSetKeyCallback(window, keyCallback);
+    memset(m_pressed, 0, sizeof(m_pressed));
 }
 
 auto GLFWInputDevice::getKeys() -> u16 {
