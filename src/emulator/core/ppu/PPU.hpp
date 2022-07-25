@@ -37,6 +37,7 @@ public:
 private:
 
     PPUState m_state;
+    int m_dot_prios[240];
 
     VideoDevice &m_video_device;
     Scheduler &m_scheduler;

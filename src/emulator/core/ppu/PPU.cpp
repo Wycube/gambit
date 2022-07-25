@@ -291,7 +291,7 @@ void PPU::writeObjects() {
     static const int WIDTH_LUT[16]  = {8, 16, 32, 64, 16, 32, 32, 64, 8, 8, 16, 32, 0, 0, 0, 0};
     static const int HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 64, 0, 0, 0, 0};
 
-    for(int i = 0; i < 128; i++) {
+    for(int i = 127; i >= 0; i--) {
         if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 0 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
             int y = m_state.oam[i * 8];
             int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
@@ -306,7 +306,8 @@ void PPU::writeObjects() {
             int x = (m_state.oam[obj * 8 + 3] & 1 << 8) | m_state.oam[obj * 8 + 2];
             int y = m_state.oam[obj * 8];
             int width = WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
-            int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
+            // int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
+            int priority = bits::get<2, 2>(m_state.oam[obj * 8 + 5]);
             if(x <= i && x + width > i) {
                 int local_x = i - x;
                 int local_y = m_state.line - y;
@@ -342,6 +343,11 @@ void PPU::writeObjects() {
                     continue;
                 }
 
+                if(priority > m_dot_prios[i]) {
+                    continue;
+                }
+                m_dot_prios[i] = priority;
+
                 u16 color = (m_state.palette[0x200 + palette_index * 2 + 1] << 8) | m_state.palette[0x200 + palette_index * 2];
                 u8 red = bits::get<0, 5>(color) * 8;
                 u8 green = bits::get<5, 5>(color) * 8;
@@ -372,6 +378,7 @@ void PPU::writeLineMode0() {
             }
 
             palette_index = m_state.bg[bg].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
+            m_dot_prios[i] = bits::get<0, 2>(m_state.bg[bg].control);
 
             //0 is the transparent index
             if(palette_index != 0) {
@@ -415,6 +422,8 @@ void PPU::writeLineMode1() {
                 palette_index = m_state.bg[bg].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
             }
 
+            m_dot_prios[i] = bits::get<0, 2>(m_state.bg[bg].control);
+
             //0 is the transparent index
             if(palette_index != 0) {
                 break;
@@ -432,6 +441,7 @@ void PPU::writeLineMode1() {
 
 void PPU::writeLineMode3() {
     for(int i = 0; i < 240; i++) {
+        m_dot_prios[i] = bits::get<0, 2>(m_state.bg[2].control);
         m_video_device.setPixel(i, m_state.line, m_state.bg[2].getBitmapPixelMode3(i, m_state.line, m_state.vram));
     }
 }
@@ -440,6 +450,7 @@ void PPU::writeLineMode4() {
     bool frame_1 = bits::get<4, 1>(m_state.dispcnt);
 
     for(int i = 0; i < 240; i++) {
+        m_dot_prios[i] = bits::get<0, 2>(m_state.bg[2].control);
         m_video_device.setPixel(i, m_state.line, m_state.bg[2].getBitmapPixelMode4(i, m_state.line, m_state.vram, m_state.palette, frame_1));
     }
 }
@@ -448,6 +459,7 @@ void PPU::writeLineMode5() {
     bool frame_1 = bits::get<4, 1>(m_state.dispcnt);
 
     for(int i = 0; i < 240; i++) {
+        m_dot_prios[i] = bits::get<0, 2>(m_state.bg[2].control);
         m_video_device.setPixel(i, m_state.line, m_state.bg[2].getBitmapPixelMode5(i, m_state.line, m_state.vram, frame_1));
     }
 }

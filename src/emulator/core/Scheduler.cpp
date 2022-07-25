@@ -4,13 +4,16 @@
 
 namespace emu {
 
-Scheduler::Scheduler() { }
+Scheduler::Scheduler() {
+    reset();
+}
 
 void Scheduler::reset() {
+    m_current_timestamp = 0;
     m_events.clear();
 }
 
-void Scheduler::addEvent(const std::string &tag, EventFunc callback, u32 cycles_from_now) {
+void Scheduler::addEvent(const std::string &tag, EventFunc callback, u64 cycles_from_now) {
     m_events.push_back(Event{tag, callback, m_current_timestamp + cycles_from_now});
     std::sort(m_events.begin(), m_events.end(), [](const Event &a, const Event &b) {
         return a.scheduled_timestamp > b.scheduled_timestamp;
@@ -27,7 +30,6 @@ void Scheduler::removeEvent(const std::string &tag) {
 }
 
 void Scheduler::step(u32 cycles) {
-    //TODO: Prevent overflow, possibly elsewhere
     m_current_timestamp += cycles;
     bool events_to_run = true;
 
@@ -49,7 +51,7 @@ void Scheduler::runToNext() {
     step(m_events.back().scheduled_timestamp - m_current_timestamp);
 }
 
-auto Scheduler::nextEventTime() -> u32 {
+auto Scheduler::nextEventTime() -> u64 {
     if(m_events.empty()) {
         return 0;
     }
@@ -57,7 +59,7 @@ auto Scheduler::nextEventTime() -> u32 {
     return m_events.back().scheduled_timestamp;
 }
 
-auto Scheduler::getCurrentTimestamp() -> u32 {
+auto Scheduler::getCurrentTimestamp() -> u64 {
     return m_current_timestamp;
 }
 

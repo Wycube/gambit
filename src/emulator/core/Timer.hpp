@@ -21,7 +21,7 @@ public:
 
 private:
 
-    u32 m_timer_start[4];
+    u64 m_timer_start[4];
     u16 m_timer_counter[4];
     u16 m_timer_reload[4];
     u16 m_tmcnt[4];

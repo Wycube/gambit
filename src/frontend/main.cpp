@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
     bool show_about = false;
     bool show_pak_info = false;
 
-    u32 cycles_start = gba.getCurrentTimestamp();
+    u64 cycles_start = gba.getCurrentTimestamp();
     auto start = std::chrono::steady_clock::now();
     u32 clock_speed = 0;
 

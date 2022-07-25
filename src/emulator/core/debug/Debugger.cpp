@@ -95,7 +95,7 @@ auto Debugger::getCPUMode() -> u8 {
     return m_cpu_state->cpsr.mode;
 }
 
-void Debugger::attachScheduler(const std::vector<Event> *scheduler_events, const u32 *scheduler_timestamp) {
+void Debugger::attachScheduler(const std::vector<Event> *scheduler_events, const u64 *scheduler_timestamp) {
     m_scheduler_events = scheduler_events;
     m_scheduler_timestamp = scheduler_timestamp;
 }
@@ -108,11 +108,11 @@ auto Debugger::getEventTag(u32 index) -> std::string {
     return m_scheduler_events->at(index).tag;
 }
 
-auto Debugger::getEventCycles(u32 index) -> u32 {
+auto Debugger::getEventCycles(u32 index) -> u64 {
     return m_scheduler_events->at(index).scheduled_timestamp - *m_scheduler_timestamp;
 }
 
-auto Debugger::getCurrentCycle() -> u32 {
+auto Debugger::getCurrentCycle() -> u64 {
     return *m_scheduler_timestamp;
 }
 

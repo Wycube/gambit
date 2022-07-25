@@ -31,7 +31,7 @@ void GBA::step() {
 }
 
 void GBA::run(u32 cycles) {
-    u32 target = m_scheduler.getCurrentTimestamp() + cycles;
+    u64 target = m_scheduler.getCurrentTimestamp() + cycles;
 
     while(m_scheduler.getCurrentTimestamp() < target) {
         if(!m_debugger.running()) {

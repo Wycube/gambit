@@ -31,11 +31,11 @@ public:
     auto getCPUSPSR(u8 mode = 0) -> u32;
     auto getCPUMode() -> u8;
 
-    void attachScheduler(const std::vector<Event> *scheduler_events, const u32 *scheduler_timestamp);
+    void attachScheduler(const std::vector<Event> *scheduler_events, const u64 *scheduler_timestamp);
     auto numEvents() -> u32;
     auto getEventTag(u32 index) -> std::string;
-    auto getEventCycles(u32 index) -> u32;
-    auto getCurrentCycle() -> u32;
+    auto getEventCycles(u32 index) -> u64;
+    auto getCurrentCycle() -> u64;
 
     void attachPPU(const u8 *vram);
     void updateBgImages();
@@ -58,7 +58,7 @@ private:
 
     //Pointer to Scheduler stuff
     const std::vector<Event> *m_scheduler_events;
-    const u32 *m_scheduler_timestamp;
+    const u64 *m_scheduler_timestamp;
 
     const u8 *m_ppu_vram;
     u32 *m_bg_map;
