@@ -150,7 +150,7 @@ auto Bus::read(u32 address) -> T {
         case 0xD : if constexpr (sizeof(T) == 2) return m_eeprom.read();
         break;
         case 0xE : //Pak SRAM
-            LOG_FATAL("Read from SRAM");
+            //LOG_FATAL("Read from SRAM");
         break;
         case 0xF : //Not Used
         break;
@@ -210,7 +210,7 @@ void Bus::write(u32 address, T value) {
         case 0xD : if constexpr (sizeof(T) == 2) m_eeprom.write(value);//LOG_DEBUG("Writing {:08X} to 0x0DXXXXXX address", value); return;
         break;
         case 0xE : //Pak SRAM
-            LOG_FATAL("Write to SRAM");
+            //LOG_FATAL("Write to SRAM");
         break;
         case 0xF : //Not Used
         break;

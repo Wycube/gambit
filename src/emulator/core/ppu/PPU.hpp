@@ -38,6 +38,8 @@ private:
 
     PPUState m_state;
     int m_dot_prios[240];
+    int m_win_bg[240];
+    int m_win_obj[240];
 
     VideoDevice &m_video_device;
     Scheduler &m_scheduler;

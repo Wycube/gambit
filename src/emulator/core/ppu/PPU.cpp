@@ -306,11 +306,17 @@ void PPU::writeObjects() {
             int x = (m_state.oam[obj * 8 + 3] & 1 << 8) | m_state.oam[obj * 8 + 2];
             int y = m_state.oam[obj * 8];
             int width = WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
-            // int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
+            int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
             int priority = bits::get<2, 2>(m_state.oam[obj * 8 + 5]);
+            bool mirror_x = bits::get_bit<4>(m_state.oam[obj * 8 + 3]);
+            bool mirror_y = bits::get_bit<5>(m_state.oam[obj * 8 + 3]);
             if(x <= i && x + width > i) {
                 int local_x = i - x;
                 int local_y = m_state.line - y;
+
+                if(mirror_x) local_x = width - local_x - 1;
+                if(mirror_y) local_y = height - local_y - 1;
+
                 int tile_x = local_x / 8;
                 int tile_y = local_y / 8;
                 local_x %= 8;

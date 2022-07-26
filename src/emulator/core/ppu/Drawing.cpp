@@ -64,10 +64,10 @@ auto Background::getAffinePixel(int x, int y, const u8 *vram, const u8 *palette)
     u32 char_data_base = 0x4000 * bits::get<2, 2>(control); //Offset starting from 0x06000000 VRAM
     u32 map_data_base = 0x800 * bits::get<8, 5>(control); //Offset starting from 0x06000000 VRAM
     int map_size = 16 << bits::get<14, 2>(control);
-    int x2 = _a * ((float)x - _x) + _b * ((float)y - _y) + _x;
-    int y2 = _c * ((float)x - _x) + _d * ((float)y - _y) + _y;
+    int x2 = _a * (float)x + _b * (float)y + _x;
+    int y2 = _c * (float)x + _d * (float)y + _y;
 
-
+    //TODO: Handle the setting in the background control register
     if(x2 < 0 || x2 >= map_size * 8 || y2 < 0 || y2 >= map_size * 8) {
         return 0;
     }
