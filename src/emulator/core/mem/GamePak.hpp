@@ -1,7 +1,9 @@
 #pragma once
 
+#include "save/Save.hpp"
 #include "common/Types.hpp"
 #include <vector>
+#include <memory>
 
 
 namespace emu {
@@ -40,6 +42,7 @@ private:
 
     std::vector<u8> m_rom;
     GamePakHeader m_header;
+    std::unique_ptr<Save> m_save;
 
     void parseHeader();
 };

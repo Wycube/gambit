@@ -1,19 +1,21 @@
 #pragma once
 
+#include "Save.hpp"
 #include "common/Types.hpp"
 
 
 namespace emu {
 
-class EEPROM {
+class EEPROM final : public Save {
 public:
 
-    EEPROM();
+    EEPROM(SaveType type);
+    ~EEPROM() = default;
 
-    void reset();
+    void reset() override;
 
-    auto read() -> u16;
-    void write(u16 value);
+    auto read(u32 address) -> u8 override;
+    void write(u32 address, u8 value) override;
 
 private:
 
@@ -28,11 +30,10 @@ private:
         READ
     } m_state;
 
-    //There are 512-byte and 8KiB (8192-byte) EEPROMs
-    u64 m_mem[1024];
     u16 m_address;
     u64 m_serial_buffer;
     int m_buffer_size;
+    int m_bus_size;
 };
 
 } //namespace emu

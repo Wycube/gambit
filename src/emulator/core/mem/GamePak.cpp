@@ -1,4 +1,5 @@
 #include "GamePak.hpp"
+#include "save/EEPROM.hpp"
 
 
 namespace emu {
@@ -25,14 +26,29 @@ void GamePak::write8(u32 address, u8 value) {
 
 template<typename T>
 auto GamePak::read(u32 address) -> T {
-    if(address >= m_rom.size()) {
+    u32 sub_address = address & 0xFFFFFF;
+
+    switch((address >> 24) & 0xF) {
+        case 0xD : //EEPROM
+            if(m_save->getType() == EEPROM_512 || m_save->getType() == EEPROM_8K) {
+                return m_save->read(sub_address);
+            }
+            return 0;
+        case 0xE : //SRAM
+            if(m_save->getType() == SRAM) {
+                return m_save->read(sub_address);
+            }
+            return 0;
+    }
+
+    if(sub_address >= m_rom.size()) {
        return 0;
     }
 
     T value = 0;
 
     for(int i = 0; i < sizeof(T); i++) {
-        value |= (m_rom[address + i] << i * 8);
+        value |= (m_rom[sub_address + i] << i * 8);
     }
 
     return value;
@@ -40,12 +56,25 @@ auto GamePak::read(u32 address) -> T {
 
 template<typename T>
 void GamePak::write(u32 address, T value) {
-    if(address >= m_rom.size()) {
+    u32 sub_address = address & 0xFFFFFF;
+
+    switch((address >> 24) & 0xF) {
+        case 0xD : //EEPROM
+            if(sizeof(T) == 2 && (m_save->getType() == EEPROM_512 || m_save->getType() == EEPROM_8K)) {
+                return m_save->write(sub_address, value & 0xFF);
+            }
+        case 0xE : //SRAM
+            if(m_save->getType() == SRAM) {
+                return m_save->write(sub_address, value & 0xFF);
+            }
+    }
+
+    if(sub_address >= m_rom.size()) {
        return;
     }
 
     for(int i = 0; i < sizeof(T); i++) {
-        m_rom[address + i] = (value >> i * 8) & 0xFF;
+        m_rom[sub_address + i] = (value >> i * 8) & 0xFF;
     }
 }
 
@@ -60,6 +89,13 @@ auto GamePak::size() -> u32 {
 void GamePak::loadROM(std::vector<u8> &&rom) {
     m_rom = rom;
     parseHeader();
+
+    //Get save type, somehow
+    if(strcmp((const char*)m_header.title, "GBAZELDA") == 0 || strcmp((const char*)m_header.title, "GBAZELDA MC") == 0) {
+        m_save = std::make_unique<EEPROM>(EEPROM_8K);
+    } else {
+        m_save = std::make_unique<NoSave>();
+    }
 }
 
 void GamePak::parseHeader() {

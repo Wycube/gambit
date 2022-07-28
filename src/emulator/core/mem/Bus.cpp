@@ -146,11 +146,9 @@ auto Bus::read(u32 address) -> T {
         case 0x9 : //Pak ROM Waitstate 0
         case 0xA : 
         case 0xB : //Pak ROM Waitstate 1
-        case 0xC : return m_pak.read<T>(sub_address); //Pak ROM Waitstate 2
-        case 0xD : if constexpr (sizeof(T) == 2) return m_eeprom.read();
-        break;
-        case 0xE : //Pak SRAM
-            //LOG_FATAL("Read from SRAM");
+        case 0xC : //return m_pak.read<T>(sub_address); //Pak ROM Waitstate 2
+        case 0xD : //if constexpr (sizeof(T) == 2) return m_eeprom.read();
+        case 0xE : return m_pak.read<T>(address); //Pak SRAM
         break;
         case 0xF : //Not Used
         break;
@@ -206,10 +204,9 @@ void Bus::write(u32 address, T value) {
         case 0x9 : //Pak ROM Waitstate 0
         case 0xA : 
         case 0xB : //Pak ROM Waitstate 1
-        case 0xC : m_pak.write<T>(sub_address, value); //Pak ROM Waitstate 2
-        case 0xD : if constexpr (sizeof(T) == 2) m_eeprom.write(value);//LOG_DEBUG("Writing {:08X} to 0x0DXXXXXX address", value); return;
-        break;
-        case 0xE : //Pak SRAM
+        case 0xC : //m_pak.write<T>(sub_address, value); //Pak ROM Waitstate 2
+        case 0xD : //if constexpr (sizeof(T) == 2) m_eeprom.write(value);//LOG_DEBUG("Writing {:08X} to 0x0DXXXXXX address", value); return;
+        case 0xE : m_pak.write<T>(address, value); //SRAM
             //LOG_FATAL("Write to SRAM");
         break;
         case 0xF : //Not Used
