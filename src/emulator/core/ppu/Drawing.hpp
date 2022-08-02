@@ -39,7 +39,6 @@ struct Window {
 
     auto insideWindow0(int x, int y) -> bool;
     auto insideWindow1(int x, int y) -> bool;
-    auto isPixelDisplayed(int x, int y, u8 bg, u16 dispcnt) -> bool;
 };
 
 } //namespace emu

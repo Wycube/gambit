@@ -37,9 +37,11 @@ public:
 private:
 
     PPUState m_state;
+    u8 m_win_line[240];
+    u16 m_bg_col[4][240];
+    u16 m_obj_col[240];
+    int m_obj_prios[240];
     int m_dot_prios[240];
-    int m_win_bg[240];
-    int m_win_obj[240];
 
     VideoDevice &m_video_device;
     Scheduler &m_scheduler;
@@ -49,6 +51,7 @@ private:
     void hblankStart(u32 current, u32 late);
     void hblankEnd(u32 current, u32 late);
 
+    void getWindowLine();
     void writeObjects();
     void writeLineMode0();
     void writeLineMode1();

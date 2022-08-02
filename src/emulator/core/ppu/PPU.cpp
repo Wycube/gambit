@@ -24,6 +24,9 @@ template void PPU::writeOAM<u8>(u32 address, u8 value);
 template void PPU::writeOAM<u16>(u32 address,u16 value);
 template void PPU::writeOAM<u32>(u32 address, u32 value);
 
+constexpr int OBJECT_WIDTH_LUT[16]  = {8, 16, 32, 64, 16, 32, 32, 64, 8, 8, 16, 32, 0, 0, 0, 0};
+constexpr int OBJECT_HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 64, 0, 0, 0, 0};
+
 
 PPU::PPU(VideoDevice &video_device, Scheduler &scheduler, Bus &bus, DMA &dma) : m_video_device(video_device), m_scheduler(scheduler), m_bus(bus), m_dma(dma) {
     reset();
@@ -222,6 +225,7 @@ void PPU::hblankStart(u32 current, u32 late) {
     //Draw Scanline
     if(m_state.line < 160) {
         u8 mode = bits::get<0, 3>(m_state.dispcnt);
+        getWindowLine();
         if(mode == 0) {
             writeLineMode0();
         } else if(mode == 1) {
@@ -282,85 +286,152 @@ void PPU::hblankEnd(u32 current, u32 late) {
     }
 }
 
+void PPU::getWindowLine() {
+    //Get objects that are windows and on this line
+    std::vector<int> win_objs;
+
+    //TODO: Move to Window class
+    if(bits::get_bit<15>(m_state.dispcnt)) {
+        for(int i = 0; i < 128; i++) {
+            if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 2 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
+                int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+                int top = m_state.oam[i * 8];
+                int bottom = (top + height) % 0xFF;
+                bool in_vertical = top <= m_state.line && m_state.line < bottom;
+
+                if(top > bottom) {
+                    in_vertical = !(top > m_state.line && m_state.line >= bottom);
+                }
+
+                if(in_vertical) {
+                    win_objs.push_back(i);
+                }
+            }
+        }
+    }
+    
+    for(int i = 0; i < 240; i++) {
+        //Bit 0-3 are bg 0-3 display, and bit 4 is obj display
+        m_win_line[i] = bits::get<13, 3>(m_state.dispcnt) != 0 ? bits::get<0, 5>(m_state.win.winout) : 0x1F;
+        
+        //Window 0
+        if(bits::get_bit<13>(m_state.dispcnt) && m_state.win.insideWindow0(i, m_state.line)) {
+            m_win_line[i] = bits::get<0, 5>(m_state.win.winin);
+            continue;
+        }
+
+        //Window 1
+        if(bits::get_bit<14>(m_state.dispcnt) && m_state.win.insideWindow1(i, m_state.line)) {
+            m_win_line[i] = bits::get<8, 5>(m_state.win.winin);
+            continue;
+        }
+
+        //Object window
+        for(const auto &obj : win_objs) {
+            int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
+            int left = ((m_state.oam[obj * 8 + 3] & 1) << 8) | m_state.oam[obj * 8 + 2];
+            int right = (left + width) % 0x1FF;
+            bool in_horizontal = left <= i && i < right;
+            
+            if(left > right) {
+                in_horizontal = !(left > i && i >= right);
+            }
+
+            if(in_horizontal) {
+                m_win_line[i] = bits::get<8, 5>(m_state.win.winout);
+                break;
+            }
+        }
+    }
+}
+
+struct ObjectLine {
+    int obj, x, y, width;
+};
+
 void PPU::writeObjects() {
     if(!bits::get_bit<12>(m_state.dispcnt)) {
         return;
     }
 
-    std::vector<u32> active_objs;
-    static const int WIDTH_LUT[16]  = {8, 16, 32, 64, 16, 32, 32, 64, 8, 8, 16, 32, 0, 0, 0, 0};
-    static const int HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 64, 0, 0, 0, 0};
+    std::vector<ObjectLine> active_objs;
+    const bool linear_mapping = bits::get_bit<6>(m_state.dispcnt);
 
     for(int i = 127; i >= 0; i--) {
         if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 0 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
-            int y = m_state.oam[i * 8];
-            int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
-            if(y <= m_state.line && y + height > m_state.line) {
-                active_objs.push_back(i);
+            const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+            const int y = m_state.oam[i * 8];
+            const int bottom = (y + height) % 0x100;
+
+            //Check if object is on this line
+            if(bottom < m_state.line || m_state.line < 160) {
+                const int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+                const int x = ((m_state.oam[i * 8 + 3] & 1) << 8) | m_state.oam[i * 8 + 2];
+                
+                //Check if object is visible on screen
+                if((x + width) % 0x200 < x || x < 240) {
+                    active_objs.push_back(ObjectLine{i, x, y > bottom ? bits::sign_extend<8, int>(y) : y, width});
+                }
             }
         }
     }
 
-    for(int i = 0; i < 240; i++) {
-        for(u32 obj : active_objs) {
-            int x = (m_state.oam[obj * 8 + 3] & 1 << 8) | m_state.oam[obj * 8 + 2];
-            int y = m_state.oam[obj * 8];
-            int width = WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
-            int height = HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
-            int priority = bits::get<2, 2>(m_state.oam[obj * 8 + 5]);
-            bool mirror_x = bits::get_bit<4>(m_state.oam[obj * 8 + 3]);
-            bool mirror_y = bits::get_bit<5>(m_state.oam[obj * 8 + 3]);
-            if(x <= i && x + width > i) {
-                int local_x = i - x;
-                int local_y = m_state.line - y;
+    for(const auto &obj : active_objs) {
+        int local_y = m_state.line - obj.y;
+        const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj.obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj.obj * 8 + 3])];
+        const int priority = bits::get<2, 2>(m_state.oam[obj.obj * 8 + 5]);
+        const bool mirror_x = bits::get_bit<4>(m_state.oam[obj.obj * 8 + 3]);
+        const bool mirror_y = bits::get_bit<5>(m_state.oam[obj.obj * 8 + 3]);
+        const int tile_index = ((m_state.oam[obj.obj * 8 + 5] & 3) << 8) | m_state.oam[obj.obj * 8 + 4];
+        const bool color_mode = bits::get_bit<5>(m_state.oam[obj.obj * 8 + 1]);
+        const int tile_width = color_mode ? 8 : 4;
+    
+        if(mirror_y) local_y = height - local_y - 1;
+        int tile_y = local_y / 8;
+        local_y %= 8;
 
-                if(mirror_x) local_x = width - local_x - 1;
-                if(mirror_y) local_y = height - local_y - 1;
+        for(int i = 0; i < obj.width; i++) {
+            int screen_x = (obj.x + i) % 512;
 
-                int tile_x = local_x / 8;
-                int tile_y = local_y / 8;
-                local_x %= 8;
-                local_y %= 8;
-                int tile_index = ((m_state.oam[obj * 8 + 5] & 3) << 8) | m_state.oam[obj * 8 + 4];
-                bool linear_mapping = bits::get_bit<6>(m_state.dispcnt);
-
-                if(linear_mapping) {
-                    tile_index += tile_x + tile_y * (width / 8);
-                } else {
-                    tile_index += tile_x + tile_y * 32;
-                }
-
-                bool color_mode = bits::get_bit<5>(m_state.oam[obj * 8 + 1]);
-                u8 tile_width = color_mode ? 8 : 4;
-
-                u8 palette_index = m_state.vram[0x10000 + tile_index * 32 + (local_x >> !color_mode) + local_y * tile_width];
-
-                if(!color_mode) {
-                    palette_index = (palette_index >> (local_x & 1) * 4) & 0xF;
-
-                    if(palette_index == 0) {
-                        continue;
-                    }
-
-                    palette_index += bits::get<4, 4>(m_state.oam[obj * 8 + 5]) * 16;
-                }
-
-                if(palette_index == 0) {
-                    continue;
-                }
-
-                if(priority > m_dot_prios[i]) {
-                    continue;
-                }
-                m_dot_prios[i] = priority;
-
-                u16 color = (m_state.palette[0x200 + palette_index * 2 + 1] << 8) | m_state.palette[0x200 + palette_index * 2];
-                u8 red = bits::get<0, 5>(color) * 8;
-                u8 green = bits::get<5, 5>(color) * 8;
-                u8 blue = bits::get<10, 5>(color) * 8;
-
-                m_video_device.setPixel(i, m_state.line, (red << 24) | (green << 16) | (blue << 8) | 0xFF);
+            if(screen_x >= 240 || !bits::get_bit<4>(m_win_line[screen_x])) {
+                continue;
             }
+
+            int local_x = i;
+
+            if(mirror_x) local_x = obj.width - local_x - 1;
+
+            int tile_x = local_x / 8;
+            local_x %= 8;
+
+            int tile_address = tile_index;
+            if(linear_mapping) {
+                tile_address += tile_x + tile_y * (obj.width / 8);
+            } else {
+                tile_address += tile_x + tile_y * 32;
+            }
+
+            u8 palette_index = m_state.vram[0x10000 + tile_address * 32 + (local_x >> !color_mode) + local_y * tile_width];
+
+            if(!color_mode) {
+                palette_index = (palette_index >> (local_x & 1) * 4) & 0xF;
+            }
+
+            if(palette_index == 0 || priority > m_dot_prios[screen_x]) {
+                continue;
+            }
+            m_dot_prios[screen_x] = priority;
+
+            if(!color_mode) {
+                palette_index += bits::get<4, 4>(m_state.oam[obj.obj * 8 + 5]) * 16;
+            }
+
+            u16 color = (m_state.palette[0x200 + palette_index * 2 + 1] << 8) | m_state.palette[0x200 + palette_index * 2];
+            u8 red = bits::get<0, 5>(color) * 8;
+            u8 green = bits::get<5, 5>(color) * 8;
+            u8 blue = bits::get<10, 5>(color) * 8;
+
+            m_video_device.setPixel(screen_x, m_state.line, (red << 24) | (green << 16) | (blue << 8) | 0xFF);
         }
     }
 }
@@ -369,17 +440,17 @@ void PPU::writeLineMode0() {
     bool enabled_bgs[4] = {bits::get_bit<8>(m_state.dispcnt), bits::get_bit<9>(m_state.dispcnt), bits::get_bit<10>(m_state.dispcnt), bits::get_bit<11>(m_state.dispcnt)};
     u8 sorted_bgs[4] = {0, 1, 2, 3};
 
-    std::sort(&sorted_bgs[0], &sorted_bgs[3], [this](const u8 &a, const u8 &b) {
+    std::sort(&sorted_bgs[0], &sorted_bgs[4], [this](const u8 &a, const u8 &b) {
         return bits::get<0, 2>(m_state.bg[a].control) < bits::get<0, 2>(m_state.bg[b].control);
     });
-    
+   
     for(int i = 0; i < 240; i++) {
         u8 palette_index = 0;
         
         for(int j = 0; j < 4; j++) {
             int bg = sorted_bgs[j];
 
-            if(!enabled_bgs[bg] || !m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
+            if(!enabled_bgs[bg] || !bits::get_bit(m_win_line[i], bg)) { //m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
                 continue;
             }
 
@@ -407,7 +478,7 @@ void PPU::writeLineMode1() {
     bool enabled_bgs[3] = {bits::get_bit<8>(m_state.dispcnt), bits::get_bit<9>(m_state.dispcnt), bits::get_bit<10>(m_state.dispcnt)};
     u8 sorted_bgs[3] = {0, 1, 2};
 
-    std::sort(&sorted_bgs[0], &sorted_bgs[2], [this](const u8 &a, const u8 &b) {
+    std::sort(&sorted_bgs[0], &sorted_bgs[3], [this](const u8 &a, const u8 &b) {
         return bits::get<0, 2>(m_state.bg[a].control) < bits::get<0, 2>(m_state.bg[b].control);
     });
 
@@ -418,7 +489,7 @@ void PPU::writeLineMode1() {
         for(int j = 0; j < 3; j++) {
             int bg = sorted_bgs[j];
 
-            if(!enabled_bgs[bg] || !m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
+            if(!enabled_bgs[bg] || !bits::get_bit(m_win_line[i], bg)) { //m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
                 continue;
             }
 

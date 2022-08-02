@@ -166,24 +166,4 @@ auto Window::insideWindow1(int x, int y) -> bool {
     return in_horizontal && in_vertical;
 }
 
-auto Window::isPixelDisplayed(int x, int y, u8 bg, u16 dispcnt) -> bool {
-    bool in_win0 = insideWindow0(x, y);
-    bool in_win1 = insideWindow1(x, y);
-    bool disp_in0 = bits::get_bit(winin, bg);
-    bool disp_in1 = bits::get_bit(winin, bg + 8);
-    bool disp_out = bits::get_bit(winout, bg);
-    bool win0_on = bits::get_bit<13>(dispcnt);
-    bool win1_on = bits::get_bit<14>(dispcnt);
-
-    if(in_win0 && win0_on) {
-        return disp_in0;
-    } else if(in_win1 && win1_on) {
-        return disp_in1;
-    } else if(win0_on || win1_on){
-        return disp_out;
-    }
-
-    return true;
-}
-
 } //namespace emu
