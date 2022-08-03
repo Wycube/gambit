@@ -14,16 +14,16 @@ struct Background {
     u16 param_a = 0x10, param_b, param_c = 0x10, param_d;
 
 
-    auto getTextPixel(int x, int y, const u8 *vram, const u8 *palette) -> u32;
+    auto getTextPixel(int x, int y, const u8 *vram) -> u8;
     
     void updateAffineParams();
     void reloadInternalRegs();
     void incrementInternalRegs();
-    auto getAffinePixel(int x, int y, const u8 *vram, const u8 *palette) -> u32;
+    auto getAffinePixel(int x, int y, const u8 *vram) -> u8;
 
-    auto getBitmapPixelMode3(int x, int y, const u8 *vram) -> u32;
-    auto getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u32;
-    auto getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1) -> u32;
+    auto getBitmapPixelMode3(int x, int y, const u8 *vram) -> u16;
+    auto getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u16;
+    auto getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1) -> u16;
 
     private:
 

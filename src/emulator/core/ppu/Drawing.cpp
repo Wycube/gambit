@@ -4,7 +4,7 @@
 
 namespace emu {
 
-auto Background::getTextPixel(int x, int y, const u8 *vram, const u8 *palette) -> u32 {
+auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
     u32 char_data_base = 0x4000 * bits::get<2, 2>(control); //Offset starting from 0x06000000 VRAM
     u32 map_data_base = 0x800 * bits::get<8, 5>(control); //Offset starting from 0x06000000 VRAM
     bool color_mode = bits::get_bit<7>(control); //1 is 256 color or 8bpp, 0 is 16 color or 4bpp
@@ -60,7 +60,7 @@ void Background::updateAffineParams() {
     _d = ((s8)bits::get<8, 8>(param_d) + (float)bits::get<0, 8>(param_d) / 256.0f);
 }
 
-auto Background::getAffinePixel(int x, int y, const u8 *vram, const u8 *palette) -> u32 {
+auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
     u32 char_data_base = 0x4000 * bits::get<2, 2>(control); //Offset starting from 0x06000000 VRAM
     u32 map_data_base = 0x800 * bits::get<8, 5>(control); //Offset starting from 0x06000000 VRAM
     int map_size = 16 << bits::get<14, 2>(control);
@@ -84,45 +84,26 @@ auto Background::getAffinePixel(int x, int y, const u8 *vram, const u8 *palette)
     return palette_index;
 }
 
-auto Background::getBitmapPixelMode3(int x, int y, const u8 *vram) -> u32 {
+auto Background::getBitmapPixelMode3(int x, int y, const u8 *vram) -> u16 {
     u32 index = x + y * 240;
-    u16 color = (vram[index * 2 + 1] << 8) | vram[index * 2];
-
-    u8 red = bits::get<0, 5>(color) * 8;
-    u8 green = bits::get<5, 5>(color) * 8;
-    u8 blue = bits::get<10, 5>(color) * 8;
-
-    //Take the 16-bit, mode 3, color and turn it into a 24-bit color value
-    return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
+    return (vram[index * 2 + 1] << 8) | vram[index * 2];
 }
 
-auto Background::getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u32 {
+auto Background::getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u16 {
     u32 index = x + y * 240;
     u32 data_start = frame_1 ? 0xA000 : 0;
     u8 color_index = vram[data_start + index];
-    u16 color = (palette[color_index * 2 + 1] << 8) | palette[color_index * 2];
-
-    u8 red = bits::get<0, 5>(color) * 8;
-    u8 green = bits::get<5, 5>(color) * 8;
-    u8 blue = bits::get<10, 5>(color) * 8;
-
-    return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
+    return (palette[color_index * 2 + 1] << 8) | palette[color_index * 2];
 }
 
-auto Background::getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1) -> u32 {
+auto Background::getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1) -> u16 {
     if(x > 160 || y > 128) {
         return 0;
     }
 
     u32 index = x + y * 160;
     u32 data_start = frame_1 ? 0xA000 : 0;
-    u16 color = vram[data_start + index];
-
-    u8 red = bits::get<0, 5>(color) * 8;
-    u8 green = bits::get<5, 5>(color) * 8;
-    u8 blue = bits::get<10, 5>(color) * 8;
-
-    return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
+    return vram[data_start + index];
 }
 
 //TODO: Window has some weird behavior to implement

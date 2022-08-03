@@ -38,26 +38,24 @@ private:
 
     PPUState m_state;
     u8 m_win_line[240];
-    u16 m_bg_col[4][240];
-    u16 m_obj_col[240];
-    int m_obj_prios[240];
-    int m_dot_prios[240];
+    u16 m_bmp_col[240];
+    u8 m_bg_col[4][240];
+    u8 m_obj_col[240];
+    u8 m_obj_prios[240];
 
     VideoDevice &m_video_device;
     Scheduler &m_scheduler;
     Bus &m_bus;
     DMA &m_dma;
 
-    void hblankStart(u32 current, u32 late);
-    void hblankEnd(u32 current, u32 late);
+    void hblankStart(u64 current, u64 late);
+    void hblankEnd(u64 current, u64 late);
 
+    void clearBuffers();
     void getWindowLine();
-    void writeObjects();
-    void writeLineMode0();
-    void writeLineMode1();
-    void writeLineMode3();
-    void writeLineMode4();
-    void writeLineMode5();
+    void drawObjects();
+    void drawBackground();
+    void compositeLine();
 };
 
 } //namespace emu

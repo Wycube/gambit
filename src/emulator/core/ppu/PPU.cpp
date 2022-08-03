@@ -214,7 +214,11 @@ void PPU::writeOAM(u32 address, T value) {
     }
 }
 
-void PPU::hblankStart(u32 current, u32 late) {
+void PPU::attachDebugger(dbg::Debugger &debugger) {
+    debugger.attachPPU(m_state.vram);
+}
+
+void PPU::hblankStart(u64 current, u64 late) {
     m_state.dispstat |= 2;
 
     //Request H-Blank interrupt if enabled
@@ -224,26 +228,17 @@ void PPU::hblankStart(u32 current, u32 late) {
 
     //Draw Scanline
     if(m_state.line < 160) {
-        u8 mode = bits::get<0, 3>(m_state.dispcnt);
+        clearBuffers();
         getWindowLine();
-        if(mode == 0) {
-            writeLineMode0();
-        } else if(mode == 1) {
-            writeLineMode1();
-        } else if(mode == 3) {
-            writeLineMode3();
-        } else if(mode == 4) {
-            writeLineMode4();
-        } else if(mode == 5) {
-            writeLineMode5();
-        }
-        writeObjects();
+        drawBackground();
+        drawObjects();
+        compositeLine();
     }
 
     m_scheduler.addEvent("Hblank End", [this](u32 a, u32 b) { hblankEnd(a, b); }, 272 - late);
 }
 
-void PPU::hblankEnd(u32 current, u32 late) {
+void PPU::hblankEnd(u64 current, u64 late) {
     m_state.line++;
     m_state.dispstat &= ~2;
     
@@ -284,6 +279,16 @@ void PPU::hblankEnd(u32 current, u32 late) {
             m_bus.requestInterrupt(INT_LCD_VB);
         }
     }
+}
+
+void PPU::clearBuffers() {
+    memset(m_bmp_col, 0, sizeof(m_bmp_col));
+    memset(m_bg_col[0], 0, sizeof(m_bg_col[0]));
+    memset(m_bg_col[1], 0, sizeof(m_bg_col[0]));
+    memset(m_bg_col[2], 0, sizeof(m_bg_col[0]));
+    memset(m_bg_col[3], 0, sizeof(m_bg_col[0]));
+    memset(m_obj_col, 0, sizeof(m_obj_col));
+    memset(m_obj_prios, 4, sizeof(m_obj_prios));
 }
 
 void PPU::getWindowLine() {
@@ -349,7 +354,7 @@ struct ObjectLine {
     int obj, x, y, width;
 };
 
-void PPU::writeObjects() {
+void PPU::drawObjects() {
     if(!bits::get_bit<12>(m_state.dispcnt)) {
         return;
     }
@@ -362,9 +367,14 @@ void PPU::writeObjects() {
             const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
             const int y = m_state.oam[i * 8];
             const int bottom = (y + height) % 0x100;
+            bool in_vertical = y <= m_state.line && m_state.line < bottom;
+
+            if(bottom < y) {
+                in_vertical = !(y > m_state.line && m_state.line >= bottom);
+            }
 
             //Check if object is on this line
-            if(bottom < m_state.line || m_state.line < 160) {
+            if(in_vertical) {
                 const int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
                 const int x = ((m_state.oam[i * 8 + 3] & 1) << 8) | m_state.oam[i * 8 + 2];
                 
@@ -412,137 +422,110 @@ void PPU::writeObjects() {
             }
 
             u8 palette_index = m_state.vram[0x10000 + tile_address * 32 + (local_x >> !color_mode) + local_y * tile_width];
+            u8 palette_index_4 = palette_index;
 
             if(!color_mode) {
                 palette_index = (palette_index >> (local_x & 1) * 4) & 0xF;
+                palette_index_4 = palette_index + bits::get<4, 4>(m_state.oam[obj.obj * 8 + 5]) * 16;
             }
 
-            if(palette_index == 0 || priority > m_dot_prios[screen_x]) {
-                continue;
+            if(priority <= m_obj_prios[screen_x] && palette_index != 0) {
+                m_obj_col[screen_x] = palette_index_4;
+                m_obj_prios[screen_x] = priority;
             }
-            m_dot_prios[screen_x] = priority;
-
-            if(!color_mode) {
-                palette_index += bits::get<4, 4>(m_state.oam[obj.obj * 8 + 5]) * 16;
-            }
-
-            u16 color = (m_state.palette[0x200 + palette_index * 2 + 1] << 8) | m_state.palette[0x200 + palette_index * 2];
-            u8 red = bits::get<0, 5>(color) * 8;
-            u8 green = bits::get<5, 5>(color) * 8;
-            u8 blue = bits::get<10, 5>(color) * 8;
-
-            m_video_device.setPixel(screen_x, m_state.line, (red << 24) | (green << 16) | (blue << 8) | 0xFF);
         }
     }
 }
 
-void PPU::writeLineMode0() {
-    bool enabled_bgs[4] = {bits::get_bit<8>(m_state.dispcnt), bits::get_bit<9>(m_state.dispcnt), bits::get_bit<10>(m_state.dispcnt), bits::get_bit<11>(m_state.dispcnt)};
+void PPU::drawBackground() {
+    switch(bits::get<0, 3>(m_state.dispcnt)) {
+        case 0 : //BG 0-3 Text
+            for(int i = 0; i < 240; i++) {
+                m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
+                m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
+                m_bg_col[2][i] = m_state.bg[2].getTextPixel(i, m_state.line, m_state.vram);
+                m_bg_col[3][i] = m_state.bg[3].getTextPixel(i, m_state.line, m_state.vram);
+            }
+            break;
+        case 1 : //BG 0-1 Text BG 2 Affine
+            m_state.bg[2].updateAffineParams();
+
+            for(int i = 0; i < 240; i++) {
+                m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
+                m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
+                m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
+            }
+            break;
+        case 2 : //BG 2-3 Affine
+            m_state.bg[2].updateAffineParams();
+            m_state.bg[3].updateAffineParams();
+
+            for(int i = 0; i < 240; i++) {
+                m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
+                m_bg_col[3][i] = m_state.bg[3].getAffinePixel(i, m_state.line, m_state.vram);
+            }
+            break;
+        case 3 : //BG 2 Bitmap 1x 240x160 Frame 15-bit color
+            for(int i = 0; i < 240; i++) {
+                m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode3(i, m_state.line, m_state.vram);
+            }
+            break;
+        case 4 : //BG 2 Bitmap 2x 240x160 Frames Paletted
+            for(int i = 0; i < 240; i++) {
+                m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode4(i, m_state.line, m_state.vram, m_state.palette, bits::get<4, 1>(m_state.dispcnt));
+            }
+            break;
+        case 5 : //BG 2 Bitmap 2x 160x128 Frames 15-bit color
+            for(int i = 0; i < 240; i++) {
+                m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode5(i, m_state.line, m_state.vram, bits::get<4, 1>(m_state.dispcnt));
+            }
+            break;
+    }
+}
+
+void PPU::compositeLine() {
+    bool enabled_bgs[4];
+    u8 bg_prios[4];
     u8 sorted_bgs[4] = {0, 1, 2, 3};
+    const u16 zero_color = (m_state.palette[1] << 8) | m_state.palette[0];
+    const bool bitmap = bits::get<0, 3>(m_state.dispcnt) >= 3;
 
-    std::sort(&sorted_bgs[0], &sorted_bgs[4], [this](const u8 &a, const u8 &b) {
-        return bits::get<0, 2>(m_state.bg[a].control) < bits::get<0, 2>(m_state.bg[b].control);
+    for(int i = 0; i < 4; i++) {
+        enabled_bgs[i] = bits::get_bit(m_state.dispcnt, 8 + i);
+        bg_prios[i] = bits::get<0, 2>(m_state.bg[i].control);
+    }
+
+    std::sort(&sorted_bgs[0], &sorted_bgs[4], [&](const u8 &a, const u8 &b) {
+        return bg_prios[a] < bg_prios[b];
     });
-   
+
     for(int i = 0; i < 240; i++) {
-        u8 palette_index = 0;
-        
-        for(int j = 0; j < 4; j++) {
-            int bg = sorted_bgs[j];
+        u16 final_color = bitmap ? m_bmp_col[i] : zero_color;
+        u8 bg_prio = bitmap ? bg_prios[2] : 4;
 
-            if(!enabled_bgs[bg] || !bits::get_bit(m_win_line[i], bg)) { //m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
-                continue;
-            }
+        //Background
+        if(!bitmap) {
+            for(int j = 0; j < 4; j++) {
+                const u8 bg = sorted_bgs[j];
 
-            palette_index = m_state.bg[bg].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
-            m_dot_prios[i] = bits::get<0, 2>(m_state.bg[bg].control);
-
-            //0 is the transparent index
-            if(palette_index != 0) {
-                break;
+                if(m_bg_col[bg][i] != 0 && enabled_bgs[bg] && bits::get_bit(m_win_line[i], bg)) {
+                    final_color = (m_state.palette[m_bg_col[bg][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[bg][i] * 2];
+                    bg_prio = bg_prios[bg];
+                    break;
+                }
             }
         }
 
-        u16 color_16 = (m_state.palette[palette_index * 2 + 1] << 8) | m_state.palette[palette_index * 2];
-        u8 red = bits::get<0, 5>(color_16) * 8;
-        u8 green = bits::get<5, 5>(color_16) * 8;
-        u8 blue = bits::get<10, 5>(color_16) * 8;
-
-        m_video_device.setPixel(i, m_state.line, (red << 24) | (green << 16) | (blue << 8) | 0xFF);
-    }
-}
-
-void PPU::writeLineMode1() {
-    m_state.bg[2].updateAffineParams();
-
-    bool enabled_bgs[3] = {bits::get_bit<8>(m_state.dispcnt), bits::get_bit<9>(m_state.dispcnt), bits::get_bit<10>(m_state.dispcnt)};
-    u8 sorted_bgs[3] = {0, 1, 2};
-
-    std::sort(&sorted_bgs[0], &sorted_bgs[3], [this](const u8 &a, const u8 &b) {
-        return bits::get<0, 2>(m_state.bg[a].control) < bits::get<0, 2>(m_state.bg[b].control);
-    });
-
-
-    for(int i = 0; i < 240; i++) {
-        u8 palette_index = 0;
-
-        for(int j = 0; j < 3; j++) {
-            int bg = sorted_bgs[j];
-
-            if(!enabled_bgs[bg] || !bits::get_bit(m_win_line[i], bg)) { //m_state.win.isPixelDisplayed(i, m_state.line, bg, m_state.dispcnt)) {
-                continue;
-            }
-
-            if(bg == 2) {
-                palette_index = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram, m_state.palette);
-            } else {
-                palette_index = m_state.bg[bg].getTextPixel(i, m_state.line, m_state.vram, m_state.palette);
-            }
-
-            m_dot_prios[i] = bits::get<0, 2>(m_state.bg[bg].control);
-
-            //0 is the transparent index
-            if(palette_index != 0) {
-                break;
-            }
+        //Object
+        if(m_obj_col[i] != 0 && m_obj_prios[i] <= bg_prio && bits::get_bit<4>(m_win_line[i])) {
+            final_color = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2];
         }
 
-        u16 color_16 = (m_state.palette[palette_index * 2 + 1] << 8) | m_state.palette[palette_index * 2];
-        u8 red = bits::get<0, 5>(color_16) * 8;
-        u8 green = bits::get<5, 5>(color_16) * 8;
-        u8 blue = bits::get<10, 5>(color_16) * 8;
-
+        const u8 red = bits::get<0, 5>(final_color) * 8;
+        const u8 green = bits::get<5, 5>(final_color) * 8;
+        const u8 blue = bits::get<10, 5>(final_color) * 8;
         m_video_device.setPixel(i, m_state.line, (red << 24) | (green << 16) | (blue << 8) | 0xFF);
     }
-}
-
-void PPU::writeLineMode3() {
-    for(int i = 0; i < 240; i++) {
-        m_dot_prios[i] = bits::get<0, 2>(m_state.bg[2].control);
-        m_video_device.setPixel(i, m_state.line, m_state.bg[2].getBitmapPixelMode3(i, m_state.line, m_state.vram));
-    }
-}
-
-void PPU::writeLineMode4() {
-    bool frame_1 = bits::get<4, 1>(m_state.dispcnt);
-
-    for(int i = 0; i < 240; i++) {
-        m_dot_prios[i] = bits::get<0, 2>(m_state.bg[2].control);
-        m_video_device.setPixel(i, m_state.line, m_state.bg[2].getBitmapPixelMode4(i, m_state.line, m_state.vram, m_state.palette, frame_1));
-    }
-}
-
-void PPU::writeLineMode5() {
-    bool frame_1 = bits::get<4, 1>(m_state.dispcnt);
-
-    for(int i = 0; i < 240; i++) {
-        m_dot_prios[i] = bits::get<0, 2>(m_state.bg[2].control);
-        m_video_device.setPixel(i, m_state.line, m_state.bg[2].getBitmapPixelMode5(i, m_state.line, m_state.vram, frame_1));
-    }
-}
-
-void PPU::attachDebugger(dbg::Debugger &debugger) {
-    debugger.attachPPU(m_state.vram);
 }
 
 } //namespace emu
