@@ -59,6 +59,10 @@ auto PPU::readIO(u32 address) -> u8 {
         case 0x49 : return bits::get<8, 8>(m_state.win.winin);
         case 0x4A : return bits::get<0, 8>(m_state.win.winout);
         case 0x4B : return bits::get<8, 8>(m_state.win.winout);
+        case 0x50 : return bits::get<0, 8>(m_state.bldcnt);
+        case 0x51 : return bits::get<8, 8>(m_state.bldcnt);
+        case 0x52 : return bits::get<0, 8>(m_state.bldalpha);
+        case 0x53 : return bits::get<8, 8>(m_state.bldalpha);
     }
 
     return 0;
@@ -138,6 +142,10 @@ void PPU::writeIO(u32 address, u8 value) {
         case 0x49 : bits::set<8, 8>(m_state.win.winin, value); break;
         case 0x4A : bits::set<0, 8>(m_state.win.winout, value); break;
         case 0x4B : bits::set<8, 8>(m_state.win.winout, value); break;
+        case 0x50 : bits::set<0, 8>(m_state.bldcnt, value); break;
+        case 0x51 : bits::set<8, 8>(m_state.bldcnt, value); break;
+        case 0x52 : bits::set<0, 8>(m_state.bldalpha, value); break;
+        case 0x53 : bits::set<8, 8>(m_state.bldalpha, value); break;
     }
 }
 
@@ -317,17 +325,17 @@ void PPU::getWindowLine() {
     
     for(int i = 0; i < 240; i++) {
         //Bit 0-3 are bg 0-3 display, and bit 4 is obj display
-        m_win_line[i] = bits::get<13, 3>(m_state.dispcnt) != 0 ? bits::get<0, 5>(m_state.win.winout) : 0x1F;
+        m_win_line[i] = bits::get<13, 3>(m_state.dispcnt) != 0 ? bits::get<0, 6>(m_state.win.winout) : 0x1F;
         
         //Window 0
         if(bits::get_bit<13>(m_state.dispcnt) && m_state.win.insideWindow0(i, m_state.line)) {
-            m_win_line[i] = bits::get<0, 5>(m_state.win.winin);
+            m_win_line[i] = bits::get<0, 6>(m_state.win.winin);
             continue;
         }
 
         //Window 1
         if(bits::get_bit<14>(m_state.dispcnt) && m_state.win.insideWindow1(i, m_state.line)) {
-            m_win_line[i] = bits::get<8, 5>(m_state.win.winin);
+            m_win_line[i] = bits::get<8, 6>(m_state.win.winin);
             continue;
         }
 
@@ -343,7 +351,7 @@ void PPU::getWindowLine() {
             }
 
             if(in_horizontal) {
-                m_win_line[i] = bits::get<8, 5>(m_state.win.winout);
+                m_win_line[i] = bits::get<8, 6>(m_state.win.winout);
                 break;
             }
         }
@@ -441,19 +449,19 @@ void PPU::drawBackground() {
     switch(bits::get<0, 3>(m_state.dispcnt)) {
         case 0 : //BG 0-3 Text
             for(int i = 0; i < 240; i++) {
-                m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
-                m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
-                m_bg_col[2][i] = m_state.bg[2].getTextPixel(i, m_state.line, m_state.vram);
-                m_bg_col[3][i] = m_state.bg[3].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<11>(m_state.dispcnt)) m_bg_col[3][i] = m_state.bg[3].getTextPixel(i, m_state.line, m_state.vram);
             }
             break;
         case 1 : //BG 0-1 Text BG 2 Affine
             m_state.bg[2].updateAffineParams();
 
             for(int i = 0; i < 240; i++) {
-                m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
-                m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
-                m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
             }
             break;
         case 2 : //BG 2-3 Affine
@@ -461,70 +469,103 @@ void PPU::drawBackground() {
             m_state.bg[3].updateAffineParams();
 
             for(int i = 0; i < 240; i++) {
-                m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
-                m_bg_col[3][i] = m_state.bg[3].getAffinePixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<11>(m_state.dispcnt)) m_bg_col[3][i] = m_state.bg[3].getAffinePixel(i, m_state.line, m_state.vram);
             }
             break;
         case 3 : //BG 2 Bitmap 1x 240x160 Frame 15-bit color
-            for(int i = 0; i < 240; i++) {
-                m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode3(i, m_state.line, m_state.vram);
+            if(bits::get_bit<10>(m_state.dispcnt)) {
+                for(int i = 0; i < 240; i++) {
+                    m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode3(i, m_state.line, m_state.vram);
+                }
             }
             break;
         case 4 : //BG 2 Bitmap 2x 240x160 Frames Paletted
-            for(int i = 0; i < 240; i++) {
-                m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode4(i, m_state.line, m_state.vram, m_state.palette, bits::get<4, 1>(m_state.dispcnt));
+            if(bits::get_bit<10>(m_state.dispcnt)) {
+                for(int i = 0; i < 240; i++) {
+                    m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode4(i, m_state.line, m_state.vram, m_state.palette, bits::get<4, 1>(m_state.dispcnt));
+                }
             }
             break;
         case 5 : //BG 2 Bitmap 2x 160x128 Frames 15-bit color
-            for(int i = 0; i < 240; i++) {
-                m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode5(i, m_state.line, m_state.vram, bits::get<4, 1>(m_state.dispcnt));
+            if(bits::get_bit<10>(m_state.dispcnt)) {
+                for(int i = 0; i < 240; i++) {
+                    m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode5(i, m_state.line, m_state.vram, bits::get<4, 1>(m_state.dispcnt));
+                }
             }
             break;
     }
 }
 
 void PPU::compositeLine() {
-    bool enabled_bgs[4];
-    u8 bg_prios[4];
-    u8 sorted_bgs[4] = {0, 1, 2, 3};
     const u16 zero_color = (m_state.palette[1] << 8) | m_state.palette[0];
     const bool bitmap = bits::get<0, 3>(m_state.dispcnt) >= 3;
-
-    for(int i = 0; i < 4; i++) {
-        enabled_bgs[i] = bits::get_bit(m_state.dispcnt, 8 + i);
-        bg_prios[i] = bits::get<0, 2>(m_state.bg[i].control);
-    }
-
-    std::sort(&sorted_bgs[0], &sorted_bgs[4], [&](const u8 &a, const u8 &b) {
-        return bg_prios[a] < bg_prios[b];
-    });
+    u8 priorities[6];
 
     for(int i = 0; i < 240; i++) {
-        u16 final_color = bitmap ? m_bmp_col[i] : zero_color;
-        u8 bg_prio = bitmap ? bg_prios[2] : 4;
-
-        //Background
-        if(!bitmap) {
-            for(int j = 0; j < 4; j++) {
-                const u8 bg = sorted_bgs[j];
-
-                if(m_bg_col[bg][i] != 0 && enabled_bgs[bg] && bits::get_bit(m_win_line[i], bg)) {
-                    final_color = (m_state.palette[m_bg_col[bg][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[bg][i] * 2];
-                    bg_prio = bg_prios[bg];
-                    break;
-                }
-            }
+        for(int i = 0; i < 6; i++) {
+            priorities[i] = i << 3;
         }
 
-        //Object
-        if(m_obj_col[i] != 0 && m_obj_prios[i] <= bg_prio && bits::get_bit<4>(m_win_line[i])) {
-            final_color = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2];
+        //Backdrop
+        priorities[5] |= 5;
+
+        //BG Pixels
+        priorities[0] |= m_bg_col[0][i] != 0 && bits::get_bit<0>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[0].control) + 1 : 6;
+        priorities[1] |= m_bg_col[1][i] != 0 && bits::get_bit<1>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[1].control) + 1 : 6;
+        priorities[2] |= m_bg_col[2][i] != 0 && bits::get_bit<2>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[2].control) + 1 : 6;
+        priorities[3] |= m_bg_col[3][i] != 0 && bits::get_bit<3>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[3].control) + 1 : 6;
+
+        //Object pixel
+        priorities[4] |= m_obj_col[i] != 0 && bits::get_bit<4>(m_win_line[i]) ? m_obj_prios[i] : 6;
+
+        std::sort(&priorities[0], &priorities[6], [](const u8 &a, const u8 &b) {
+            return (a & 7) < (b & 7);
+        });
+        
+        u16 target_1;
+
+        //Find first target (Topmost pixel)
+        switch(priorities[0] >> 3) {
+            case 0 : target_1 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
+            case 1 : target_1 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
+            case 2 : target_1 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
+            case 3 : target_1 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
+            case 4 : target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
+            case 5 : target_1 = zero_color; break;
         }
 
-        const u8 red = bits::get<0, 5>(final_color) * 8;
-        const u8 green = bits::get<5, 5>(final_color) * 8;
-        const u8 blue = bits::get<10, 5>(final_color) * 8;
-        m_video_device.setPixel(i, m_state.line, (red << 24) | (green << 16) | (blue << 8) | 0xFF);
+        u8 red = bits::get<0, 5>(target_1);
+        u8 green = bits::get<5, 5>(target_1);
+        u8 blue = bits::get<10, 5>(target_1);
+
+        //Blending
+        // if((priorities[0] & 7) != 5 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3) && bits::get_bit(m_state.bldcnt, 8 + (priorities[1] >> 3))) {
+        //     u16 target_2;
+            
+        //     //Find second target (Next topmost pixel)
+        //     switch(priorities[1] >> 3) {
+        //         case 0 : target_2 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
+        //         case 1 : target_2 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
+        //         case 2 : target_2 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
+        //         case 3 : target_2 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
+        //         case 4 : target_2 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
+        //         case 5 : target_2 = zero_color; break;
+        //     }
+
+        //     u8 red_2 = bits::get<0, 5>(target_2);
+        //     u8 green_2 = bits::get<5, 5>(target_2);
+        //     u8 blue_2 = bits::get<10, 5>(target_2);
+
+        //     red = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)red + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)red_2;
+        //     green = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)green + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)green_2;
+        //     blue = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)blue + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)blue_2;
+        //     red = red > 31 ? 31 : red;
+        //     green = green > 31 ? 31 : green;
+        //     blue = blue > 31 ? 31 : blue;
+        // }
+
+        m_video_device.setPixel(i, m_state.line, (red * 8 << 24) | (green * 8 << 16) | (blue * 8 << 8) | 0xFF);
     }
 }
 
