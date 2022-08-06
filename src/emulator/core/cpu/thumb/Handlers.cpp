@@ -205,6 +205,8 @@ void CPU::thumbBranchExchange(u16 instruction) {
         set_reg(14, get_reg(15) - 1);
     }
 
+    LOG_DEBUG("Branch exchanged in THUMB to address: {:08X} from address: {:08X}", address, m_state.pc - 2);
+
     //The lowest bit of the address determines the execution mode (1 = THUMB, 0 = ARM)
     m_state.cpsr.t = address & 1;
     set_reg(15, address);

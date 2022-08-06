@@ -135,8 +135,12 @@ auto CPU::get_reg_banked(u8 reg, u8 mode) -> u32& {
         case MODE_SUPERVISOR : return *m_state.banks[3][reg];
         case MODE_ABORT : return *m_state.banks[4][reg];
         case MODE_UNDEFINED : return *m_state.banks[5][reg];
-        default : LOG_FATAL("Mode {:05X}, is not a valid mode!", mode);
+        default : LOG_INFO("PC: {:08X}, Invalid Mode: {:02X}", m_state.pc, mode); //LOG_FATAL("PC: {:08X}, Mode {:05X}, is not a valid mode!", m_state.pc, mode);
     }
+
+    static u32 dummy;
+
+    return dummy;
 }
 
 auto CPU::get_reg(u8 reg, u8 mode) -> u32 {

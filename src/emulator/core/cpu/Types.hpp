@@ -67,7 +67,7 @@ struct StatusRegister {
         i = bits::get_bit<7>(value);
         f = bits::get_bit<6>(value);
         t = bits::get_bit<5>(value);
-        mode = bits::get<0, 5>(value);
+        mode = bits::get<0, 5>(value) | 0x10;
     }
 };
 

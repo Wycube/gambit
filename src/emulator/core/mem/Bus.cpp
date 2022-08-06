@@ -175,9 +175,7 @@ void Bus::write(u32 address, T value) {
     u32 region_size = 0;
 
     switch((address >> 24) & 0xF) {
-        case 0x0 : //BIOS
-            memory_region = m_mem.bios;
-            region_size = sizeof(m_mem.bios);
+        case 0x0 : //BIOS (Read-only)
         break;
         case 0x1 : //Not Used
         break;

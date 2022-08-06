@@ -8,7 +8,7 @@ namespace emu {
 
 enum SaveType {
     NONE,
-    SRAM,       //32KiB
+    SRAM_32K,       //32KiB
     FLASH_64K,  //64KiB
     FLASH_128K, //128KiB
     EEPROM_512, //512 bytes

@@ -1,6 +1,7 @@
 #include "PPU.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
+#include <algorithm>
 
 
 namespace emu {

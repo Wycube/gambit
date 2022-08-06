@@ -41,7 +41,7 @@ void CPU::armPSRTransfer(u32 instruction) {
         if(bits::get<0, 1>(fields) && privileged()) {
             psr.i = bits::get_bit<7>(operand);
             psr.f = bits::get_bit<6>(operand);
-            psr.mode = bits::get<0, 5>(operand);
+            psr.mode = bits::get<0, 5>(operand) | 0x10;
         }
         //Status Field (Bits 8-15: Reserved bits)
         if(bits::get<1, 1>(fields) && privileged()) {

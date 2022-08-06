@@ -1,5 +1,6 @@
 #include "GamePak.hpp"
 #include "save/EEPROM.hpp"
+#include "save/SRAM.hpp"
 
 
 namespace emu {
@@ -35,7 +36,7 @@ auto GamePak::read(u32 address) -> T {
             }
             return 0;
         case 0xE : //SRAM
-            if(m_save->getType() == SRAM) {
+            if(m_save->getType() == SRAM_32K) {
                 return m_save->read(sub_address);
             }
             return 0;
@@ -64,7 +65,7 @@ void GamePak::write(u32 address, T value) {
                 return m_save->write(sub_address, value & 0xFF);
             }
         case 0xE : //SRAM
-            if(m_save->getType() == SRAM) {
+            if(m_save->getType() == SRAM_32K) {
                 return m_save->write(sub_address, value & 0xFF);
             }
     }
@@ -93,6 +94,8 @@ void GamePak::loadROM(std::vector<u8> &&rom) {
     //Get save type, somehow
     if(strcmp((const char*)m_header.title, "GBAZELDA") == 0 || strcmp((const char*)m_header.title, "GBAZELDA MC") == 0) {
         m_save = std::make_unique<EEPROM>(EEPROM_8K);
+    } else if(strcmp((const char*)m_header.title, "METROID4USA") == 0) {
+        m_save = std::make_unique<SRAM>();
     } else {
         m_save = std::make_unique<NoSave>();
     }
