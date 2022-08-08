@@ -8,10 +8,10 @@
 
 namespace common {
 
-const char *VERSION_MAJOR = _VERSION_MAJOR;
-const char *VERSION_MINOR = _VERSION_MINOR;
-const char *GIT_DESC = _GIT_DESC;
-const char *GIT_COMMIT = _GIT_COMMIT;
-const char *GIT_BRANCH = _GIT_BRANCH;
+static const char *VERSION_MAJOR = _VERSION_MAJOR;
+static const char *VERSION_MINOR = _VERSION_MINOR;
+static const char *GIT_DESC = _GIT_DESC;
+static const char *GIT_COMMIT = _GIT_COMMIT;
+static const char *GIT_BRANCH = _GIT_BRANCH;
 
 } //namespace common
