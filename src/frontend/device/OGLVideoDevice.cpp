@@ -24,10 +24,17 @@ void OGLVideoDevice::setPixel(int x, int y, u32 color) {
 }
 
 void OGLVideoDevice::presentFrame() {
-    updateTexture(m_internal_framebuffer);
+    std::lock_guard lock(m_update_mutex);
+    new_frame = true;
 }
 
 auto OGLVideoDevice::getTextureID() -> GLuint {
+    std::lock_guard lock(m_update_mutex);
+    if(new_frame) {
+        updateTexture(m_internal_framebuffer);
+        new_frame = false;
+    }
+
     return m_texture_id;
 }
 

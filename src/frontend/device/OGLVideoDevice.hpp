@@ -2,6 +2,7 @@
 
 #include "emulator/device/VideoDevice.hpp"
 #include <glad/gl.h>
+#include <mutex>
 
 
 class OGLVideoDevice final : public emu::VideoDevice {
@@ -22,4 +23,6 @@ private:
     void updateTexture(u32 *pixels);
 
     GLuint m_texture_id;
+    std::mutex m_update_mutex;
+    bool new_frame;
 };

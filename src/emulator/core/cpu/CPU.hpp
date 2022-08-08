@@ -4,6 +4,7 @@
 #include "emulator/core/debug/Debugger.hpp"
 #include "Types.hpp"
 #include "common/Types.hpp"
+#include <array>
 
 
 namespace emu {

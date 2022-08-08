@@ -6,13 +6,21 @@
 namespace emu {
 
 struct Background {
-    u16 control;
+    u8 priority;
+    u8 char_base_block;
+    bool mosaic;
+    bool color_mode;
+    u8 scr_base_block;
+    bool disp_overflow;
+    u8 screen_size;
     u16 h_offset, v_offset;
 
     //Rotation/Scaling Registers
     u32 reference_x, reference_y;
     u16 param_a = 0x10, param_b, param_c = 0x10, param_d;
 
+    void write(u32 address, u8 value);
+    auto read(u32 address) -> u8;
 
     auto getTextPixel(int x, int y, const u8 *vram) -> u8;
     

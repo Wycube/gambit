@@ -74,10 +74,6 @@ auto GBA::getInputDevice() -> InputDevice& {
     return m_input_device;
 }
 
-auto GBA::getKeypad() -> Keypad& {
-    return m_keypad;
-}
-
 auto GBA::getDebugger() -> dbg::Debugger& {
     return m_debugger;
 }

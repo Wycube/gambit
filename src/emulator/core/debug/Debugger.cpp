@@ -121,19 +121,15 @@ void Debugger::attachPPU(const u8 *vram) {
 }
 
 void Debugger::setRunning(bool run) {
-    m_running = run;
+    m_running.store(run);
 }
 
 auto Debugger::running() -> bool {
-    return m_running;
+    return m_running.load();
 }
 
 auto Debugger::checkBreakpoints() -> bool {
     u32 pc = m_cpu_state->cpsr.t ? m_cpu_state->pc - 2 : m_cpu_state->pc - 4;
-
-    if(pc == 0x0000006A) {
-        m_running = false;
-    }
 
     for(const auto &breakpoint : m_breakpoints) {
         if(breakpoint == pc) {

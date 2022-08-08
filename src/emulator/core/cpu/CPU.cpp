@@ -242,32 +242,34 @@ void CPU::execute_arm(u32 instruction) {
 }
 
 void CPU::execute_thumb(u16 instruction) {
-    ThumbInstructionType type = thumbDetermineType(instruction);
+    // ThumbInstructionType type = thumbDetermineType(instruction);
 
-    switch(type) {
-        case THUMB_MOVE_SHIFTED_REGISTER : thumbMoveShifted(instruction); break;
-        case THUMB_ADD_SUBTRACT : thumbAddSubtract(instruction); break;
-        case THUMB_PROCESS_IMMEDIATE : thumbProcessImmediate(instruction); break;
-        case THUMB_ALU_OPERATION: thumbALUOperation(instruction); break;
-        case THUMB_HI_REGISTER_OPERATION : thumbHiRegisterOp(instruction); break;
-        case THUMB_BRANCH_EXCHANGE : thumbBranchExchange(instruction); break;
-        case THUMB_PC_RELATIVE_LOAD : thumbPCRelativeLoad(instruction); break;
-        case THUMB_LOAD_STORE_REGISTER : thumbLoadStoreRegister(instruction); break;
-        case THUMB_LOAD_STORE_SIGN_EXTEND : thumbLoadStoreSigned(instruction); break;
-        case THUMB_LOAD_STORE_IMMEDIATE : thumbLoadStoreImmediate(instruction); break;
-        case THUMB_LOAD_STORE_HALFWORD : thumbLoadStoreHalfword(instruction); break;
-        case THUMB_SP_RELATIVE_LOAD_STORE : thumbSPRelativeLoadStore(instruction); break;
-        case THUMB_LOAD_ADDRESS : thumbLoadAddress(instruction); break;
-        case THUMB_ADJUST_STACK_POINTER : thumbAdjustSP(instruction); break;
-        case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
-        case THUMB_LOAD_STORE_MULTIPLE : thumbLoadStoreMultiple(instruction); break;
-        case THUMB_CONDITIONAL_BRANCH : thumbConditionalBranch(instruction); break;
-        case THUMB_SOFTWARE_INTERRUPT : thumbSoftwareInterrupt(instruction); break;
-        case THUMB_UNCONDITIONAL_BRANCH : thumbUnconditionalBranch(instruction); break;
-        case THUMB_LONG_BRANCH : thumbLongBranch(instruction); break;
-        case THUMB_UNDEFINED : thumbUndefined(instruction); break;
-        default: thumbUnimplemented(instruction);
-    }
+    (this->*thumb_instruction_lut[instruction >> 8])(instruction);
+
+    // switch(type) {
+    //     case THUMB_MOVE_SHIFTED_REGISTER : thumbMoveShifted(instruction); break;
+    //     case THUMB_ADD_SUBTRACT : thumbAddSubtract(instruction); break;
+    //     case THUMB_PROCESS_IMMEDIATE : thumbProcessImmediate(instruction); break;
+    //     case THUMB_ALU_OPERATION: thumbALUOperation(instruction); break;
+    //     case THUMB_HI_REGISTER_OPERATION : thumbHiRegisterOp(instruction); break;
+    //     case THUMB_BRANCH_EXCHANGE : thumbBranchExchange(instruction); break;
+    //     case THUMB_PC_RELATIVE_LOAD : thumbPCRelativeLoad(instruction); break;
+    //     case THUMB_LOAD_STORE_REGISTER : thumbLoadStoreRegister(instruction); break;
+    //     case THUMB_LOAD_STORE_SIGN_EXTEND : thumbLoadStoreSigned(instruction); break;
+    //     case THUMB_LOAD_STORE_IMMEDIATE : thumbLoadStoreImmediate(instruction); break;
+    //     case THUMB_LOAD_STORE_HALFWORD : thumbLoadStoreHalfword(instruction); break;
+    //     case THUMB_SP_RELATIVE_LOAD_STORE : thumbSPRelativeLoadStore(instruction); break;
+    //     case THUMB_LOAD_ADDRESS : thumbLoadAddress(instruction); break;
+    //     case THUMB_ADJUST_STACK_POINTER : thumbAdjustSP(instruction); break;
+    //     case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
+    //     case THUMB_LOAD_STORE_MULTIPLE : thumbLoadStoreMultiple(instruction); break;
+    //     case THUMB_CONDITIONAL_BRANCH : thumbConditionalBranch(instruction); break;
+    //     case THUMB_SOFTWARE_INTERRUPT : thumbSoftwareInterrupt(instruction); break;
+    //     case THUMB_UNCONDITIONAL_BRANCH : thumbUnconditionalBranch(instruction); break;
+    //     case THUMB_LONG_BRANCH : thumbLongBranch(instruction); break;
+    //     case THUMB_UNDEFINED : thumbUndefined(instruction); break;
+    //     default: thumbUnimplemented(instruction);
+    // }
 }
 
 void CPU::service_interrupt() {

@@ -4,12 +4,30 @@
 
 namespace emu {
 
+void Background::write(u32 address, u8 value) {
+    if(address & 1) {
+        scr_base_block = value & 0x1F;
+        disp_overflow = (value >> 5) & 1;
+        screen_size = (value >> 6) & 3;
+    } else {
+        priority = value & 3;
+        char_base_block = (value >> 2) & 3;
+        mosaic = (value >> 6) & 1;
+        color_mode = (value >> 7) & 1;
+    }
+}
+
+auto Background::read(u32 address) -> u8 {
+    if(address & 1) {
+        return scr_base_block | (disp_overflow << 5) | (screen_size << 6);
+    } else {
+        return priority | (char_base_block << 2) | (mosaic << 6) | (color_mode << 7);
+    }
+}
+
 auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
-    u32 char_data_base = 0x4000 * bits::get<2, 2>(control); //Offset starting from 0x06000000 VRAM
-    u32 map_data_base = 0x800 * bits::get<8, 5>(control); //Offset starting from 0x06000000 VRAM
-    bool color_mode = bits::get_bit<7>(control); //1 is 256 color or 8bpp, 0 is 16 color or 4bpp
-    int map_width = 32 << bits::get_bit<14>(control);
-    int map_height = 32 << bits::get_bit<15>(control);
+    int map_width = 32 << (screen_size & 1);
+    int map_height = 32 << (screen_size >> 1);
     int tile_width = color_mode ? 8 : 4;
 
     //Apply offset
@@ -23,7 +41,7 @@ auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
     int screen_block = (tile_x / 32) + (tile_y / 32) * (map_width / 32);
 
     u32 tile_index = screen_block * 1024 + (tile_x % 32) + (tile_y % 32) * 32;
-    u32 map_data_address = map_data_base + tile_index * 2;
+    u32 map_data_address = 0x800 * scr_base_block + tile_index * 2;
     u16 tile_entry = (vram[map_data_address + 1] << 8) | vram[map_data_address];
     bool mirror_x = bits::get_bit<10>(tile_entry);
     bool mirror_y = bits::get_bit<11>(tile_entry);
@@ -35,7 +53,7 @@ auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
     tile_pixel_x >>= !color_mode;
 
     u8 palette_selected = bits::get<12, 4>(tile_entry);
-    u8 palette_index = vram[char_data_base + bits::get<0, 10>(tile_entry) * tile_width * 8 + tile_pixel_x + tile_pixel_y * tile_width];
+    u8 palette_index = vram[0x4000 * char_base_block + bits::get<0, 10>(tile_entry) * tile_width * 8 + tile_pixel_x + tile_pixel_y * tile_width];
     if(!color_mode) {
         bool odd = (x & 1) ^ mirror_x;
         palette_index = (palette_index >> odd * 4) & 0xF;
@@ -61,9 +79,7 @@ void Background::updateAffineParams() {
 }
 
 auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
-    u32 char_data_base = 0x4000 * bits::get<2, 2>(control); //Offset starting from 0x06000000 VRAM
-    u32 map_data_base = 0x800 * bits::get<8, 5>(control); //Offset starting from 0x06000000 VRAM
-    int map_size = 16 << bits::get<14, 2>(control);
+    int map_size = 16 << screen_size;
     int x2 = _a * (float)x + _b * (float)y + _x;
     int y2 = _c * (float)x + _d * (float)y + _y;
 
@@ -78,8 +94,8 @@ auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
     int tile_pixel_y = y2 % 8;
 
     u32 tile_index = tile_x + tile_y * map_size;
-    u8 tile_entry = vram[map_data_base + tile_index];
-    u8 palette_index = vram[char_data_base + tile_entry * 64 + tile_pixel_x + tile_pixel_y * 8];
+    u8 tile_entry = vram[0x800 * scr_base_block + tile_index];
+    u8 palette_index = vram[0x4000 * char_base_block + tile_entry * 64 + tile_pixel_x + tile_pixel_y * 8];
 
     return palette_index;
 }

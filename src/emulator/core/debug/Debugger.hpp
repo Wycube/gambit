@@ -4,6 +4,7 @@
 #include "common/Types.hpp"
 #include <string>
 #include <vector>
+#include <atomic>
 
 
 namespace emu {
@@ -50,7 +51,7 @@ public:
 
 private:
 
-    bool m_running;
+    std::atomic<bool> m_running;
     std::vector<u32> m_breakpoints;
 
     //Pointer to CPU state

@@ -34,15 +34,6 @@ void Keypad::write8(u32 address, u8 value) {
     }
 }
 
-// void Keypad::set_keys(u16 keys) {
-//     keys |= 0xFC00;
-//     m_keyinput = ~keys;
-// }
-
-// auto Keypad::get_keys() -> u16 {
-//     return m_keyinput;
-// }
-
 void Keypad::checkForInterrupt() {
 
 }

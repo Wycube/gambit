@@ -48,14 +48,22 @@ auto PPU::readIO(u32 address) -> u8 {
         case 0x05 : return bits::get<8, 8>(m_state.dispstat);
         case 0x06 : return m_state.line; //VCOUNT
         case 0x07 : return 0;
-        case 0x08 : return bits::get<0, 8>(m_state.bg[0].control); //BG0CNT (Background 0 Control)
-        case 0x09 : return bits::get<8, 8>(m_state.bg[0].control);
-        case 0x0A : return bits::get<0, 8>(m_state.bg[1].control); //BG1CNT (Background 1 Control)
-        case 0x0B : return bits::get<8, 8>(m_state.bg[1].control);
-        case 0x0C : return bits::get<0, 8>(m_state.bg[2].control); //BG2CNT (Background 2 Control)
-        case 0x0D : return bits::get<8, 8>(m_state.bg[2].control);
-        case 0x0E : return bits::get<0, 8>(m_state.bg[3].control); //BG3CNT (Background 3 Control)
-        case 0x0F : return bits::get<8, 8>(m_state.bg[3].control);
+        // case 0x08 : return bits::get<0, 8>(m_state.bg[0].control); //BG0CNT (Background 0 Control)
+        // case 0x09 : return bits::get<8, 8>(m_state.bg[0].control);
+        // case 0x0A : return bits::get<0, 8>(m_state.bg[1].control); //BG1CNT (Background 1 Control)
+        // case 0x0B : return bits::get<8, 8>(m_state.bg[1].control);
+        // case 0x0C : return bits::get<0, 8>(m_state.bg[2].control); //BG2CNT (Background 2 Control)
+        // case 0x0D : return bits::get<8, 8>(m_state.bg[2].control);
+        // case 0x0E : return bits::get<0, 8>(m_state.bg[3].control); //BG3CNT (Background 3 Control)
+        // case 0x0F : return bits::get<8, 8>(m_state.bg[3].control);
+        case 0x08 :
+        case 0x09 : return m_state.bg[0].read(address);
+        case 0x0A :
+        case 0x0B : return m_state.bg[1].read(address);
+        case 0x0C :
+        case 0x0D : return m_state.bg[2].read(address);
+        case 0x0E :
+        case 0x0F : return m_state.bg[3].read(address);
         case 0x48 : return bits::get<0, 8>(m_state.win.winin);
         case 0x49 : return bits::get<8, 8>(m_state.win.winin);
         case 0x4A : return bits::get<0, 8>(m_state.win.winout);
@@ -75,14 +83,22 @@ void PPU::writeIO(u32 address, u8 value) {
         case 0x01 : m_state.dispcnt = (m_state.dispcnt & 0xFF) | (value << 8); break;
         case 0x04 : m_state.dispstat = (m_state.dispstat & 0xFFE2) | (value & ~0xE2); break;
         case 0x05 : m_state.dispstat = (m_state.dispstat & 0xFF) | (value << 8); break;
-        case 0x08 : m_state.bg[0].control = (m_state.bg[0].control & ~0xFF) | value; break;
-        case 0x09 : m_state.bg[0].control = (m_state.bg[0].control & 0xFF) | (value << 8); break;
-        case 0x0A : m_state.bg[1].control = (m_state.bg[1].control & ~0xFF) | value; break;
-        case 0x0B : m_state.bg[1].control = (m_state.bg[1].control & 0xFF) | (value << 8); break;
-        case 0x0C : m_state.bg[2].control = (m_state.bg[2].control & ~0xFF) | value; break;
-        case 0x0D : m_state.bg[2].control = (m_state.bg[2].control & 0xFF) | (value << 8); break;
-        case 0x0E : m_state.bg[3].control = (m_state.bg[3].control & ~0xFF) | value; break;
-        case 0x0F : m_state.bg[3].control = (m_state.bg[3].control & 0xFF) | (value << 8); break;
+        // case 0x08 : m_state.bg[0].control = (m_state.bg[0].control & ~0xFF) | value; break;
+        // case 0x09 : m_state.bg[0].control = (m_state.bg[0].control & 0xFF) | (value << 8); break;
+        // case 0x0A : m_state.bg[1].control = (m_state.bg[1].control & ~0xFF) | value; break;
+        // case 0x0B : m_state.bg[1].control = (m_state.bg[1].control & 0xFF) | (value << 8); break;
+        // case 0x0C : m_state.bg[2].control = (m_state.bg[2].control & ~0xFF) | value; break;
+        // case 0x0D : m_state.bg[2].control = (m_state.bg[2].control & 0xFF) | (value << 8); break;
+        // case 0x0E : m_state.bg[3].control = (m_state.bg[3].control & ~0xFF) | value; break;
+        // case 0x0F : m_state.bg[3].control = (m_state.bg[3].control & 0xFF) | (value << 8); break;
+        case 0x08 :
+        case 0x09 : m_state.bg[0].write(address, value); break;
+        case 0x0A :
+        case 0x0B : m_state.bg[1].write(address, value); break;
+        case 0x0C :
+        case 0x0D : m_state.bg[2].write(address, value); break;
+        case 0x0E :
+        case 0x0F : m_state.bg[3].write(address, value); break;
         case 0x10 : m_state.bg[0].h_offset = (m_state.bg[0].h_offset & ~0xFF) | value; break;
         case 0x11 : m_state.bg[0].h_offset = (m_state.bg[0].h_offset & 0xFF) | ((value & 1) << 8); break;
         case 0x12 : m_state.bg[0].v_offset = (m_state.bg[0].v_offset & ~0xFF) | value; break;
@@ -293,11 +309,11 @@ void PPU::hblankEnd(u64 current, u64 late) {
 void PPU::clearBuffers() {
     memset(m_bmp_col, 0, sizeof(m_bmp_col));
     memset(m_bg_col[0], 0, sizeof(m_bg_col[0]));
-    memset(m_bg_col[1], 0, sizeof(m_bg_col[0]));
-    memset(m_bg_col[2], 0, sizeof(m_bg_col[0]));
-    memset(m_bg_col[3], 0, sizeof(m_bg_col[0]));
+    memset(m_bg_col[1], 0, sizeof(m_bg_col[1]));
+    memset(m_bg_col[2], 0, sizeof(m_bg_col[2]));
+    memset(m_bg_col[3], 0, sizeof(m_bg_col[3]));
     memset(m_obj_col, 0, sizeof(m_obj_col));
-    memset(m_obj_prios, 4, sizeof(m_obj_prios));
+    memset(m_obj_prios, 6, sizeof(m_obj_prios));
 }
 
 void PPU::getWindowLine() {
@@ -512,10 +528,10 @@ void PPU::compositeLine() {
         priorities[5] |= 5;
 
         //BG Pixels
-        priorities[0] |= m_bg_col[0][i] != 0 && bits::get_bit<0>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[0].control) + 1 : 6;
-        priorities[1] |= m_bg_col[1][i] != 0 && bits::get_bit<1>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[1].control) + 1 : 6;
-        priorities[2] |= m_bg_col[2][i] != 0 && bits::get_bit<2>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[2].control) + 1 : 6;
-        priorities[3] |= m_bg_col[3][i] != 0 && bits::get_bit<3>(m_win_line[i]) ? bits::get<0, 2>(m_state.bg[3].control) + 1 : 6;
+        priorities[0] |= m_bg_col[0][i] != 0 && bits::get_bit<0>(m_win_line[i]) ? m_state.bg[0].priority + 1 : 6;
+        priorities[1] |= m_bg_col[1][i] != 0 && bits::get_bit<1>(m_win_line[i]) ? m_state.bg[1].priority + 1 : 6;
+        priorities[2] |= (bitmap || m_bg_col[2][i] != 0) && bits::get_bit<2>(m_win_line[i]) ? m_state.bg[2].priority + 1 : 6;
+        priorities[3] |= m_bg_col[3][i] != 0 && bits::get_bit<3>(m_win_line[i]) ? m_state.bg[3].priority + 1 : 6;
 
         //Object pixel
         priorities[4] |= m_obj_col[i] != 0 && bits::get_bit<4>(m_win_line[i]) ? m_obj_prios[i] : 6;
@@ -523,7 +539,7 @@ void PPU::compositeLine() {
         std::sort(&priorities[0], &priorities[6], [](const u8 &a, const u8 &b) {
             return (a & 7) < (b & 7);
         });
-        
+
         u16 target_1;
 
         //Find first target (Topmost pixel)

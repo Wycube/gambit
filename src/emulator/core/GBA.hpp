@@ -30,7 +30,6 @@ public:
     auto getVideoDevice() -> VideoDevice&;
     auto getInputDevice() -> InputDevice&;
 
-    auto getKeypad() -> Keypad&;
     auto getDebugger() -> dbg::Debugger&;
 
     //Temp

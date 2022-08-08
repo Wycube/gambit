@@ -29,8 +29,6 @@ public:
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
 
-    // void set_keys(u16 keys);
-    // auto get_keys() -> u16;
     void checkForInterrupt();
 
 private:

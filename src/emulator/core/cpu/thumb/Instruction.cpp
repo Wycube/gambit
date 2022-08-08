@@ -6,7 +6,7 @@
 namespace emu {
 
 /*
- * Only 8 bits are needed to decode a 16-bit THUMB instruction: bits 15-8 (8).
+ * Only 8 bits are needed to decode a 16-bit THUMB instruction: bits 8-15 (8).
  */
 constexpr char THUMB_ENCODINGS[20][9] = {
     "000>>xxx", //Move Shifted Register

@@ -5,6 +5,7 @@
 #include "DebuggerUI.hpp"
 #include "device/OGLVideoDevice.hpp"
 #include "device/GLFWInputDevice.hpp"
+#include "Application.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
@@ -14,6 +15,7 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <thread>
 #include <signal.h>
 
 
@@ -22,11 +24,11 @@ static emu::GBA *s_gba;
 void signal_handler(int signal) {
     LOG_ERROR("Signal {} received", signal);
 
-    emu::dbg::Debugger &debug = s_gba->getDebugger();
-    bool thumb = debug.getCPUCPSR() & emu::FLAG_THUMB;
-    u32 pc = debug.getCPURegister(15) - (thumb ? 2 : 4);
+    // emu::dbg::Debugger &debug = s_gba->getDebugger();
+    // bool thumb = debug.getCPUCPSR() & emu::FLAG_THUMB;
+    // u32 pc = debug.getCPURegister(15) - (thumb ? 2 : 4);
 
-    LOG_DEBUG("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", pc, thumb ? debug.read16(pc) : debug.read32(pc), thumb ? debug.thumbDisassembleAt(pc) : debug.armDisassembleAt(pc));
+    // LOG_DEBUG("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", pc, thumb ? debug.read16(pc) : debug.read32(pc), thumb ? debug.thumbDisassembleAt(pc) : debug.armDisassembleAt(pc));
     std::_Exit(-2);
 }
 
@@ -36,8 +38,7 @@ int main(int argc, char *argv[]) {
     LOG_INFO("Branch: {}", common::GIT_BRANCH);
 
     if(argc < 2) {
-        LOG_ERROR("No ROM file specified!");
-        return -1;
+        LOG_FATAL("No ROM file specified!");
     }
 
     std::string bios_path;
@@ -53,13 +54,11 @@ int main(int argc, char *argv[]) {
     std::fstream bios_file(bios_path, std::ios_base::in | std::ios_base::binary);
 
     if(!rom_file.good()) {
-        LOG_ERROR("ROM file not good!");
-        return -1;
+        LOG_FATAL("ROM file not good!");
     }
 
     if(!bios_file.good()) {
-        LOG_ERROR("BIOS file not good!");
-        return -1;
+        LOG_FATAL("BIOS file not good!");
     }
 
     size_t rom_size = std::filesystem::file_size(argv[1]);
@@ -67,49 +66,28 @@ int main(int argc, char *argv[]) {
     LOG_INFO("ROM Size: {}", rom_size);
     LOG_INFO("BIOS Size: {}", bios_size);
 
-    std::vector<u8> rom;
-    rom.resize(rom_size);
-    std::vector<u8> bios;
-    bios.resize(bios_size);
-    
-    for(size_t i = 0; i < rom_size; i++) {
-        rom[i] = static_cast<u8>(rom_file.get());
-    }
-
-    for(size_t i = 0; i < bios_size; i++) {
-        bios[i] = static_cast<u8>(bios_file.get());
-    }
-
-    //Close stream
-    rom_file.close();
-    bios_file.close();
-
     signal(SIGSEGV, signal_handler);
     signal(SIGINT, signal_handler);
     signal(SIGABRT, signal_handler);
 
+    //Initialize GLFW and create Window
     if(glfwInit() == GLFW_FALSE) {
-        LOG_ERROR("GLFW failed to initialize!");
-        return -1;
+        LOG_FATAL("GLFW failed to initialize!");
     }
     
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     GLFWwindow *window = glfwCreateWindow(1080, 720, "", 0, 0);
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(0);
+    glfwSwapInterval(1);
 
-    //Setup input callback
-    // glfwSetKeyCallback(window, key_callback);
-
+    //Initialize glad/OpenGL
     int version = gladLoadGL(glfwGetProcAddress);
     if(version == 0) {
-        LOG_ERROR("Glad failed to initialize!");
-        return -1;
+        LOG_FATAL("Glad failed to initialize!");
     }
 
     LOG_INFO("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 
+    //Initialize Dear ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO(); (void)io;
@@ -120,24 +98,37 @@ int main(int argc, char *argv[]) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    OGLVideoDevice video_device;
-    GLFWInputDevice input_device(window);
+    Application app(window);
+    
+    {
+        std::vector<u8> rom;
+        rom.resize(rom_size);
+        std::vector<u8> bios;
+        bios.resize(bios_size);
+        
+        for(size_t i = 0; i < rom_size; i++) {
+            rom[i] = static_cast<u8>(rom_file.get());
+        }
 
-    emu::GBA gba(video_device, input_device);
-    gba.loadBIOS(bios);
-    gba.loadROM(std::move(rom));
+        for(size_t i = 0; i < bios_size; i++) {
+            bios[i] = static_cast<u8>(bios_file.get());
+        }
 
-    s_gba = &gba;
+        //Close file streams
+        rom_file.close();
+        bios_file.close();
 
-    char game_title[13];
-    std::memcpy(game_title, gba.getGamePak().getHeader().title, 12);
-    game_title[12] = '\0';
-    glfwSetWindowTitle(window, fmt::format("gba  [{}] - {}", common::GIT_DESC, game_title).c_str());
-    glfwSetWindowUserPointer(window, &gba);
+        app.loadROM(std::move(rom));
+        app.loadBIOS(bios);
+    }
+
+    app.init();
+
+    s_gba = app.getCore();
 
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 
-    DebuggerUI debug_ui(gba);
+    DebuggerUI debug_ui(*app.getCore());
     bool show_bkpts_debug = false;
     bool show_cpu_debug = true;
     bool show_mem_debug = false;
@@ -146,151 +137,13 @@ int main(int argc, char *argv[]) {
     bool show_about = false;
     bool show_pak_info = false;
 
-    u64 cycles_start = gba.getCurrentTimestamp();
-    auto start = std::chrono::steady_clock::now();
-    u32 clock_speed = 0;
-
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-
-        if(std::chrono::steady_clock::now() > (start + std::chrono::seconds(1))) {
-            start = std::chrono::steady_clock::now();
-            clock_speed = gba.getCurrentTimestamp() - cycles_start;
-            cycles_start = gba.getCurrentTimestamp();
-        }
-        
-        gba.run(10000);
-
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        int width, height;
-        glfwGetWindowSize(window, &width, &height);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-        ImGui::BeginMainMenuBar();
-        if(ImGui::BeginMenu("Debug")) {
-            if(ImGui::MenuItem("Breakpoints")) {
-                show_bkpts_debug = true;
-            }
-            if(ImGui::MenuItem("CPU")) {
-                show_cpu_debug = true;
-            }
-            if(ImGui::MenuItem("Memory Viewer")) {
-                show_mem_debug = true;
-            }
-            if(ImGui::MenuItem("Framebuffer")) {
-                show_vram_debug = true;
-            }
-            if(ImGui::MenuItem("Scheduler")) {
-                show_scheduler_debug = true;
-            }
-            if(ImGui::MenuItem("Cart Info")) {
-                show_pak_info = true;
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if(ImGui::BeginMenu("Help")) {
-            if(ImGui::MenuItem("About")) {
-                show_about = true;
-            }
-
-            ImGui::EndMenu();
-        }
-        ImGui::EndMainMenuBar();
-
-        ImGui::SetNextWindowSize(ImVec2(width, height - ImGui::GetFrameHeight() * 2));
-        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetFrameHeight()));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        if(ImGui::Begin("##GBA Screen", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoDecoration)) {
-            debug_ui.drawScreen();
-        }
-        ImGui::End();
-        ImGui::PopStyleVar(2);
-
-
-        if(show_bkpts_debug) {
-            if(ImGui::Begin("Breakpoints", &show_bkpts_debug)) debug_ui.drawBreakpoints();
-            ImGui::End();
-        }
-
-        if(show_cpu_debug) {
-            if(ImGui::Begin("CPU Debugger", &show_cpu_debug)) debug_ui.drawCPUDebugger();
-            ImGui::End();
-        }
-
-        if(show_mem_debug) {
-            if(ImGui::Begin("Memory Viewer", &show_mem_debug)) debug_ui.drawMemoryViewer();
-            ImGui::End();
-        }
-
-        if(show_vram_debug) {
-            if(ImGui::Begin("Framebuffer", &show_vram_debug)) debug_ui.drawPPUState();
-            ImGui::End();
-        }
-
-        if(show_scheduler_debug) {
-            if(ImGui::Begin("Scheduler", &show_scheduler_debug)) debug_ui.drawSchedulerViewer();
-            ImGui::End();
-        }
-
-        if(show_pak_info) {
-            if(ImGui::Begin("Pak Info", &show_pak_info)) {
-                emu::GamePak &pak = gba.getGamePak();
-                emu::GamePakHeader &header = pak.getHeader();
-                ImGui::Text("Size: %u bytes", pak.size());
-                ImGui::Text("Name: %s", argv[1]);
-                ImGui::Text("Internal Title: %s", game_title);
-                ImGui::Text("Game Code: %c%c%c%c", header.game_code[0], header.game_code[1], header.game_code[2], header.game_code[3]);
-                ImGui::Text("Maker Code: %c%c", header.maker_code[0], header.maker_code[1]);
-                ImGui::Text("Version: %i", header.version);
-                ImGui::Text("Device Type: %i", header.device_type);
-                ImGui::Text("Main Unit Code: %i", header.unit_code);
-                ImGui::Text("Checksum: %i", header.checksum);
-            }
-
-            ImGui::End();
-        }
-
-        if(show_about) {
-            if(ImGui::Begin("About", &show_about)) {
-                ImGui::Text("Game Boy Advance Emulator,");
-                ImGui::Text("Copyright (c) 2021 Wycube");
-                ImGui::Separator();
-                ImGui::Text("Version: %s", common::GIT_DESC);
-                ImGui::Text("Commit: %s", common::GIT_COMMIT);
-                ImGui::Text("Branch: %s", common::GIT_BRANCH);
-            }
-
-            ImGui::End();
-        }
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-        if(ImGui::BeginViewportSideBar("##StatusBar", ImGui::GetMainViewport(), ImGuiDir_Down, ImGui::GetFrameHeight(), ImGuiWindowFlags_MenuBar)) {
-            if(ImGui::BeginMenuBar()) {
-                ImGui::SetNextItemWidth(ImGui::CalcTextSize("FPS: 0000.0 ").x);
-                ImGui::LabelText("##FPS_Label", "FPS: %6.1f", ImGui::GetIO().Framerate);
-                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-                ImGui::SetNextItemWidth(ImGui::CalcTextSize("Clock Speed: 00000000 ").x);
-                ImGui::LabelText("##HZ_Label", "Clock Speed: %8i", clock_speed);
-                ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-                ImGui::LabelText("##PERCENT_Label", "%.1f%%", (float)clock_speed / 16777216.0f * 100.0f);
-
-                ImGui::EndMenuBar();
-            }
-        }
-        ImGui::End();
-        ImGui::PopStyleVar();
-
-        ImGui::Render();
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+        app.drawInterface();
         glfwSwapBuffers(window);
     }
+
+    app.shutdown();
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

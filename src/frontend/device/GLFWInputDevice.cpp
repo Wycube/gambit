@@ -2,12 +2,20 @@
 #include "emulator/core/GBA.hpp"
 
 
+//Also defined in Application.hpp
+struct CallbackUserData {
+    void *application;
+    emu::GBA *core;
+};
+
 GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {
     glfwSetKeyCallback(window, keyCallback);
     memset(m_pressed, 0, sizeof(m_pressed));
 }
 
 auto GLFWInputDevice::getKeys() -> u16 {
+    std::lock_guard lock(m_key_mutex);
+
     u16 keys = 0;
     for(int i = 0; i < 10; i++) {
         keys |= !m_pressed[i] << i;
@@ -17,11 +25,13 @@ auto GLFWInputDevice::getKeys() -> u16 {
 }
 
 void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    emu::GBA *instance = reinterpret_cast<emu::GBA*>(glfwGetWindowUserPointer(window));
+    CallbackUserData *user_data = reinterpret_cast<CallbackUserData*>(glfwGetWindowUserPointer(window));
 
-    if(instance != nullptr && action != GLFW_REPEAT) {
-        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(instance->getInputDevice());
+    if(user_data != nullptr && action != GLFW_REPEAT) {
+        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(user_data->core->getInputDevice());
         bool pressed = action == GLFW_PRESS;
+
+        std::lock_guard lock(device.m_key_mutex);
 
         switch(key) {
             case GLFW_KEY_UP    : device.m_pressed[emu::KeypadInput::UP] = pressed; break;

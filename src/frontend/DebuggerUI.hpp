@@ -8,10 +8,9 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <glad/gl.h>
 
 
-auto get_mode_str(u8 mode_bits) -> std::string {
+inline auto get_mode_str(u8 mode_bits) -> std::string {
     switch(mode_bits) {
         case emu::MODE_USER : return "User";
         case emu::MODE_FIQ : return "FIQ";
@@ -30,12 +29,12 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.getVideoDevice())) {
         m_region_sizes[7] = m_gba.getGamePak().size();
-        m_debugger.addBreakpoint(0x02038000);
-        m_debugger.addBreakpoint(0x08005C70);
-        m_debugger.addBreakpoint(0x08000A92); //Good
-        m_debugger.addBreakpoint(0x08004D20); //Bad
-        m_debugger.addBreakpoint(0x08004D10); //Good
-        m_debugger.addBreakpoint(0x03004210);
+        // m_debugger.addBreakpoint(0x02038000);
+        // m_debugger.addBreakpoint(0x08005C70);
+        // m_debugger.addBreakpoint(0x08000A92); //Good
+        // m_debugger.addBreakpoint(0x08004D20); //Bad
+        // m_debugger.addBreakpoint(0x08004D10); //Good
+        // m_debugger.addBreakpoint(0x03004210);
     }
 
     void drawScreen() {
@@ -47,9 +46,6 @@ public:
         ImGui::Text("DSPCNT: %04X", m_debugger.read16(0x4000000));
         ImGui::Text("WININ: %04X", m_debugger.read16(0x40000048));
         ImGui::Text("WINOUT: %04X", m_debugger.read16(0x400004A));
-
-        //Update texture
-        ImGui::Image((void*)(intptr_t)m_video_device.getTextureID(), ImVec2(ImGui::GetContentRegionAvail().x, (160.0f / 240.0f) * ImGui::GetContentRegionAvail().x));
     }
 
     void drawBreakpoints() {
@@ -108,6 +104,7 @@ public:
 
         if((!running && ImGui::Button("Run")) || (running && ImGui::Button("Pause"))) {
             m_gba.getDebugger().setRunning(!running);
+            running = !running;
         }
 
 
@@ -121,16 +118,25 @@ public:
         static constexpr u8 modes[8] = {0, emu::MODE_USER, emu::MODE_SYSTEM, emu::MODE_SUPERVISOR, emu::MODE_FIQ, emu::MODE_IRQ, emu::MODE_ABORT, emu::MODE_UNDEFINED};
         u8 mode = modes[m_mode];
 
+        static u32 registers[16];
+
+        //Update registers while the GBA core is not running in another thread
+        if(!running) {
+            for(int i = 0; i < 16; i++) {
+                registers[i] = m_debugger.getCPURegister(i, mode);
+            }
+        }
+
         //CPU Registers
         if(ImGui::BeginTable("##CPURegisters_Table", 2, ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableNextRow();
 
             for(u8 i = 0; i < 8; i++) {
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", i, m_debugger.getCPURegister(i, mode));
+                ImGui::Text("r%-2i: %08X", i, registers[i]);
                 
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", 8 + i, m_debugger.getCPURegister(8 + i, mode));
+                ImGui::Text("r%-2i: %08X", 8 + i, registers[8 + i]);
             }
 
             ImGui::EndTable();
@@ -138,40 +144,40 @@ public:
 
         ImGui::Spacing();
 
-        u32 cpsr = m_debugger.getCPUCPSR();
-        u32 spsr = m_debugger.getCPUSPSR(mode);
-        static constexpr char flag_name[7] = {'N', 'Z', 'C', 'V', 'I', 'F', 'T'};
-        static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
+        // u32 cpsr = m_debugger.getCPUCPSR();
+        // u32 spsr = m_debugger.getCPUSPSR(mode);
+        // static constexpr char flag_name[7] = {'N', 'Z', 'C', 'V', 'I', 'F', 'T'};
+        // static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
 
-        ImGui::Text("CPSR");
-        ImGui::Text("%08X", cpsr);
-        ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(cpsr)).c_str());
-        for(int i = 0; i < sizeof(flag_name); i++) {
-            ImGui::Text("%c:", flag_name[i]);
-            ImGui::SameLine();
+        // ImGui::Text("CPSR");
+        // ImGui::Text("%08X", cpsr);
+        // ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(cpsr)).c_str());
+        // for(int i = 0; i < sizeof(flag_name); i++) {
+        //     ImGui::Text("%c:", flag_name[i]);
+        //     ImGui::SameLine();
 
-            bool set = (cpsr >> flag_bit[i]) & 0x1;
-            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
-            ImGui::Text("%1i", set);
-            ImGui::PopStyleColor();
+        //     bool set = (cpsr >> flag_bit[i]) & 0x1;
+        //     ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
+        //     ImGui::Text("%1i", set);
+        //     ImGui::PopStyleColor();
 
-            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
-        }
+        //     if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
+        // }
 
-        ImGui::Text("SPSR");
-        ImGui::Text("%08X", spsr);
-        ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(spsr)).c_str());
-        for(int i = 0; i < sizeof(flag_name); i++) {
-            ImGui::Text("%c:", flag_name[i]);
-            ImGui::SameLine();
+        // ImGui::Text("SPSR");
+        // ImGui::Text("%08X", spsr);
+        // ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(spsr)).c_str());
+        // for(int i = 0; i < sizeof(flag_name); i++) {
+        //     ImGui::Text("%c:", flag_name[i]);
+        //     ImGui::SameLine();
 
-            bool set = (spsr >> flag_bit[i]) & 0x1;
-            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
-            ImGui::Text("%1i", set);
-            ImGui::PopStyleColor();
+        //     bool set = (spsr >> flag_bit[i]) & 0x1;
+        //     ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
+        //     ImGui::Text("%1i", set);
+        //     ImGui::PopStyleColor();
 
-            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
-        }
+        //     if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
+        // }
 
         
         ImGui::EndGroup();
@@ -184,75 +190,74 @@ public:
         ImGui::SameLine();
 
 
-        ImGui::BeginGroup();
+        // ImGui::BeginGroup();
 
-        ImGui::Text("Disassembly");
-        ImGui::Separator();
+        // ImGui::Text("Disassembly");
+        // ImGui::Separator();
 
-        bool go_to_pc = ImGui::Button("Go to PC");
+        // bool go_to_pc = ImGui::Button("Go to PC");
 
-        if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
-            ImGui::BeginTable("##Disassembly_Table", 4);
-            ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-            ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-            ImGui::TableSetupColumn("col_2", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-            ImGui::TableSetupColumn("col_3");
+        // if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+        //     ImGui::BeginTable("##Disassembly_Table", 4);
+        //     ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+        //     ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+        //     ImGui::TableSetupColumn("col_2", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+        //     ImGui::TableSetupColumn("col_3");
          
-            //THUMB or ARM
-            bool thumb = (m_debugger.getCPUCPSR() >> 5) & 1;
-            u8 instr_size = thumb ? 2 : 4;
+        //     //THUMB or ARM
+        //     bool thumb = (m_debugger.getCPUCPSR() >> 5) & 1;
+        //     u8 instr_size = thumb ? 2 : 4;
 
-            ImGuiListClipper clipper(101);
+        //     ImGuiListClipper clipper(101);
             
-            while(clipper.Step()) {
-                for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
+        //     while(clipper.Step()) {
+        //         for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+        //             ImGui::TableNextRow();
+        //             ImGui::TableSetColumnIndex(0);
 
-                    u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
-                    ImGui::Text("%08X: ", address);
+        //             u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
+        //             ImGui::Text("%08X: ", address);
 
-                    ImGui::TableNextColumn();
+        //             ImGui::TableNextColumn();
 
-                    if(address == m_debugger.getCPURegister(15)) { 
-                        //Fetch
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
-                    } else if(address == m_debugger.getCPURegister(15) - instr_size) {
-                        //Decode
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
-                    } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
-                        //Execute
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
-                        if(go_to_pc) ImGui::SetScrollHereY();
-                    }
+        //             if(address == m_debugger.getCPURegister(15)) { 
+        //                 //Fetch
+        //                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
+        //             } else if(address == m_debugger.getCPURegister(15) - instr_size) {
+        //                 //Decode
+        //                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
+        //             } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
+        //                 //Execute
+        //                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
+        //             }
 
-                    //Instruction in hexadecimal
-                    u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
-                    ImGui::Text(fmt::format("%0{}X ", thumb ? 4 : 8).c_str(), bytes);
+        //             //Instruction in hexadecimal
+        //             u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
+        //             ImGui::Text(fmt::format("%0{}X ", thumb ? 4 : 8).c_str(), bytes);
 
-                    //Actual disassembly
-                    ImGui::TableNextColumn();
-                    std::string disassembled = thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address);
+        //             //Actual disassembly
+        //             ImGui::TableNextColumn();
+        //             std::string disassembled = thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address);
 
-                    //Seperate mnemonic and registers
-                    size_t space = disassembled.find_first_of(' ');
-                    ImGui::Text("%s", disassembled.substr(0, space).c_str());
-                    ImGui::TableNextColumn();
-                    if(space < disassembled.size()) ImGui::Text("%s", disassembled.substr(space).c_str());
-                }
-            }
+        //             //Seperate mnemonic and registers
+        //             size_t space = disassembled.find_first_of(' ');
+        //             ImGui::Text("%s", disassembled.substr(0, space).c_str());
+        //             ImGui::TableNextColumn();
+        //             if(space < disassembled.size()) ImGui::Text("%s", disassembled.substr(space).c_str());
+        //         }
+        //     }
 
-            ImGui::EndTable();
+        //     ImGui::EndTable();
             
-            if(go_to_pc) {
-                //Scroll to 3 instructions before the current PC
-                ImGui::SetScrollY(47.5f * clipper.ItemsHeight);
-            }
+        //     if(go_to_pc) {
+        //         //Scroll to 3 instructions before the current PC
+        //         ImGui::SetScrollY(47.5f * clipper.ItemsHeight);
+        //     }
             
-        }
-        ImGui::EndChild();
+        // }
+        // ImGui::EndChild();
 
-        ImGui::EndGroup();
+        // ImGui::EndGroup();
     }
 
     void drawMemoryViewer() {
