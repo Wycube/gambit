@@ -100,19 +100,15 @@ void EEPROM::write(u32 address, u8 value) {
         case READ_END :
         case WRITE_END :
             if(m_buffer_size == 1) {
-                if(m_serial_buffer == 0) {
-                    if(m_state == READ_END) {
-                        m_state = READ_DUMMY;
-                    } else {
-                        m_state = ACCEPT_COMMAND;
-                    }
-
-                    m_serial_buffer = 0;
-                    m_buffer_size = 0;
+                //Apparently the end bit doesn't have to be 0
+                if(m_state == READ_END) {
+                    m_state = READ_DUMMY;
                 } else {
-                    m_serial_buffer = 0;
-                    m_buffer_size = 0;
+                    m_state = ACCEPT_COMMAND;
                 }
+
+                m_serial_buffer = 0;
+                m_buffer_size = 0;
             }
             break;
         default : break;

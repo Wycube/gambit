@@ -22,7 +22,7 @@ public:
     void reset();
 
     void step();
-    void run(u32 cycles);
+    bool run(u32 cycles);
     auto getGamePak() -> GamePak&;
     void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);

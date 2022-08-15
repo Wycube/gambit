@@ -4,7 +4,7 @@
 OGLVideoDevice::OGLVideoDevice() {
     createTexture();
     clear(0);
-    presentFrame();
+    updateTexture(m_internal_framebuffer);
 }
 
 OGLVideoDevice::~OGLVideoDevice() {

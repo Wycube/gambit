@@ -46,7 +46,9 @@ void Application::init() {
                 break;
             }
 
-            m_core.run(10000);
+            if(!m_core.run(10000)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
         }
     });
 }
@@ -195,7 +197,6 @@ void Application::beginFrame() {
 
 void Application::endFrame() {
     ImGui::Render();
-    glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 

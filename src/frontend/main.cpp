@@ -128,15 +128,6 @@ int main(int argc, char *argv[]) {
 
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 
-    DebuggerUI debug_ui(*app.getCore());
-    bool show_bkpts_debug = false;
-    bool show_cpu_debug = true;
-    bool show_mem_debug = false;
-    bool show_vram_debug = false;
-    bool show_scheduler_debug = false;
-    bool show_about = false;
-    bool show_pak_info = false;
-
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         app.drawInterface();

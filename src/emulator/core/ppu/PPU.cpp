@@ -72,6 +72,10 @@ auto PPU::readIO(u32 address) -> u8 {
         case 0x51 : return bits::get<8, 8>(m_state.bldcnt);
         case 0x52 : return bits::get<0, 8>(m_state.bldalpha);
         case 0x53 : return bits::get<8, 8>(m_state.bldalpha);
+        case 0x54 : return bits::get<0, 8>(m_state.bldy);
+        case 0x55 : return bits::get<8, 8>(m_state.bldy);
+        case 0x56 : return bits::get<16, 8>(m_state.bldy);
+        case 0x57 : return bits::get<24, 8>(m_state.bldy);
     }
 
     return 0;
@@ -163,6 +167,10 @@ void PPU::writeIO(u32 address, u8 value) {
         case 0x51 : bits::set<8, 8>(m_state.bldcnt, value); break;
         case 0x52 : bits::set<0, 8>(m_state.bldalpha, value); break;
         case 0x53 : bits::set<8, 8>(m_state.bldalpha, value); break;
+        case 0x54 : bits::set<0, 8>(m_state.bldy, value); break;
+        case 0x55 : bits::set<8, 8>(m_state.bldy, value); break;
+        case 0x56 : bits::set<16, 8>(m_state.bldy, value); break;
+        case 0x57 : bits::set<24, 8>(m_state.bldy, value); break;
     }
 }
 
@@ -342,7 +350,7 @@ void PPU::getWindowLine() {
     
     for(int i = 0; i < 240; i++) {
         //Bit 0-3 are bg 0-3 display, and bit 4 is obj display
-        m_win_line[i] = bits::get<13, 3>(m_state.dispcnt) != 0 ? bits::get<0, 6>(m_state.win.winout) : 0x1F;
+        m_win_line[i] = bits::get<13, 3>(m_state.dispcnt) != 0 ? bits::get<0, 6>(m_state.win.winout) : 0x3F;
         
         //Window 0
         if(bits::get_bit<13>(m_state.dispcnt) && m_state.win.insideWindow0(i, m_state.line)) {
@@ -524,9 +532,6 @@ void PPU::compositeLine() {
             priorities[i] = i << 3;
         }
 
-        //Backdrop
-        priorities[5] |= 5;
-
         //BG Pixels
         priorities[0] |= m_bg_col[0][i] != 0 && bits::get_bit<0>(m_win_line[i]) ? m_state.bg[0].priority + 1 : 6;
         priorities[1] |= m_bg_col[1][i] != 0 && bits::get_bit<1>(m_win_line[i]) ? m_state.bg[1].priority + 1 : 6;
@@ -535,6 +540,9 @@ void PPU::compositeLine() {
 
         //Object pixel
         priorities[4] |= m_obj_col[i] != 0 && bits::get_bit<4>(m_win_line[i]) ? m_obj_prios[i] : 6;
+        
+        //Backdrop
+        priorities[5] |= 5;
 
         std::sort(&priorities[0], &priorities[6], [](const u8 &a, const u8 &b) {
             return (a & 7) < (b & 7);
@@ -556,31 +564,48 @@ void PPU::compositeLine() {
         u8 green = bits::get<5, 5>(target_1);
         u8 blue = bits::get<10, 5>(target_1);
 
-        //Blending
-        // if((priorities[0] & 7) != 5 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3) && bits::get_bit(m_state.bldcnt, 8 + (priorities[1] >> 3))) {
-        //     u16 target_2;
-            
-        //     //Find second target (Next topmost pixel)
-        //     switch(priorities[1] >> 3) {
-        //         case 0 : target_2 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
-        //         case 1 : target_2 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
-        //         case 2 : target_2 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
-        //         case 3 : target_2 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
-        //         case 4 : target_2 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
-        //         case 5 : target_2 = zero_color; break;
-        //     }
+        //Color Effects
+        if((priorities[0] & 7) != 5 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3) && bits::get_bit<5>(m_win_line[i])) {
+            switch(bits::get<6, 2>(m_state.bldcnt)) {
+                case 1 : //Alpha Blending
+                    if(bits::get_bit(m_state.bldcnt, 8 + (priorities[1] >> 3))) {
+                        u16 target_2;
 
-        //     u8 red_2 = bits::get<0, 5>(target_2);
-        //     u8 green_2 = bits::get<5, 5>(target_2);
-        //     u8 blue_2 = bits::get<10, 5>(target_2);
+                        //Find second target (Next topmost pixel)
+                        switch(priorities[1] >> 3) {
+                            case 0 : target_2 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
+                            case 1 : target_2 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
+                            case 2 : target_2 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
+                            case 3 : target_2 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
+                            case 4 : target_2 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
+                            case 5 : target_2 = zero_color; break;
+                        }
 
-        //     red = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)red + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)red_2;
-        //     green = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)green + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)green_2;
-        //     blue = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)blue + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)blue_2;
-        //     red = red > 31 ? 31 : red;
-        //     green = green > 31 ? 31 : green;
-        //     blue = blue > 31 ? 31 : blue;
-        // }
+                        u8 red_2 = bits::get<0, 5>(target_2);
+                        u8 green_2 = bits::get<5, 5>(target_2);
+                        u8 blue_2 = bits::get<10, 5>(target_2);
+
+                        red = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)red + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)red_2;
+                        green = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)green + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)green_2;
+                        blue = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)blue + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)blue_2;
+                    }
+                    break;
+                case 2 : //Brightness Increase
+                    red = (float)red + (float)(m_state.bldy & 0x1F) / 16.0f * (float)(31 - red);
+                    green = (float)green + (float)(m_state.bldy & 0x1F) / 16.0f * (float)(31 - green);
+                    blue = (float)blue + (float)(m_state.bldy & 0x1F) / 16.0f * (float)(31 - blue);
+                    break;
+                case 3 : //Brightness Decrease
+                    red = (float)red - (float)(m_state.bldy & 0x1F) / 16.0f * (float)red;
+                    green = (float)green - (float)(m_state.bldy & 0x1F) / 16.0f * (float)green;
+                    blue = (float)blue - (float)(m_state.bldy & 0x1F) / 16.0f * (float)blue;
+                    break;
+            }
+
+            red = red > 31 ? 31 : red;
+            green = green > 31 ? 31 : green;
+            blue = blue > 31 ? 31 : blue;
+        }
 
         m_video_device.setPixel(i, m_state.line, (red * 8 << 24) | (green * 8 << 16) | (blue * 8 << 8) | 0xFF);
     }

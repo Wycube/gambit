@@ -30,7 +30,7 @@ void GBA::step() {
     m_cpu.step();
 }
 
-void GBA::run(u32 cycles) {
+bool GBA::run(u32 cycles) {
     u64 target = m_scheduler.getCurrentTimestamp() + cycles;
 
     while(m_scheduler.getCurrentTimestamp() < target) {
@@ -51,6 +51,8 @@ void GBA::run(u32 cycles) {
         m_cpu.step();
         m_debugger.checkBreakpoints();
     }
+
+    return m_debugger.running();
 }
 
 auto GBA::getGamePak() -> GamePak& {
