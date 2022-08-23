@@ -66,7 +66,7 @@ void log_debug(const std::string &message, LogLevel level, const char *file, con
 
 #define LOG_INFO(message, ...)      LOG_MESSAGE(common::log::INFO, message, ##__VA_ARGS__)
 #define LOGD_INFO(message, ...)     DEBUG_LOG(common::log::INFO, message, ##__VA_ARGS__)
-#define LOG_WARNING(message, ...)   LOG_MESSAGE(common::log::WARNING, message, ##__VA_ARGS__)
+#define LOG_WARNING(message, ...)   //LOG_MESSAGE(common::log::WARNING, message, ##__VA_ARGS__)
 #define LOGD_WARNING(message, ...)  DEBUG_LOG(common::log::WARNING, message, ##__VA_ARGS__)
 #define LOG_ERROR(message, ...)     LOG_MESSAGE(common::log::ERROR, message, ##__VA_ARGS__)
 #define LOGD_ERROR(message, ...)    DEBUG_LOG(common::log::ERROR, message, ##__VA_ARGS__)

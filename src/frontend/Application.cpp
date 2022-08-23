@@ -46,7 +46,8 @@ void Application::init() {
                 break;
             }
 
-            if(!m_core.run(10000)) {
+            if(m_should_run.exchange(false) && !m_core.run(167772)) {
+            // if(!m_core.run(167772)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }

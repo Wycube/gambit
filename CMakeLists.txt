@@ -59,13 +59,17 @@ set(GLFW_INSTALL OFF)
 include_directories(${PROJECT_SOURCE_DIR}/lib/glfw/include)
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/glfw)
 
+# Add Dear ImGui
+include_directories(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
+add_subdirectory(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
+
 # Add glad
 include_directories(${PROJECT_SOURCE_DIR}/lib/glad/include)
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/glad)
 
-# Add Dear ImGui
-include_directories(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
+# Add miniaudio
+include_directories(${PROJECT_SOURCE_DIR}/lib/miniaudio/include)
+add_subdirectory(${PROJECT_SOURCE_DIR}/lib/miniaudio)
 
 # Tests (if enabled)
 if(BUILD_TESTS)

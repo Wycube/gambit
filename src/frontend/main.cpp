@@ -8,10 +8,11 @@
 #include "Application.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include <glad/gl.h>
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <glad/gl.h>
+#include <miniaudio.h>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -30,6 +31,12 @@ void signal_handler(int signal) {
 
     // LOG_DEBUG("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", pc, thumb ? debug.read16(pc) : debug.read32(pc), thumb ? debug.thumbDisassembleAt(pc) : debug.armDisassembleAt(pc));
     std::_Exit(-2);
+}
+
+static int s_counter = 0;
+
+void audio_callback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
+    reinterpret_cast<std::atomic<bool>*>(device->pUserData)->store(true);
 }
 
 int main(int argc, char *argv[]) {
@@ -99,6 +106,23 @@ int main(int argc, char *argv[]) {
     ImGui_ImplOpenGL3_Init("#version 130");
 
     Application app(window);
+
+    //Miniaudio Testing
+    ma_device_config config = ma_device_config_init(ma_device_type_playback);
+    config.playback.format = ma_format_f32;
+    config.playback.channels = 2;
+    config.sampleRate = 48000;
+    config.dataCallback = audio_callback;
+    config.pUserData = app.getShouldRun();
+
+    ma_device device;
+    if(ma_device_init(nullptr, &config, &device) != MA_SUCCESS) {
+        LOG_FATAL("Could not initalize Miniaudio device!");
+    }
+    if(ma_device_start(&device) != MA_SUCCESS) {
+        LOG_FATAL("Could not start Miniaudio device!");
+    }
+
     
     {
         std::vector<u8> rom;
@@ -135,6 +159,8 @@ int main(int argc, char *argv[]) {
     }
 
     app.shutdown();
+
+    ma_device_uninit(&device);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

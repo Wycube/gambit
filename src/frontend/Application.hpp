@@ -29,6 +29,10 @@ public:
     auto getCore() -> emu::GBA* {
         return &m_core;
     }
+    
+    auto getShouldRun() -> std::atomic<bool>* {
+        return &m_should_run;
+    }
 
 private:
 
@@ -43,6 +47,7 @@ private:
     emu::GBA m_core;
     std::thread m_emu_thread;
     std::atomic<bool> m_stop;
+    std::atomic<bool> m_should_run;
 
     std::chrono::steady_clock::time_point m_start;
     u64 m_clock_start;
