@@ -37,8 +37,8 @@ static const char *SHIFT_MNEMONICS[4] = {
 
 //BX{<cond>} <Rn>
 auto armDisassembleBranchExchange(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    u8 rn = bits::get<0, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const u8 rn = bits::get<0, 4>(instruction);
 
     return fmt::format("bx{} r{}", CONDITION_EXTENSIONS[condition], rn);
 }
@@ -47,20 +47,20 @@ auto armDisassembleBranchExchange(u32 instruction, u32 address) -> std::string {
 //MSR{<cond>} (CPSR|SPSR)_<fields>, #<immediate>
 //MSR{<cond>} (CPSR|SPSR)_<fields>, <Rm>
 auto armDisassemblePSRTransfer(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    bool i = bits::get_bit<25>(instruction);
-    bool r = bits::get_bit<22>(instruction);
-    bool s = bits::get_bit<21>(instruction);
-    u8 fields = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
-    std::string psr = r ? "spsr" : "cpsr";
+    const u8 condition = bits::get<28, 4>(instruction);
+    const bool i = bits::get_bit<25>(instruction);
+    const bool r = bits::get_bit<22>(instruction);
+    const bool s = bits::get_bit<21>(instruction);
+    const u8 fields = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
+    const std::string psr = r ? "spsr" : "cpsr";
 
     std::string disassembly;
 
     if(s) {
-        u8 shift_imm = bits::get<8, 4>(instruction); //(instruction >> 8) & 0xF;
-        u32 immediate = bits::ror(instruction & 0xFF, shift_imm << 1);
-        std::string immed_reg = i ? fmt::format("#0x{:x}", immediate) : fmt::format("r{}", bits::get<0, 4>(instruction));
+        const u8 shift_imm = bits::get<8, 4>(instruction); //(instruction >> 8) & 0xF;
+        const u32 immediate = bits::ror(instruction & 0xFF, shift_imm << 1);
+        const std::string immed_reg = i ? fmt::format("#0x{:x}", immediate) : fmt::format("r{}", bits::get<0, 4>(instruction));
         std::string fields_affected;
 
         fields_affected += bits::get_bit<0>(fields) ? "c" : "";
@@ -78,9 +78,9 @@ auto armDisassemblePSRTransfer(u32 instruction, u32 address) -> std::string {
 
 //<Rm>, <shift> <Rs>
 auto registerShift(u16 shift_operand) -> std::string {
-    u8 rs = bits::get<8, 4>(shift_operand);
-    u8 shift = bits::get<5, 2>(shift_operand);
-    u8 rm = bits::get<0, 4>(shift_operand);
+    const u8 rs = bits::get<8, 4>(shift_operand);
+    const u8 shift = bits::get<5, 2>(shift_operand);
+    const u8 rm = bits::get<0, 4>(shift_operand);
 
     return fmt::format("r{}, {} r{}", rm, SHIFT_MNEMONICS[shift], rs);
 }
@@ -89,9 +89,9 @@ auto registerShift(u16 shift_operand) -> std::string {
 //<Rm>, RRX
 //<Rm>, <shift> #<shift_imm>
 auto immediateShift(u16 shift_operand) -> std::string {
-    u8 shift_imm = bits::get<7, 5>(shift_operand);
-    u8 shift = bits::get<5, 2>(shift_operand);
-    u8 rm = bits::get<0, 4>(shift_operand);
+    const u8 shift_imm = bits::get<7, 5>(shift_operand);
+    const u8 shift = bits::get<5, 2>(shift_operand);
+    const u8 rm = bits::get<0, 4>(shift_operand);
 
     if(shift_imm == 0) {
         if(shift == 0) {
@@ -108,9 +108,9 @@ auto immediateShift(u16 shift_operand) -> std::string {
 
 //#<immediate>
 auto immediate(u16 shift_operand) -> std::string {
-    u8 rotate_imm = bits::get<8, 4>(shift_operand) << 1; //Rotates an even number of bits
-    u8 immed_8 = bits::get<0, 8>(shift_operand);
-    u32 immediate = bits::ror(immed_8, rotate_imm);
+    const u8 rotate_imm = bits::get<8, 4>(shift_operand) << 1; //Rotates an even number of bits
+    const u8 immed_8 = bits::get<0, 8>(shift_operand);
+    const u32 immediate = bits::ror(immed_8, rotate_imm);
 
     return fmt::format("#0x{:x}", immediate);
 }
@@ -124,11 +124,11 @@ auto armDisassembleDataProcessing(u32 instruction, u32 address) -> std::string {
         "tst", "teq", "cmp", "cmn", "orr", "mov", "bic", "mvn"
     };
 
-    u8 condition = bits::get<28, 4>(instruction);
-    u8 opcode = bits::get<21, 4>(instruction);
-    bool s = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const u8 opcode = bits::get<21, 4>(instruction);
+    const bool s = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
 
     std::string disassembly = fmt::format("{}{}", OPCODE_MNEMONICS[opcode], CONDITION_EXTENSIONS[condition]);
 
@@ -144,7 +144,7 @@ auto armDisassembleDataProcessing(u32 instruction, u32 address) -> std::string {
     }
 
     //Check the I (immediate) bit and the 4th bit, that determines immediate shift or register shift.
-    u8 addressing_mode = bits::get_bit<25>(instruction) ? 0 : bits::get_bit<4>(instruction) ? 2 : 1;
+    const u8 addressing_mode = bits::get_bit<25>(instruction) ? 0 : bits::get_bit<4>(instruction) ? 2 : 1;
 
     //Shift operand is first 12 bits
     switch(addressing_mode) {
@@ -159,13 +159,13 @@ auto armDisassembleDataProcessing(u32 instruction, u32 address) -> std::string {
 //MUL{<cond>}{S} <Rd>, <Rm>, <Rs>
 //MLA{<cond>}{S} <Rd>, <Rm>, <Rs>, <Rn>
 auto armDisassembleMultiply(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    bool a = bits::get_bit<21>(instruction);
-    bool s = bits::get_bit<20>(instruction);
-    u8 rd = bits::get<16, 4>(instruction);
-    u8 rn = bits::get<12, 4>(instruction);
-    u8 rs = bits::get<8, 4>(instruction);
-    u8 rm = bits::get<0, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const bool a = bits::get_bit<21>(instruction);
+    const bool s = bits::get_bit<20>(instruction);
+    const u8 rd = bits::get<16, 4>(instruction);
+    const u8 rn = bits::get<12, 4>(instruction);
+    const u8 rs = bits::get<8, 4>(instruction);
+    const u8 rm = bits::get<0, 4>(instruction);
 
     if(a) {
         return fmt::format("mla{}{} r{}, r{}, r{}, r{}", CONDITION_EXTENSIONS[condition], s ? "s" : "", rd, rm, rs, rn);
@@ -179,14 +179,14 @@ auto armDisassembleMultiply(u32 instruction, u32 address) -> std::string {
 //SMULL{<cond>}{S} <RdLo>, <RdHi>, <Rm>, <Rs>
 //SMLAL{<cond>}{S} <RdLo>, <RdHi>, <Rm>, <Rs>
 auto armDisassembleMultiplyLong(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    bool sign = bits::get_bit<22>(instruction);
-    bool a = bits::get_bit<21>(instruction);
-    bool s = bits::get_bit<20>(instruction);
-    u8 rd_hi = bits::get<16, 4>(instruction);
-    u8 rd_lo = bits::get<12, 4>(instruction);
-    u8 rs = bits::get<8, 4>(instruction);
-    u8 rm = bits::get<0, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const bool sign = bits::get_bit<22>(instruction);
+    const bool a = bits::get_bit<21>(instruction);
+    const bool s = bits::get_bit<20>(instruction);
+    const u8 rd_hi = bits::get<16, 4>(instruction);
+    const u8 rd_lo = bits::get<12, 4>(instruction);
+    const u8 rs = bits::get<8, 4>(instruction);
+    const u8 rm = bits::get<0, 4>(instruction);
 
     std::string disassembly = fmt::format("{}{}", sign ? "s" : "u", a ? "mlal" : "mull");
     disassembly += fmt::format("{}{} r{}, r{}, r{}, r{}", CONDITION_EXTENSIONS[condition], s ? "s" : "", rd_lo, rd_hi, rm, rs);
@@ -196,11 +196,11 @@ auto armDisassembleMultiplyLong(u32 instruction, u32 address) -> std::string {
 
 //SWP{<cond>}{B} <Rd>, <Rm>, [Rn]
 auto armDisassembleSingleDataSwap(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    bool b = bits::get_bit<22>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
-    u8 rm = bits::get<0, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const bool b = bits::get_bit<22>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
+    const u8 rm = bits::get<0, 4>(instruction);
 
     return fmt::format("swp{}{} r{}, r{}, [r{}]", CONDITION_EXTENSIONS[condition], b ? "b" : "", rd, rm, rn);
 }
@@ -209,8 +209,8 @@ auto armDisassembleSingleDataSwap(u32 instruction, u32 address) -> std::string {
 //[<Rn>, +/-<Rm>]!  Pre-indexed
 //[<Rn>], +/-<Rm>   Post-indexed
 auto registerOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::string {
-    u8 rm = bits::get<0, 4>(addr_mode);
-    std::string sign = u ? "+" : "-";
+    const u8 rm = bits::get<0, 4>(addr_mode);
+    const std::string sign = u ? "+" : "-";
     std::string disassembly = fmt::format("[r{}", rn);
 
     if(p) {
@@ -226,8 +226,8 @@ auto registerOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::string
 //[<Rn>, #+/-<offset_8>]!  Pre-indexed
 //[<Rn>], #+/-<offset_8>   Post-indexed
 auto immediateOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::string {
-    u8 offset_8 = (bits::get<8, 4>(addr_mode) << 4) | bits::get<0, 4>(addr_mode); //((addr_mode >> 4) & 0xF0) | (addr_mode & 0xF);
-    std::string sign = u ? "+" : "-";
+    const u8 offset_8 = (bits::get<8, 4>(addr_mode) << 4) | bits::get<0, 4>(addr_mode); //((addr_mode >> 4) & 0xF0) | (addr_mode & 0xF);
+    const std::string sign = u ? "+" : "-";
     std::string disassembly = fmt::format("[r{}", rn);
 
     if(p) {
@@ -242,15 +242,15 @@ auto immediateOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::strin
 //LDR{<cond>}H|SH|SB <Rd>, <addressing_mode>
 //STR{<cond>}H <Rd>, <addressing_mode>
 auto armDisassembleHalfwordTransfer(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    bool p = bits::get_bit<24>(instruction);
-    bool u = bits::get_bit<23>(instruction);
-    bool i = bits::get_bit<22>(instruction);
-    bool w = bits::get_bit<21>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
-    u8 sh = bits::get<5, 2>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const bool p = bits::get_bit<24>(instruction);
+    const bool u = bits::get_bit<23>(instruction);
+    const bool i = bits::get_bit<22>(instruction);
+    const bool w = bits::get_bit<21>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
+    const u8 sh = bits::get<5, 2>(instruction);
     assert(sh != 0);
 
     std::string disassembly;
@@ -273,15 +273,15 @@ auto armDisassembleHalfwordTransfer(u32 instruction, u32 address) -> std::string
 //[<Rn>], +/-<Rm>, <shift> #<shift_imm>   Post-indexed
 //[<Rn>], +/-<Rm>
 auto scaledRegisterOffset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::string {
-    u8 rm = bits::get<0, 4>(offset);
-    u8 shift = bits::get<5, 2>(offset);
-    u8 shift_imm = bits::get<7, 5>(offset);
-    char sign = u ? '+' : '-';
+    const u8 rm = bits::get<0, 4>(offset);
+    const u8 shift = bits::get<5, 2>(offset);
+    const u8 shift_imm = bits::get<7, 5>(offset);
+    const char sign = u ? '+' : '-';
     std::string shift_part;
 
     if(shift != 0 || shift_imm != 0) {
-        std::string shift_mnemonic = shift_imm != 0 ? SHIFT_MNEMONICS[shift] : "rrx";
-        std::string shift_amount = shift_imm != 0 ? fmt::format(" #0x{:x}", shift_imm) : "";
+        const std::string shift_mnemonic = shift_imm != 0 ? SHIFT_MNEMONICS[shift] : "rrx";
+        const std::string shift_amount = shift_imm != 0 ? fmt::format(" #0x{:x}", shift_imm) : "";
         shift_part = fmt::format(", {}{}", shift_mnemonic, shift_amount);
     }
 
@@ -296,7 +296,7 @@ auto scaledRegisterOffset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::str
 //[<Rn>, #+/-<offset_12>]!  Pre-indexed
 //[<Rn>], #+/-<offset_12>   Post-indexed
 auto immediate12Offset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::string {
-    char sign = u ? '+' : '-';
+    const char sign = u ? '+' : '-';
 
     if(p) {
         return fmt::format("[r{}, #{}0x{:x}]{}", rn, sign, offset, w ? "!" : "");
@@ -307,15 +307,15 @@ auto immediate12Offset(u8 rn, u16 offset, bool p, bool u, bool w) -> std::string
 
 //LDR|STR{<cond>}{B}{T} <Rd>, <addressing_mode>
 auto armDisassembleSingleTransfer(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    bool i = bits::get_bit<25>(instruction);
-    bool p = bits::get_bit<24>(instruction);
-    bool u = bits::get_bit<23>(instruction);
-    bool b = bits::get_bit<22>(instruction);
-    bool w = bits::get_bit<21>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const bool i = bits::get_bit<25>(instruction);
+    const bool p = bits::get_bit<24>(instruction);
+    const bool u = bits::get_bit<23>(instruction);
+    const bool b = bits::get_bit<22>(instruction);
+    const bool w = bits::get_bit<21>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
 
     std::string disassembly;
 
@@ -340,13 +340,13 @@ auto armDisassembleBlockTransfer(u32 instruction, u32 address) -> std::string {
         "da", "ia", "db", "ib"
     };
 
-    u8 condition = bits::get<28, 4>(instruction);
-    u8 pu = bits::get<23, 2>(instruction);
-    bool s = bits::get_bit<22>(instruction);
-    bool w = bits::get_bit<21>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u16 registers = instruction & 0xFFFF;
+    const u8 condition = bits::get<28, 4>(instruction);
+    const u8 pu = bits::get<23, 2>(instruction);
+    const bool s = bits::get_bit<22>(instruction);
+    const bool w = bits::get_bit<21>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u16 registers = instruction & 0xFFFF;
     std::string register_list;
 
     std::string disassembly = fmt::format("{}{}{}", l ? "ldm" : "stm", CONDITION_EXTENSIONS[condition], ADDRESS_MODES[pu]);
@@ -368,9 +368,9 @@ auto armDisassembleBlockTransfer(u32 instruction, u32 address) -> std::string {
 
 //B{L}{<cond>} <target_address>
 auto armDisassembleBranch(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction); //instruction >> 28;
-    bool l = bits::get_bit<24>(instruction); //(instruction >> 24) & 0x1;
-    s32 immediate = bits::sign_extend<24, s32>(instruction & 0xFFFFFF) << 2; //Sign extend 24-bit to 32-bit
+    const u8 condition = bits::get<28, 4>(instruction); //instruction >> 28;
+    const bool l = bits::get_bit<24>(instruction); //(instruction >> 24) & 0x1;
+    const s32 immediate = bits::sign_extend<24, s32>(instruction & 0xFFFFFF) << 2; //Sign extend 24-bit to 32-bit
 
     return fmt::format("b{}{} #0x{:x}", l ? "l" : "", CONDITION_EXTENSIONS[condition], address + 8 + immediate);
 }
@@ -380,7 +380,7 @@ auto armDisassembleBranch(u32 instruction, u32 address) -> std::string {
 //[<Rn>], #+/-<offset_8>*4
 //[<Rn>], <option>
 auto addressMode5(u8 rn, u8 offset, bool p, bool u, bool w) -> std::string {
-    char sign = u ? '+' : '-';
+    const char sign = u ? '+' : '-';
 
     if(p) {
         return fmt::format("[r{}, #{}0x{:x}]{}", rn, sign, offset * 4, w ? "!" : "");
@@ -393,15 +393,15 @@ auto addressMode5(u8 rn, u8 offset, bool p, bool u, bool w) -> std::string {
 
 //LDC|STC{<cond>}{L} <Pn>, <Cd>, <addressing_mode>
 auto armDisassembleCoDataTransfer(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    bool p = bits::get_bit<24>(instruction);
-    bool u = bits::get_bit<23>(instruction);
-    bool n = bits::get_bit<22>(instruction);
-    bool w = bits::get_bit<21>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 cd = bits::get<12, 4>(instruction);
-    u8 pn = bits::get<8, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const bool p = bits::get_bit<24>(instruction);
+    const bool u = bits::get_bit<23>(instruction);
+    const bool n = bits::get_bit<22>(instruction);
+    const bool w = bits::get_bit<21>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 cd = bits::get<12, 4>(instruction);
+    const u8 pn = bits::get<8, 4>(instruction);
     std::string address_mode = addressMode5(rn, instruction & 0xFF, p, u, w);
 
     return fmt::format("{}{}{} p{}, c{}, {}", l ? "ldc" : "stc", CONDITION_EXTENSIONS[condition], n ? "l" : "", pn, cd, address_mode);
@@ -409,13 +409,13 @@ auto armDisassembleCoDataTransfer(u32 instruction, u32 address) -> std::string {
 
 //CDP{<cond>} <Pn>, <opcode>, <Cd>, <Cn>, <Cm>{, <cp>}
 auto armDisassembleCoDataOperation(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    u8 opcode = bits::get<20, 4>(instruction);
-    u8 cn = bits::get<16, 4>(instruction);
-    u8 cd = bits::get<12, 4>(instruction);
-    u8 pn = bits::get<8, 4>(instruction);
-    u8 cp = bits::get<5, 3>(instruction);
-    u8 cm = bits::get<0, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const u8 opcode = bits::get<20, 4>(instruction);
+    const u8 cn = bits::get<16, 4>(instruction);
+    const u8 cd = bits::get<12, 4>(instruction);
+    const u8 pn = bits::get<8, 4>(instruction);
+    const u8 cp = bits::get<5, 3>(instruction);
+    const u8 cm = bits::get<0, 4>(instruction);
     std::string info = cp == 0 ? fmt::format(", #{}", cp) : "";
 
     return fmt::format("cdp{} p{}, #{}, c{}, c{}, c{}{}", CONDITION_EXTENSIONS[condition], pn, opcode, cd, cn, cm, info);
@@ -423,14 +423,14 @@ auto armDisassembleCoDataOperation(u32 instruction, u32 address) -> std::string 
 
 //MRC|MCR{<cond>} <Pn>, <opcode>, <Rd>, <Cn>, <Cm>{, <cp>}
 auto armDisassembleCoRegisterTransfer(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    u8 opcode = bits::get<21, 3>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 cn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
-    u8 pn = bits::get<8, 4>(instruction);
-    u8 cp = bits::get<5, 3>(instruction);
-    u8 cm = bits::get<0, 4>(instruction);
+    const u8 condition = bits::get<28, 4>(instruction);
+    const u8 opcode = bits::get<21, 3>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 cn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
+    const u8 pn = bits::get<8, 4>(instruction);
+    const u8 cp = bits::get<5, 3>(instruction);
+    const u8 cm = bits::get<0, 4>(instruction);
     std::string info = cp == 0 ? fmt::format(", #{}", cp) : "";
 
     return fmt::format("{}{} p{}, #{}, r{}, c{}, c{}{}", l ? "mrc" : "mcr", CONDITION_EXTENSIONS[condition], pn, opcode, rd, cn, cm, info);
@@ -438,8 +438,8 @@ auto armDisassembleCoRegisterTransfer(u32 instruction, u32 address) -> std::stri
 
 //SWI{<cond>} <immed_24>
 auto armDisassembleSoftwareInterrupt(u32 instruction, u32 address) -> std::string {
-    u8 condition = bits::get<28, 4>(instruction);
-    u32 immed_24 = instruction & 0xFFFFFF;
+    const u8 condition = bits::get<28, 4>(instruction);
+    const u32 immed_24 = instruction & 0xFFFFFF;
 
     return fmt::format("swi{} #{}", CONDITION_EXTENSIONS[condition], immed_24);
 }

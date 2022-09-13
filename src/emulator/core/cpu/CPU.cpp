@@ -7,7 +7,7 @@
 
 namespace emu {
 
-CPU::CPU(Bus &bus) : m_bus(bus) {
+CPU::CPU(Bus &bus, dbg::Debugger &debug) : m_bus(bus), m_debug(debug) {
     reset();
 }
 
@@ -53,6 +53,13 @@ void CPU::step() {
         m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
         m_state.pc += 4;
 
+        // if(instruction == 0) {
+        //     LOG_DEBUG("Break at nop instruction in ARM");
+        //     m_debug.setRunning(false);
+        // }
+
+        //08020B0C
+
         // ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
 
         // LOG_INFO("PC: {:08X} | Instruction: {:08X}", m_state.pc - 8, instruction);
@@ -66,9 +73,15 @@ void CPU::step() {
         m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
         m_state.pc += 2;
 
+        // if(instruction == 0) {
+        //     LOG_DEBUG("Break at nop instruction in THUMB");
+        //     m_debug.setRunning(false);
+        // }
+
+
         // ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
 
-        //LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
+        // LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
         execute_thumb(instruction);
     }
 }
@@ -175,7 +188,7 @@ auto CPU::get_spsr(u8 mode) -> StatusRegister& {
     }
 }
 
-auto CPU::passed(u8 condition) -> bool {
+auto CPU::passed(u8 condition) const -> bool {
     condition &= 0xF;
 
     switch(condition) {
@@ -200,7 +213,7 @@ auto CPU::passed(u8 condition) -> bool {
     return false;
 }
 
-auto CPU::mode_from_bits(u8 mode) -> PrivilegeMode {
+auto CPU::mode_from_bits(u8 mode) const -> PrivilegeMode {
     switch(mode) {
         case MODE_USER : return MODE_USER;
         case MODE_SYSTEM : return MODE_SYSTEM;
@@ -214,7 +227,7 @@ auto CPU::mode_from_bits(u8 mode) -> PrivilegeMode {
 }
 
 //Returns true if the CPU is currently in a privileged mode (User is the only non-privileged mode though).
-auto CPU::privileged() -> bool {
+auto CPU::privileged() const -> bool {
     return m_state.cpsr.mode != MODE_USER;
 }
 
@@ -242,34 +255,32 @@ void CPU::execute_arm(u32 instruction) {
 }
 
 void CPU::execute_thumb(u16 instruction) {
-    // ThumbInstructionType type = thumbDetermineType(instruction);
+    ThumbInstructionType type = thumbDetermineType(instruction);
 
-    (this->*thumb_instruction_lut[instruction >> 8])(instruction);
-
-    // switch(type) {
-    //     case THUMB_MOVE_SHIFTED_REGISTER : thumbMoveShifted(instruction); break;
-    //     case THUMB_ADD_SUBTRACT : thumbAddSubtract(instruction); break;
-    //     case THUMB_PROCESS_IMMEDIATE : thumbProcessImmediate(instruction); break;
-    //     case THUMB_ALU_OPERATION: thumbALUOperation(instruction); break;
-    //     case THUMB_HI_REGISTER_OPERATION : thumbHiRegisterOp(instruction); break;
-    //     case THUMB_BRANCH_EXCHANGE : thumbBranchExchange(instruction); break;
-    //     case THUMB_PC_RELATIVE_LOAD : thumbPCRelativeLoad(instruction); break;
-    //     case THUMB_LOAD_STORE_REGISTER : thumbLoadStoreRegister(instruction); break;
-    //     case THUMB_LOAD_STORE_SIGN_EXTEND : thumbLoadStoreSigned(instruction); break;
-    //     case THUMB_LOAD_STORE_IMMEDIATE : thumbLoadStoreImmediate(instruction); break;
-    //     case THUMB_LOAD_STORE_HALFWORD : thumbLoadStoreHalfword(instruction); break;
-    //     case THUMB_SP_RELATIVE_LOAD_STORE : thumbSPRelativeLoadStore(instruction); break;
-    //     case THUMB_LOAD_ADDRESS : thumbLoadAddress(instruction); break;
-    //     case THUMB_ADJUST_STACK_POINTER : thumbAdjustSP(instruction); break;
-    //     case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
-    //     case THUMB_LOAD_STORE_MULTIPLE : thumbLoadStoreMultiple(instruction); break;
-    //     case THUMB_CONDITIONAL_BRANCH : thumbConditionalBranch(instruction); break;
-    //     case THUMB_SOFTWARE_INTERRUPT : thumbSoftwareInterrupt(instruction); break;
-    //     case THUMB_UNCONDITIONAL_BRANCH : thumbUnconditionalBranch(instruction); break;
-    //     case THUMB_LONG_BRANCH : thumbLongBranch(instruction); break;
-    //     case THUMB_UNDEFINED : thumbUndefined(instruction); break;
-    //     default: thumbUnimplemented(instruction);
-    // }
+    switch(type) {
+        case THUMB_MOVE_SHIFTED_REGISTER : thumbMoveShifted(instruction); break;
+        case THUMB_ADD_SUBTRACT : thumbAddSubtract(instruction); break;
+        case THUMB_PROCESS_IMMEDIATE : thumbProcessImmediate(instruction); break;
+        case THUMB_ALU_OPERATION: thumbALUOperation(instruction); break;
+        case THUMB_HI_REGISTER_OPERATION : thumbHiRegisterOp(instruction); break;
+        case THUMB_BRANCH_EXCHANGE : thumbBranchExchange(instruction); break;
+        case THUMB_PC_RELATIVE_LOAD : thumbPCRelativeLoad(instruction); break;
+        case THUMB_LOAD_STORE_REGISTER : thumbLoadStoreRegister(instruction); break;
+        case THUMB_LOAD_STORE_SIGN_EXTEND : thumbLoadStoreSigned(instruction); break;
+        case THUMB_LOAD_STORE_IMMEDIATE : thumbLoadStoreImmediate(instruction); break;
+        case THUMB_LOAD_STORE_HALFWORD : thumbLoadStoreHalfword(instruction); break;
+        case THUMB_SP_RELATIVE_LOAD_STORE : thumbSPRelativeLoadStore(instruction); break;
+        case THUMB_LOAD_ADDRESS : thumbLoadAddress(instruction); break;
+        case THUMB_ADJUST_STACK_POINTER : thumbAdjustSP(instruction); break;
+        case THUMB_PUSH_POP_REGISTERS : thumbPushPopRegisters(instruction); break;
+        case THUMB_LOAD_STORE_MULTIPLE : thumbLoadStoreMultiple(instruction); break;
+        case THUMB_CONDITIONAL_BRANCH : thumbConditionalBranch(instruction); break;
+        case THUMB_SOFTWARE_INTERRUPT : thumbSoftwareInterrupt(instruction); break;
+        case THUMB_UNCONDITIONAL_BRANCH : thumbUnconditionalBranch(instruction); break;
+        case THUMB_LONG_BRANCH : thumbLongBranch(instruction); break;
+        case THUMB_UNDEFINED : thumbUndefined(instruction); break;
+        default: thumbUnimplemented(instruction);
+    }
 }
 
 void CPU::service_interrupt() {

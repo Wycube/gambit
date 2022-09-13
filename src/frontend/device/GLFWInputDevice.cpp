@@ -1,12 +1,7 @@
 #include "GLFWInputDevice.hpp"
 #include "emulator/core/GBA.hpp"
+#include "frontend/Types.hpp"
 
-
-//Also defined in Application.hpp
-struct CallbackUserData {
-    void *application;
-    emu::GBA *core;
-};
 
 GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {
     glfwSetKeyCallback(window, keyCallback);
@@ -28,7 +23,8 @@ void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int
     CallbackUserData *user_data = reinterpret_cast<CallbackUserData*>(glfwGetWindowUserPointer(window));
 
     if(user_data != nullptr && action != GLFW_REPEAT) {
-        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(user_data->core->getInputDevice());
+        emu::GBA *core = reinterpret_cast<emu::GBA*>(user_data->core);
+        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(core->getInputDevice());
         bool pressed = action == GLFW_PRESS;
 
         std::lock_guard lock(device.m_key_mutex);

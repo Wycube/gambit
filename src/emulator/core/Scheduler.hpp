@@ -15,7 +15,7 @@ struct Event {
     u64 scheduled_timestamp;
 };
 
-class Scheduler {
+class Scheduler final {
 public:
 
     Scheduler();

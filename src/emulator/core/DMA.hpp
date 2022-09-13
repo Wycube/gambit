@@ -7,7 +7,7 @@
 
 namespace emu {
 
-class DMA {
+class DMA final {
 public:
 
     DMA(Scheduler &scheduler, Bus &bus);

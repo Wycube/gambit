@@ -13,10 +13,10 @@ namespace emu {
  * The CPU is an ARM7TDMI that uses the ARMv4T architecture which supports 
  * the 32-bit ARM and 16-bit THUMB instruction sets.
  */
-class CPU {
+class CPU final {
 public:
 
-    CPU(Bus &bus);
+    CPU(Bus &bus, dbg::Debugger &debug);
 
     void reset();
 
@@ -24,7 +24,7 @@ public:
     void flushPipeline();
     
     //Temp
-    auto getPC() -> u32 {
+    auto getPC() const -> u32 {
         return m_state.pc;
     }
 
@@ -37,6 +37,7 @@ private:
 
     //Hardware
     Bus &m_bus;
+    dbg::Debugger &m_debug;
 
     auto get_reg_ref(u8 reg, u8 mode = 0) -> u32&;
     auto get_reg_banked(u8 reg, u8 mode = 0) -> u32&;
@@ -44,9 +45,9 @@ private:
     void set_reg(u8 reg, u32 value, u8 mode = 0);
     auto get_spsr(u8 mode = 0) -> StatusRegister&;
 
-    auto passed(u8 condition) -> bool;
-    auto mode_from_bits(u8 mode) -> PrivilegeMode;
-    auto privileged() -> bool;
+    auto passed(u8 condition) const -> bool;
+    auto mode_from_bits(u8 mode) const -> PrivilegeMode;
+    auto privileged() const -> bool;
 
     //Arm and Thumb instruction handler declarations
     #include "arm/Handlers.inl"

@@ -3,6 +3,8 @@
 #include "device/OGLVideoDevice.hpp"
 #include "emulator/core/GBA.hpp"
 #include "emulator/core/debug/Debugger.hpp"
+#include "emulator/core/cpu/arm/Instruction.hpp"
+#include "emulator/core/cpu/thumb/Instruction.hpp"
 #include "common/StringUtils.hpp"
 #include "common/Log.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -24,6 +26,7 @@ inline auto get_mode_str(u8 mode_bits) -> std::string {
 }
 
 
+
 class DebuggerUI {
 public:
 
@@ -35,6 +38,8 @@ public:
         // m_debugger.addBreakpoint(0x08004D20); //Bad
         // m_debugger.addBreakpoint(0x08004D10); //Good
         // m_debugger.addBreakpoint(0x03004210);
+        
+        m_debugger.addBreakpoint(0x0800756E);
     }
 
     void drawScreen() {
@@ -48,9 +53,7 @@ public:
         ImGui::Text("WINOUT: %04X", m_debugger.read16(0x400004A));
     }
 
-    void drawBreakpoints() {
-        bool running = m_debugger.running();
-
+    void drawBreakpoints(bool running) {
         if(running) {
             ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         }
@@ -85,9 +88,7 @@ public:
         }
     }
 
-    void drawCPUDebugger() {
-        bool running = m_debugger.running();
-
+    void drawCPUDebugger(bool running) {
         if(running) {
             ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         }
@@ -100,14 +101,6 @@ public:
             ImGui::PopItemFlag();
         }
 
-        ImGui::SameLine();
-
-        if((!running && ImGui::Button("Run")) || (running && ImGui::Button("Pause"))) {
-            m_gba.getDebugger().setRunning(!running);
-            running = !running;
-        }
-
-
         ImGui::Separator();
         ImGui::BeginGroup();
 
@@ -118,31 +111,29 @@ public:
         static constexpr u8 modes[8] = {0, emu::MODE_USER, emu::MODE_SYSTEM, emu::MODE_SUPERVISOR, emu::MODE_FIQ, emu::MODE_IRQ, emu::MODE_ABORT, emu::MODE_UNDEFINED};
         u8 mode = modes[m_mode];
 
-        static u32 registers[16];
-
-        //Update registers while the GBA core is not running in another thread
-        if(!running) {
-            for(int i = 0; i < 16; i++) {
-                registers[i] = m_debugger.getCPURegister(i, mode);
-            }
-        }
-
         //CPU Registers
         if(ImGui::BeginTable("##CPURegisters_Table", 2, ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableNextRow();
 
             for(u8 i = 0; i < 8; i++) {
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", i, registers[i]);
+                ImGui::Text("r%-2i: %08X", i, m_debugger.getCPURegister(i));
                 
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", 8 + i, registers[8 + i]);
+                ImGui::Text("r%-2i: %08X", 8 + i, m_debugger.getCPURegister(8 + i));
             }
 
             ImGui::EndTable();
         }
 
         ImGui::Spacing();
+
+        if(!running) {
+            u32 sp = m_debugger.getCPURegister(13);
+            for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
+                ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
+            }
+        }
 
         // u32 cpsr = m_debugger.getCPUCPSR();
         // u32 spsr = m_debugger.getCPUSPSR(mode);
@@ -186,7 +177,7 @@ public:
         ImGui::SameLine();
         ImGui::Dummy(ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
         ImGui::SameLine();
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        // ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
 
@@ -258,6 +249,101 @@ public:
         // ImGui::EndChild();
 
         // ImGui::EndGroup();
+    }
+
+    void drawDisassembly() {
+        ImGui::BeginGroup();
+
+        ImGui::Text("Disassembly");
+        ImGui::Separator();
+
+        // bool go_to_pc = ImGui::Button("Go to PC");
+        static bool use_thumb; 
+        ImGui::Checkbox("Thumb", &use_thumb);
+
+        static bool go_to_address;
+        static u32 address_input;
+
+        ImGui::SameLine();
+        if(ImGui::InputScalar("Go to", ImGuiDataType_U32, &address_input, 0, 0, "%X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_AlwaysInsertMode)) {
+            go_to_address = true;
+        }
+
+        if(ImGui::Button("Go to button")) {
+            go_to_address = true;
+        }
+
+        emu::GamePak &pak = m_gba.getGamePak();
+
+        if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+            ImGui::BeginTable("##Disassembly_Table", 4);
+            ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+            ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(use_thumb ? "xx xx " : "xx xx xx xx ").x);
+            ImGui::TableSetupColumn("col_2", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+            ImGui::TableSetupColumn("col_3");
+         
+            //THUMB or ARM
+            bool thumb = use_thumb; //(m_debugger.getCPUCPSR() >> 5) & 1;
+            u8 instr_size = thumb ? 2 : 4;
+
+            ImGuiListClipper clipper(pak.size());
+            
+            while(clipper.Step()) {
+                for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+
+                    //u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
+                    u32 address = 0x08000000 + i * instr_size;
+                    ImGui::Text("%08X: ", address);
+
+                    ImGui::TableNextColumn();
+
+                    if(address == m_debugger.getCPURegister(15)) { 
+                        //Fetch
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
+                    } else if(address == m_debugger.getCPURegister(15) - instr_size) {
+                        //Decode
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
+                    } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
+                        //Execute
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
+                    }
+
+                    //Instruction in hexadecimal
+                    u32 bytes = thumb ? pak.read<u32>(i * instr_size) & 0xFFFF : pak.read<u32>(i * instr_size); //m_debugger.read16(address) : m_debugger.read32(address);
+                    ImGui::Text("%s", fmt::format(instr_size == 2 ? "{2:02X} {3:02X}" : "{:02X} {:02X} {:02X} {:02X}", 
+                        pak.read8(i * instr_size + 3), pak.read8(i * instr_size + 2), 
+                        pak.read8(i * instr_size + 1), pak.read8(i * instr_size + 0)).c_str());
+
+                    //Actual disassembly
+                    ImGui::TableNextColumn();
+                    std::string disassembled = thumb ? emu::thumbDecodeInstruction(bytes, address, pak.read<u16>(i * instr_size - 2)).disassembly : emu::armDecodeInstruction(bytes, address).disassembly;
+
+                    //Seperate mnemonic and registers
+                    size_t space = disassembled.find_first_of(' ');
+                    ImGui::Text("%s", disassembled.substr(0, space).c_str());
+                    ImGui::TableNextColumn();
+                    if(space < disassembled.size()) ImGui::Text("%s", disassembled.substr(space).c_str());
+                }
+            }
+
+            ImGui::EndTable();
+            
+            // if(go_to_pc) {
+            //     //Scroll to 3 instructions before the current PC
+            //     ImGui::SetScrollY(47.5f * clipper.ItemsHeight);
+            // }
+
+            if(go_to_address && (address_input >= 0x08000000 && address_input < (0x08000000 + pak.size()))) {
+                ImGui::SetScrollY((address_input - 0x08000000) / instr_size * clipper.ItemsHeight);
+                go_to_address = false;
+            }
+            
+        }
+        ImGui::EndChild();
+
+        ImGui::EndGroup();
     }
 
     void drawMemoryViewer() {

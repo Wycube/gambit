@@ -11,7 +11,9 @@ Bus::Bus(Scheduler &scheduler, Keypad &keypad, Timer &timer, DMA &dma, PPU &ppu)
 }
 
 void Bus::reset() {
-    memset(&m_mem, 0, sizeof(m_mem));
+    memset(&m_mem.ewram, 0, sizeof(m_mem.ewram));
+    memset(&m_mem.iwram, 0, sizeof(m_mem.iwram));
+    memset(&m_mem.io, 0, sizeof(m_mem.io));
 }
 
 void Bus::cycle(u32 cycles) {

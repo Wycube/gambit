@@ -5,7 +5,7 @@
 #include "DebuggerUI.hpp"
 #include "device/OGLVideoDevice.hpp"
 #include "device/GLFWInputDevice.hpp"
-#include "Application.hpp"
+#include "Frontend.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -17,27 +17,7 @@
 #include <fstream>
 #include <vector>
 #include <thread>
-#include <signal.h>
 
-
-static emu::GBA *s_gba;
-
-void signal_handler(int signal) {
-    LOG_ERROR("Signal {} received", signal);
-
-    // emu::dbg::Debugger &debug = s_gba->getDebugger();
-    // bool thumb = debug.getCPUCPSR() & emu::FLAG_THUMB;
-    // u32 pc = debug.getCPURegister(15) - (thumb ? 2 : 4);
-
-    // LOG_DEBUG("PC: {:08X} | Instruction: {:08X} | Disassembly: {}", pc, thumb ? debug.read16(pc) : debug.read32(pc), thumb ? debug.thumbDisassembleAt(pc) : debug.armDisassembleAt(pc));
-    std::_Exit(-2);
-}
-
-static int s_counter = 0;
-
-void audio_callback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
-    reinterpret_cast<std::atomic<bool>*>(device->pUserData)->store(true);
-}
 
 int main(int argc, char *argv[]) {
     LOG_INFO("Version: {}", common::GIT_DESC);
@@ -73,10 +53,6 @@ int main(int argc, char *argv[]) {
     LOG_INFO("ROM Size: {}", rom_size);
     LOG_INFO("BIOS Size: {}", bios_size);
 
-    signal(SIGSEGV, signal_handler);
-    signal(SIGINT, signal_handler);
-    signal(SIGABRT, signal_handler);
-
     //Initialize GLFW and create Window
     if(glfwInit() == GLFW_FALSE) {
         LOG_FATAL("GLFW failed to initialize!");
@@ -105,15 +81,15 @@ int main(int argc, char *argv[]) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    Application app(window);
+    Frontend app(window);
 
     //Miniaudio Testing
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_f32;
     config.playback.channels = 2;
     config.sampleRate = 48000;
-    config.dataCallback = audio_callback;
-    config.pUserData = app.getShouldRun();
+    config.dataCallback = app.audio_sync;
+    config.pUserData = &app;
 
     ma_device device;
     if(ma_device_init(nullptr, &config, &device) != MA_SUCCESS) {
@@ -138,17 +114,15 @@ int main(int argc, char *argv[]) {
             bios[i] = static_cast<u8>(bios_file.get());
         }
 
-        //Close file streams
-        rom_file.close();
-        bios_file.close();
-
         app.loadROM(std::move(rom));
         app.loadBIOS(bios);
     }
 
-    app.init();
+    //Close file streams
+    rom_file.close();
+    bios_file.close();
 
-    s_gba = app.getCore();
+    app.init();
 
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 

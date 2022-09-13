@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <atomic>
+#include <mutex>
+#include <functional>
 
 
 namespace emu {
@@ -15,7 +17,7 @@ struct Event;
 
 namespace dbg {
 
-class Debugger {
+class Debugger final {
 public:
 
     Debugger(Bus &bus);
@@ -42,8 +44,7 @@ public:
     void updateBgImages();
     auto getBgImage(int index) -> const u32*;
 
-    void setRunning(bool run);
-    auto running() -> bool;
+    void registerOnBreak(std::function<void ()> on_break);
     auto checkBreakpoints() -> bool;
     void addBreakpoint(u32 address);
     void removeBreakpoint(u32 address);
@@ -51,8 +52,8 @@ public:
 
 private:
 
-    std::atomic<bool> m_running;
     std::vector<u32> m_breakpoints;
+    std::function<void ()> m_on_break;
 
     //Pointer to CPU state
     const CPUState *m_cpu_state = nullptr;
@@ -62,7 +63,6 @@ private:
     const u64 *m_scheduler_timestamp;
 
     const u8 *m_ppu_vram;
-    u32 *m_bg_map;
 
     Bus &m_bus;
 };

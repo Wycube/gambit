@@ -4,6 +4,7 @@
 #include "common/Types.hpp"
 #include <vector>
 #include <memory>
+#include <string>
 
 
 namespace emu {
@@ -23,7 +24,7 @@ struct GamePakHeader {
     u8 reserved_1[2];
 };
 
-class GamePak {
+class GamePak final {
 public:
 
     auto read8(u32 address) -> u8;
@@ -35,6 +36,7 @@ public:
     void write(u32 address, T value);
     
     auto getHeader() -> GamePakHeader&;
+    auto getTitle() -> const std::string&;
     auto size() -> u32;
     void loadROM(std::vector<u8> &&rom);
 
@@ -42,6 +44,7 @@ private:
 
     std::vector<u8> m_rom;
     GamePakHeader m_header;
+    std::string m_title;
     std::unique_ptr<Save> m_save;
 
     void parseHeader();

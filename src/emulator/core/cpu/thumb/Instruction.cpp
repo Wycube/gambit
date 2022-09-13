@@ -32,7 +32,7 @@ constexpr char THUMB_ENCODINGS[20][9] = {
 };
 
 auto thumbDetermineType(u16 instruction) -> ThumbInstructionType {
-    u8 decoding_bits = instruction >> 8;
+    const u8 decoding_bits = instruction >> 8;
 
     return static_cast<ThumbInstructionType>(common::const_match_bits<20, 9, THUMB_ENCODINGS>(decoding_bits, THUMB_UNDEFINED));
 }

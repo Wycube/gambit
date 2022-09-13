@@ -1,4 +1,5 @@
 #include "emulator/core/cpu/CPU.hpp"
+#include "emulator/core/cpu/FunctionMap.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
@@ -13,7 +14,7 @@ void CPU::armUnimplemented(u32 instruction) {
 }
 
 void CPU::armBranchExchange(u32 instruction) {
-    u32 rn = bits::get<0, 4>(instruction);
+    const u32 rn = bits::get<0, 4>(instruction);
 
     m_state.cpsr.t = get_reg(rn) & 1;
     set_reg(15, get_reg(rn));
@@ -21,13 +22,13 @@ void CPU::armBranchExchange(u32 instruction) {
 }
 
 void CPU::armPSRTransfer(u32 instruction) {
-    bool r = bits::get_bit<22>(instruction);
-    bool s = bits::get_bit<21>(instruction);
+    const bool r = bits::get_bit<22>(instruction);
+    const bool s = bits::get_bit<21>(instruction);
     StatusRegister &psr = r ? get_spsr() : m_state.cpsr;
 
     if(s) {
-        bool i = bits::get_bit<25>(instruction);
-        u8 fields = bits::get<16, 4>(instruction);
+        const bool i = bits::get_bit<25>(instruction);
+        const u8 fields = bits::get<16, 4>(instruction);
         u32 operand;
 
         if(i) {
@@ -63,25 +64,25 @@ void CPU::armPSRTransfer(u32 instruction) {
             psr.reserved |= bits::get<24, 4>(operand);
         }
     } else {
-        u8 rd = bits::get<12, 4>(instruction);
+        const u8 rd = bits::get<12, 4>(instruction);
         set_reg(rd, psr.asInt());
     }
 }
 
 auto CPU::addressMode1(u32 instruction, bool &carry) -> u32 {
-    bool i = bits::get_bit<25>(instruction);
+    const bool i = bits::get_bit<25>(instruction);
 
     if(i) {
-        u8 rotate_imm = bits::get<8, 4>(instruction);
-        u8 immed_8 = bits::get<0, 8>(instruction);
-        u32 result = bits::ror(immed_8, rotate_imm * 2);
+        const u8 rotate_imm = bits::get<8, 4>(instruction);
+        const u8 immed_8 = bits::get<0, 8>(instruction);
+        const u32 result = bits::ror(immed_8, rotate_imm * 2);
         carry = rotate_imm == 0 ? m_state.cpsr.c : result >> 31;
 
         return result;
     } else {
-        u8 opcode = bits::get<5, 2>(instruction);
-        bool r = bits::get_bit<4>(instruction);
-        u8 rm = bits::get<0, 4>(instruction);
+        const u8 opcode = bits::get<5, 2>(instruction);
+        const bool r = bits::get_bit<4>(instruction);
+        const u8 rm = bits::get<0, 4>(instruction);
         u8 shift = r ? get_reg(bits::get<8, 4>(instruction)) & 0xFF : bits::get<7, 5>(instruction);
         u32 operand = get_reg(rm);
         u32 result;
@@ -111,13 +112,13 @@ auto CPU::addressMode1(u32 instruction, bool &carry) -> u32 {
 }
 
 void CPU::armDataProcessing(u32 instruction) {
-    u8 opcode = bits::get<21, 4>(instruction);
-    bool s = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
+    const u8 opcode = bits::get<21, 4>(instruction);
+    const bool s = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
     bool carry_out = m_state.cpsr.c;
     u32 op_1 = get_reg(rn);
-    u32 op_2 = addressMode1(instruction, carry_out);
+    const u32 op_2 = addressMode1(instruction, carry_out);
     u32 result;
 
     //Special case for PC as rn
@@ -169,8 +170,8 @@ void CPU::armDataProcessing(u32 instruction) {
         if(opcode < 2 || (opcode > 7 && opcode != 0xA && opcode != 0xB)) {
             m_state.cpsr.c = carry_out;
         } else {
-            bool use_carry = opcode == 5 || opcode == 6 || opcode == 7;
-            bool subtract = opcode == 2 || opcode == 3 || opcode == 6 || opcode == 7 || opcode == 0xA;
+            const bool use_carry = opcode == 5 || opcode == 6 || opcode == 7;
+            const bool subtract = opcode == 2 || opcode == 3 || opcode == 6 || opcode == 7 || opcode == 0xA;
             u32 r_op_1 = op_1;
             u32 r_op_2 = op_2;
 
@@ -191,21 +192,21 @@ void CPU::armDataProcessing(u32 instruction) {
             //a and b are not equal and a is equal to c for 
             //subtractions. The original version was this:
             // subtract ? a != b && a != c : a == b && a != c
-            bool a = r_op_1 >> 31;
-            bool b = r_op_2 >> 31;
-            bool c = result >> 31;
+            const bool a = r_op_1 >> 31;
+            const bool b = r_op_2 >> 31;
+            const bool c = result >> 31;
             m_state.cpsr.v = a ^ (b ^ !subtract) && a ^ c;
         }
     }
 }
 
 void CPU::armMultiply(u32 instruction) {
-    bool a = bits::get_bit<21>(instruction);
-    bool s = bits::get_bit<20>(instruction);
-    u8 rd = bits::get<16, 4>(instruction);
-    u8 rn = bits::get<12, 4>(instruction);
-    u8 rs = bits::get<8, 4>(instruction);
-    u8 rm = bits::get<0, 4>(instruction);
+    const bool a = bits::get_bit<21>(instruction);
+    const bool s = bits::get_bit<20>(instruction);
+    const u8 rd = bits::get<16, 4>(instruction);
+    const u8 rn = bits::get<12, 4>(instruction);
+    const u8 rs = bits::get<8, 4>(instruction);
+    const u8 rm = bits::get<0, 4>(instruction);
     u32 result;
 
     if(a) {
@@ -225,13 +226,13 @@ void CPU::armMultiply(u32 instruction) {
 }
 
 void CPU::armMultiplyLong(u32 instruction) {
-    bool sign = bits::get_bit<22>(instruction);
-    bool a = bits::get_bit<21>(instruction);
-    bool s = bits::get_bit<20>(instruction);
-    u8 rd_hi = bits::get<16, 4>(instruction);
-    u8 rd_lo = bits::get<12, 4>(instruction);
-    u8 rs = bits::get<8, 4>(instruction);
-    u8 rm = bits::get<0, 4>(instruction);
+    const bool sign = bits::get_bit<22>(instruction);
+    const bool a = bits::get_bit<21>(instruction);
+    const bool s = bits::get_bit<20>(instruction);
+    const u8 rd_hi = bits::get<16, 4>(instruction);
+    const u8 rd_lo = bits::get<12, 4>(instruction);
+    const u8 rs = bits::get<8, 4>(instruction);
+    const u8 rm = bits::get<0, 4>(instruction);
     u64 result;
 
     if(sign) {
@@ -252,12 +253,11 @@ void CPU::armMultiplyLong(u32 instruction) {
 }
 
 void CPU::armSingleDataSwap(u32 instruction) {
-    bool b = bits::get_bit<22>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
-    u8 rm = bits::get<0, 4>(instruction);
-
-    u32 data_32 = m_bus.readRotated32(get_reg(rn));
+    const bool b = bits::get_bit<22>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
+    const u8 rm = bits::get<0, 4>(instruction);
+    const u32 data_32 = m_bus.readRotated32(get_reg(rn));
 
     if(b) {
         m_bus.write8(get_reg(rn), get_reg(rm) & 0xFF);
@@ -269,14 +269,14 @@ void CPU::armSingleDataSwap(u32 instruction) {
 }
 
 void CPU::armHalfwordTransfer(u32 instruction) {
-    bool p = bits::get_bit<24>(instruction);
-    bool u = bits::get_bit<23>(instruction);
-    bool i = bits::get_bit<22>(instruction);
-    bool w = bits::get_bit<21>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
-    u8 sh = bits::get<5, 2>(instruction);
+    const bool p = bits::get_bit<24>(instruction);
+    const bool u = bits::get_bit<23>(instruction);
+    const bool i = bits::get_bit<22>(instruction);
+    const bool w = bits::get_bit<21>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
+    const u8 sh = bits::get<5, 2>(instruction);
     u32 address = get_reg(rn);
     u32 offset;
     u32 data;
@@ -332,8 +332,8 @@ auto CPU::addressMode2(u16 addr_mode, bool i) -> u32 {
         offset = addr_mode;
     } else {
         u8 shift_imm = bits::get<7, 5>(addr_mode);
-        u8 opcode = bits::get<5, 2>(addr_mode);
-        u32 operand = get_reg(bits::get<0, 4>(addr_mode));
+        const u8 opcode = bits::get<5, 2>(addr_mode);
+        const u32 operand = get_reg(bits::get<0, 4>(addr_mode));
 
         if(opcode != 0 && shift_imm == 0) {
             shift_imm = 32;
@@ -351,15 +351,15 @@ auto CPU::addressMode2(u16 addr_mode, bool i) -> u32 {
 }
 
 void CPU::armSingleTransfer(u32 instruction) {
-    bool i = bits::get_bit<25>(instruction);
-    bool p = bits::get_bit<24>(instruction);
-    bool u = bits::get_bit<23>(instruction);
-    bool b = bits::get_bit<22>(instruction);
-    bool w = bits::get_bit<21>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u8 rd = bits::get<12, 4>(instruction);
-    u32 offset = addressMode2(instruction & 0xFFF, i);
+    const bool i = bits::get_bit<25>(instruction);
+    const bool p = bits::get_bit<24>(instruction);
+    const bool u = bits::get_bit<23>(instruction);
+    const bool b = bits::get_bit<22>(instruction);
+    const bool w = bits::get_bit<21>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u8 rd = bits::get<12, 4>(instruction);
+    const u32 offset = addressMode2(instruction & 0xFFF, i);
     u32 address = get_reg(rn);
     u32 offset_address = address;
 
@@ -412,7 +412,7 @@ void CPU::armSingleTransfer(u32 instruction) {
 }
 
 void CPU::armUndefined(u32 instruction) {
-    LOG_DEBUG("Undefined ARM Instruction at Address: {:08X}", m_state.pc - 8);
+    LOG_WARNING("Undefined ARM Instruction at Address: {:08X}", m_state.pc - 8);
 
     set_reg(14, get_reg(15) - 4, MODE_UNDEFINED);
     get_spsr(MODE_UNDEFINED) = m_state.cpsr;
@@ -423,15 +423,15 @@ void CPU::armUndefined(u32 instruction) {
 }
 
 void CPU::armBlockTransfer(u32 instruction) {
-    u8 pu = bits::get<23, 2>(instruction);
-    bool s = bits::get_bit<22>(instruction);
-    bool w = bits::get_bit<21>(instruction);
-    bool l = bits::get_bit<20>(instruction);
-    u8 rn = bits::get<16, 4>(instruction);
-    u16 registers = bits::get<0, 16>(instruction);
+    const u8 pu = bits::get<23, 2>(instruction);
+    const bool s = bits::get_bit<22>(instruction);
+    const bool w = bits::get_bit<21>(instruction);
+    const bool l = bits::get_bit<20>(instruction);
+    const u8 rn = bits::get<16, 4>(instruction);
+    const u16 registers = bits::get<0, 16>(instruction);
     u32 address = get_reg(rn);
     u32 writeback = get_reg(rn) + (4 * bits::popcount<u16>(registers) * (pu & 1 ? 1 : -1));
-    u8 mode = s && !(l && bits::get<15, 1>(registers)) ? MODE_USER : 0;
+    const u8 mode = s && !(l && bits::get<15, 1>(registers)) ? MODE_USER : 0;
     
 
     if(pu == 0 || pu == 2) {
@@ -506,9 +506,9 @@ void CPU::armBlockTransfer(u32 instruction) {
 }
 
 void CPU::armBranch(u32 instruction) {
-    bool l = bits::get<24, 1>(instruction);
+    const bool l = bits::get<24, 1>(instruction);
     //Sign extend 24-bit to 32-bit and multiply by 4 so it is word-aligned.
-    s32 immediate = bits::sign_extend<24, s32>(bits::get<0, 24>(instruction)) << 2;
+    const s32 immediate = bits::sign_extend<24, s32>(bits::get<0, 24>(instruction)) << 2;
 
     //Store next instruction's address in the link register
     if(l) {
@@ -520,7 +520,8 @@ void CPU::armBranch(u32 instruction) {
 }
 
 void CPU::armSoftwareInterrupt(u32 instruction) {
-    LOG_DEBUG("SWI {} called from ARM at Address: {:08X}", bits::get<16, 8>(instruction), m_state.pc - 8);
+    const u8 comment = bits::get<16, 8>(instruction);
+    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_map[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 8);
 
     set_reg(14, get_reg(15) - 4, MODE_SUPERVISOR);
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;

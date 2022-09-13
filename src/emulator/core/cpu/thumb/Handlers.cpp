@@ -1,4 +1,5 @@
 #include "emulator/core/cpu/CPU.hpp"
+#include "emulator/core/cpu/FunctionMap.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
@@ -13,11 +14,11 @@ void CPU::thumbUnimplemented(u16 instruction) {
 }
 
 void CPU::thumbMoveShifted(u16 instruction) {
-    u8 opcode = bits::get<11, 2>(instruction);
+    const u8 opcode = bits::get<11, 2>(instruction);
     u8 immed_5 = bits::get<6, 5>(instruction);
-    u8 rm = bits::get<3, 3>(instruction);
-    u8 rd = bits::get<0, 3>(instruction);
-    u32 value = get_reg(rm);
+    const u8 rm = bits::get<3, 3>(instruction);
+    const u8 rd = bits::get<0, 3>(instruction);
+    const u32 value = get_reg(rm);
     u32 result;
     bool carry;
 
@@ -40,13 +41,13 @@ void CPU::thumbMoveShifted(u16 instruction) {
 }
 
 void CPU::thumbAddSubtract(u16 instruction) {
-    bool i = bits::get_bit<10>(instruction);
-    bool s = bits::get_bit<9>(instruction);
-    u8 rm_immed = bits::get<6, 3>(instruction);
-    u8 rn = bits::get<3, 3>(instruction);
-    u8 rd = bits::get<0, 3>(instruction);
-    u32 op_1 = get_reg(rn);
-    u32 op_2 = i ? rm_immed : get_reg(rm_immed);
+    const bool i = bits::get_bit<10>(instruction);
+    const bool s = bits::get_bit<9>(instruction);
+    const u8 rm_immed = bits::get<6, 3>(instruction);
+    const u8 rn = bits::get<3, 3>(instruction);
+    const u8 rd = bits::get<0, 3>(instruction);
+    const u32 op_1 = get_reg(rn);
+    const u32 op_2 = i ? rm_immed : get_reg(rm_immed);
     u32 result;
     
     if(s) {
@@ -68,10 +69,10 @@ void CPU::thumbAddSubtract(u16 instruction) {
 }
 
 void CPU::thumbProcessImmediate(u16 instruction) {
-    u8 opcode = bits::get<11, 2>(instruction);
-    u8 rd = bits::get<8, 3>(instruction);
-    u8 immed_8 = bits::get<0, 8>(instruction);
-    u32 op_1 = get_reg(rd);
+    const u8 opcode = bits::get<11, 2>(instruction);
+    const u8 rd = bits::get<8, 3>(instruction);
+    const u8 immed_8 = bits::get<0, 8>(instruction);
+    const u32 op_1 = get_reg(rd);
     u32 result = 0;
 
     switch(opcode) {
@@ -105,11 +106,11 @@ void CPU::thumbProcessImmediate(u16 instruction) {
 }
 
 void CPU::thumbALUOperation(u16 instruction) {
-    u8 opcode = bits::get<6, 4>(instruction);
-    u8 rm = bits::get<3, 3>(instruction);
-    u8 rd = bits::get<0, 3>(instruction);
-    u32 op_1 = get_reg(rd);
-    u32 op_2 = get_reg(rm);
+    const u8 opcode = bits::get<6, 4>(instruction);
+    const u8 rm = bits::get<3, 3>(instruction);
+    const u8 rd = bits::get<0, 3>(instruction);
+    const u32 op_1 = get_reg(rd);
+    const u32 op_2 = get_reg(rm);
     u32 result;
     bool shift_carry = m_state.cpsr.c;
 
@@ -146,8 +147,8 @@ void CPU::thumbALUOperation(u16 instruction) {
 
     //Write to the Carry and Overflow flags
     if(opcode == 0x5 || opcode == 0x6 || (opcode >= 0x9 && opcode <= 0xB)) {
-        bool use_carry = opcode == 0x5 || opcode == 0x6;
-        bool subtract = opcode == 0x6 || opcode == 0x9 || opcode == 0xA;
+        const bool use_carry = opcode == 0x5 || opcode == 0x6;
+        const bool subtract = opcode == 0x6 || opcode == 0x9 || opcode == 0xA;
 
         if(subtract) {
             m_state.cpsr.c = (u64)op_1 >= (u64)op_2 + (u64)(use_carry ? !m_state.cpsr.c : 0);
@@ -155,9 +156,9 @@ void CPU::thumbALUOperation(u16 instruction) {
             m_state.cpsr.c = (u64)op_1 + (u64)op_2 + (use_carry ? m_state.cpsr.c : 0) > 0xFFFFFFFF;
         }
 
-        bool a = op_1 >> 31;
-        bool b = op_2 >> 31;
-        bool c = result >> 31;
+        const bool a = op_1 >> 31;
+        const bool b = op_2 >> 31;
+        const bool c = result >> 31;
         m_state.cpsr.v = a ^ (b ^ !subtract) && a ^ c;
     }
 
@@ -168,11 +169,11 @@ void CPU::thumbALUOperation(u16 instruction) {
 }
 
 void CPU::thumbHiRegisterOp(u16 instruction) {
-    u8 opcode = bits::get<8, 2>(instruction);
-    u8 rs = bits::get_bit<6>(instruction) << 3 | bits::get<3, 3>(instruction);
-    u8 rd = bits::get_bit<7>(instruction) << 3 | bits::get<0, 3>(instruction);
-    u32 op_1 = get_reg(rd);
-    u32 op_2 = get_reg(rs);
+    const u8 opcode = bits::get<8, 2>(instruction);
+    const u8 rs = bits::get_bit<6>(instruction) << 3 | bits::get<3, 3>(instruction);
+    const u8 rd = bits::get_bit<7>(instruction) << 3 | bits::get<0, 3>(instruction);
+    const u32 op_1 = get_reg(rd);
+    const u32 op_2 = get_reg(rs);
     u32 result;
 
     switch(opcode) {
@@ -196,9 +197,9 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
 }
 
 void CPU::thumbBranchExchange(u16 instruction) {
-    bool link = bits::get_bit<7>(instruction);
-    u8 rm = bits::get<3, 4>(instruction);
-    u32 address = get_reg(rm);
+    const bool link = bits::get_bit<7>(instruction);
+    const u8 rm = bits::get<3, 4>(instruction);
+    const u32 address = get_reg(rm);
 
     //Store address of next instruction, plus the thumb-bit (in the lsb), in the Link-Register
     if(link) {
@@ -212,20 +213,20 @@ void CPU::thumbBranchExchange(u16 instruction) {
 }
 
 void CPU::thumbPCRelativeLoad(u16 instruction) {
-    u8 rd = bits::get<8, 3>(instruction);
-    u16 offset = bits::get<0, 8>(instruction) * 4;
-
-    u32 address = bits::align<u32>(get_reg(15)) + offset;
+    const u8 rd = bits::get<8, 3>(instruction);
+    const u16 offset = bits::get<0, 8>(instruction) * 4;
+    const u32 address = bits::align<u32>(get_reg(15)) + offset;
+    
     set_reg(rd, m_bus.read32(address));
 }
 
 void CPU::thumbLoadStoreRegister(u16 instruction) {
-    bool l = bits::get_bit<11>(instruction);
-    bool b = bits::get_bit<10>(instruction);
-    u8 rm = bits::get<6, 3>(instruction);
-    u8 rn = bits::get<3, 3>(instruction);
-    u8 rd = bits::get<0, 3>(instruction);
-    u32 address = get_reg(rn) + get_reg(rm);
+    const bool l = bits::get_bit<11>(instruction);
+    const bool b = bits::get_bit<10>(instruction);
+    const u8 rm = bits::get<6, 3>(instruction);
+    const u8 rn = bits::get<3, 3>(instruction);
+    const u8 rd = bits::get<0, 3>(instruction);
+    const u32 address = get_reg(rn) + get_reg(rm);
 
     if(l) {
         if(b) {
@@ -243,11 +244,11 @@ void CPU::thumbLoadStoreRegister(u16 instruction) {
 }
 
 void CPU::thumbLoadStoreSigned(u16 instruction) {
-    u8 opcode = bits::get<10, 2>(instruction);
-    u8 rm = bits::get<6, 3>(instruction);
-    u8 rn = bits::get<3, 3>(instruction);
-    u8 rd = bits::get<0, 3>(instruction);
-    u32 address = get_reg(rn) + get_reg(rm);
+    const u8 opcode = bits::get<10, 2>(instruction);
+    const u8 rm = bits::get<6, 3>(instruction);
+    const u8 rn = bits::get<3, 3>(instruction);
+    const u8 rd = bits::get<0, 3>(instruction);
+    const u32 address = get_reg(rn) + get_reg(rm);
 
     switch(opcode) {
         case 0 : m_bus.write16(address, get_reg(rd)); break;
@@ -258,13 +259,12 @@ void CPU::thumbLoadStoreSigned(u16 instruction) {
 }
 
 void CPU::thumbLoadStoreImmediate(u16 instruction) {
-    bool b = bits::get_bit<12>(instruction);
-    bool l = bits::get_bit<11>(instruction);
-    u8 offset = bits::get<6, 5>(instruction);
-    offset = b ? offset : offset * 4;
-    u8 rn = bits::get<3, 3>(instruction);
-    u8 rd = bits::get<0, 3>(instruction);
-    u32 address = get_reg(rn) + offset;
+    const bool b = bits::get_bit<12>(instruction);
+    const bool l = bits::get_bit<11>(instruction);
+    const u8 offset = bits::get<6, 5>(instruction) * (b ? 1 : 4);
+    const u8 rn = bits::get<3, 3>(instruction);
+    const u8 rd = bits::get<0, 3>(instruction);
+    const u32 address = get_reg(rn) + offset;
 
     if(l) {
         if(b) {
@@ -282,11 +282,11 @@ void CPU::thumbLoadStoreImmediate(u16 instruction) {
 }
 
 void CPU::thumbLoadStoreHalfword(u16 instruction) {
-    bool l = bits::get_bit<11>(instruction);
-    u8 offset = bits::get<6, 5>(instruction) * 2;
-    u8 rn = bits::get<3, 3>(instruction);
-    u8 rd = bits::get<0, 3>(instruction);
-    u32 address = get_reg(rn) + offset;
+    const bool l = bits::get_bit<11>(instruction);
+    const u8 offset = bits::get<6, 5>(instruction) * 2;
+    const u8 rn = bits::get<3, 3>(instruction);
+    const u8 rd = bits::get<0, 3>(instruction);
+    const u32 address = get_reg(rn) + offset;
 
     if(l) {
         set_reg(rd, m_bus.readRotated16(address));
@@ -296,10 +296,10 @@ void CPU::thumbLoadStoreHalfword(u16 instruction) {
 }
 
 void CPU::thumbSPRelativeLoadStore(u16 instruction) {
-    bool l = bits::get_bit<11>(instruction);
-    u8 rd = bits::get<8, 3>(instruction);
-    u16 offset = bits::get<0, 8>(instruction) * 4;
-    u32 address = get_reg(13) + offset;
+    const bool l = bits::get_bit<11>(instruction);
+    const u8 rd = bits::get<8, 3>(instruction);
+    const u16 offset = bits::get<0, 8>(instruction) * 4;
+    const u32 address = get_reg(13) + offset;
 
     if(l) {
         set_reg(rd, m_bus.readRotated32(address));
@@ -309,25 +309,25 @@ void CPU::thumbSPRelativeLoadStore(u16 instruction) {
 }
 
 void CPU::thumbLoadAddress(u16 instruction) {
-    bool sp = bits::get_bit<11>(instruction);
-    u8 rd = bits::get<8, 3>(instruction);
-    u16 offset = bits::get<0, 8>(instruction) << 2;
-    u32 address = sp ? get_reg(13) : bits::align<u32>(get_reg(15));
+    const bool sp = bits::get_bit<11>(instruction);
+    const u8 rd = bits::get<8, 3>(instruction);
+    const u16 offset = bits::get<0, 8>(instruction) << 2;
+    const u32 address = sp ? get_reg(13) : bits::align<u32>(get_reg(15));
 
     set_reg(rd, address + offset);
 }
 
 void CPU::thumbAdjustSP(u16 instruction) {
-    bool s = bits::get_bit<7>(instruction);
-    u16 offset = bits::get<0, 7>(instruction) * 4;
+    const bool s = bits::get_bit<7>(instruction);
+    const u16 offset = bits::get<0, 7>(instruction) * 4;
 
     set_reg(13, get_reg(13) + offset * (s ? -1 : 1));
 }
 
 void CPU::thumbPushPopRegisters(u16 instruction) {
-    bool l = bits::get_bit<11>(instruction);
-    bool r = bits::get_bit<8>(instruction);
-    u8 registers = bits::get<0, 8>(instruction);
+    const bool l = bits::get_bit<11>(instruction);
+    const bool r = bits::get_bit<8>(instruction);
+    const u8 registers = bits::get<0, 8>(instruction);
 
     if(l) {
         u32 address = get_reg(13);
@@ -368,9 +368,9 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
 }
 
 void CPU::thumbLoadStoreMultiple(u16 instruction) {
-    bool l = bits::get_bit<11>(instruction);
-    u8 rn = bits::get<8, 3>(instruction);
-    u8 registers = bits::get<0, 8>(instruction);
+    const bool l = bits::get_bit<11>(instruction);
+    const u8 rn = bits::get<8, 3>(instruction);
+    const u8 registers = bits::get<0, 8>(instruction);
     u32 address = get_reg(rn);
     u32 writeback = address + 4 * bits::popcount<u16>(registers);
 
@@ -419,20 +419,21 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
 }
 
 void CPU::thumbConditionalBranch(u16 instruction) {
-    u8 condition = bits::get<8, 4>(instruction);
+    const u8 condition = bits::get<8, 4>(instruction);
 
     if(!passed(condition)) {
         return;
     }
     
-    s32 immediate = bits::sign_extend<9, s32>(bits::get<0, 8>(instruction) << 1);
+    const s32 immediate = bits::sign_extend<9, s32>(bits::get<0, 8>(instruction) << 1);
 
     set_reg(15, get_reg(15) + immediate);
     flushPipeline();
 }
 
 void CPU::thumbSoftwareInterrupt(u16 instruction) {
-    LOG_DEBUG("SWI {} called from THUMB Address: {:08X}", bits::get<0, 8>(instruction), m_state.pc - 4);
+    const u8 comment = bits::get<0, 8>(instruction);
+    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_map[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 4);
 
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
     set_reg(14, get_reg(15) - 2, MODE_SUPERVISOR);
@@ -444,17 +445,17 @@ void CPU::thumbSoftwareInterrupt(u16 instruction) {
 }
 
 void CPU::thumbUnconditionalBranch(u16 instruction) {
-    s32 immediate = bits::sign_extend<12, s32>(bits::get<0, 11>(instruction) << 1);
+    const s32 immediate = bits::sign_extend<12, s32>(bits::get<0, 11>(instruction) << 1);
 
     set_reg(15, get_reg(15) + immediate);
     flushPipeline();
 }
 
 void CPU::thumbLongBranch(u16 instruction) {
-    bool second = bits::get_bit<11>(instruction);
+    const bool second = bits::get_bit<11>(instruction);
 
     if(second) {
-        u32 lr = get_reg(14);
+        const u32 lr = get_reg(14);
         set_reg(14, (get_reg(15) - 2) | 1);
         set_reg(15, lr + (bits::get<0, 11>(instruction) << 1));
         flushPipeline();
@@ -466,264 +467,5 @@ void CPU::thumbLongBranch(u16 instruction) {
 void CPU::thumbUndefined(u16 instruction) {
     LOG_DEBUG("Undefined THUMB Instruction at Address: {:08X}", m_state.pc - 4);
 }
-
-std::array<void (CPU::*)(u16), 256> CPU::thumb_instruction_lut = {
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbMoveShifted,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbAddSubtract,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbProcessImmediate,
-    &CPU::thumbALUOperation,
-    &CPU::thumbALUOperation,
-    &CPU::thumbALUOperation,
-    &CPU::thumbALUOperation,
-    &CPU::thumbHiRegisterOp,
-    &CPU::thumbHiRegisterOp,
-    &CPU::thumbHiRegisterOp,
-    &CPU::thumbBranchExchange,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbPCRelativeLoad,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreRegister,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreSigned,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreImmediate,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbLoadStoreHalfword,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbSPRelativeLoadStore,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbLoadAddress,
-    &CPU::thumbAdjustSP,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbPushPopRegisters,
-    &CPU::thumbPushPopRegisters,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbPushPopRegisters,
-    &CPU::thumbPushPopRegisters,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbLoadStoreMultiple,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbConditionalBranch,
-    &CPU::thumbUndefined,
-    &CPU::thumbSoftwareInterrupt,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUnconditionalBranch,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbUndefined,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch,
-    &CPU::thumbLongBranch
-};
 
 } //namespace emu

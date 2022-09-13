@@ -9,12 +9,11 @@
 #include "emulator/core/cpu/CPU.hpp"
 #include "emulator/device/VideoDevice.hpp"
 #include "emulator/device/InputDevice.hpp"
-#include <vector>
 
 
 namespace emu {
 
-class GBA {
+class GBA final {
 public:
 
     GBA(VideoDevice &video_device, InputDevice &input_device);
@@ -22,7 +21,7 @@ public:
     void reset();
 
     void step();
-    bool run(u32 cycles);
+    auto run(u32 cycles) -> u32;
     auto getGamePak() -> GamePak&;
     void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);

@@ -83,6 +83,10 @@ auto GamePak::getHeader() -> GamePakHeader& {
     return m_header;
 }
 
+auto GamePak::getTitle() -> const std::string& {
+    return m_title;
+}
+
 auto GamePak::size() -> u32 {
     return m_rom.size();
 }
@@ -114,6 +118,11 @@ void GamePak::parseHeader() {
     m_header.version = m_rom[0xBC];
     m_header.checksum = m_rom[0xBD];
     std::memcpy(m_header.reserved_1, &m_rom[0xBE], sizeof(m_header.reserved_1)); //Also should be zero filled
+
+    char title_str[13];
+    memcpy(title_str, m_header.title, sizeof(m_header.title));
+    title_str[12] = '\0';
+    m_title = title_str;
 }
 
 } //namespace emu

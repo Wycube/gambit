@@ -11,9 +11,7 @@ namespace emu {
 
 namespace dbg {
 
-Debugger::Debugger(Bus &bus) : m_bus(bus) {
-    m_bg_map = new u32[4 * 1024 * 1024];
-}
+Debugger::Debugger(Bus &bus) : m_bus(bus) { }
 
 auto Debugger::read8(u32 address) -> u8 {
     return m_bus.debugRead8(address);
@@ -120,12 +118,8 @@ void Debugger::attachPPU(const u8 *vram) {
     m_ppu_vram = vram;
 }
 
-void Debugger::setRunning(bool run) {
-    m_running.store(run);
-}
-
-auto Debugger::running() -> bool {
-    return m_running.load();
+void Debugger::registerOnBreak(std::function<void ()> on_break) {
+    m_on_break = on_break;
 }
 
 auto Debugger::checkBreakpoints() -> bool {
@@ -133,7 +127,7 @@ auto Debugger::checkBreakpoints() -> bool {
 
     for(const auto &breakpoint : m_breakpoints) {
         if(breakpoint == pc) {
-            setRunning(false);
+            if(m_on_break) m_on_break();
             LOG_DEBUG("Hit breakpoint at pc={:08X}", pc);
             return true;
         }

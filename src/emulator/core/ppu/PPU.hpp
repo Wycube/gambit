@@ -9,7 +9,7 @@
 
 namespace emu {
 
-class PPU {
+class PPU final {
 public:
 
     PPU(VideoDevice &video_device, Scheduler &scheduler, Bus &bus, DMA &dma);

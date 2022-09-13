@@ -14,7 +14,7 @@ namespace emu {
 class DMA;
 class PPU;
 
-class Bus {
+class Bus final {
 public:
 
     Bus(Scheduler &scheduler, Keypad &keypad, Timer &timer, DMA &dma, PPU &ppu);

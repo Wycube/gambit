@@ -9,7 +9,7 @@ namespace emu {
 class Bus;
 
 
-class Timer {
+class Timer final {
 public:
 
     Timer(Scheduler &scheduler, Bus &bus);

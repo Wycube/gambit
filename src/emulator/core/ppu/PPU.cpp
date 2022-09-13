@@ -38,6 +38,10 @@ void PPU::reset() {
     m_state.dispcnt = 0x80;
     m_state.dispstat = 0;
     m_state.line = 125;
+
+    std::memset(m_state.vram, 0, sizeof(m_state.vram));
+    std::memset(m_state.palette, 0, sizeof(m_state.palette));
+    std::memset(m_state.oam, 0, sizeof(m_state.oam));
 }
 
 auto PPU::readIO(u32 address) -> u8 {
@@ -332,9 +336,9 @@ void PPU::getWindowLine() {
     if(bits::get_bit<15>(m_state.dispcnt)) {
         for(int i = 0; i < 128; i++) {
             if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 2 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
-                int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
-                int top = m_state.oam[i * 8];
-                int bottom = (top + height) % 0xFF;
+                const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+                const int top = m_state.oam[i * 8];
+                const int bottom = (top + height) % 0xFF;
                 bool in_vertical = top <= m_state.line && m_state.line < bottom;
 
                 if(top > bottom) {
@@ -366,9 +370,9 @@ void PPU::getWindowLine() {
 
         //Object window
         for(const auto &obj : win_objs) {
-            int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
-            int left = ((m_state.oam[obj * 8 + 3] & 1) << 8) | m_state.oam[obj * 8 + 2];
-            int right = (left + width) % 0x1FF;
+            const int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
+            const int left = ((m_state.oam[obj * 8 + 3] & 1) << 8) | m_state.oam[obj * 8 + 2];
+            const int right = (left + width) % 0x1FF;
             bool in_horizontal = left <= i && i < right;
             
             if(left > right) {
@@ -430,11 +434,11 @@ void PPU::drawObjects() {
         const int tile_width = color_mode ? 8 : 4;
     
         if(mirror_y) local_y = height - local_y - 1;
-        int tile_y = local_y / 8;
+        const int tile_y = local_y / 8;
         local_y %= 8;
 
         for(int i = 0; i < obj.width; i++) {
-            int screen_x = (obj.x + i) % 512;
+            const int screen_x = (obj.x + i) % 512;
 
             if(screen_x >= 240 || !bits::get_bit<4>(m_win_line[screen_x])) {
                 continue;
@@ -444,7 +448,7 @@ void PPU::drawObjects() {
 
             if(mirror_x) local_x = obj.width - local_x - 1;
 
-            int tile_x = local_x / 8;
+            const int tile_x = local_x / 8;
             local_x %= 8;
 
             int tile_address = tile_index;
@@ -581,9 +585,9 @@ void PPU::compositeLine() {
                             case 5 : target_2 = zero_color; break;
                         }
 
-                        u8 red_2 = bits::get<0, 5>(target_2);
-                        u8 green_2 = bits::get<5, 5>(target_2);
-                        u8 blue_2 = bits::get<10, 5>(target_2);
+                        const u8 red_2 = bits::get<0, 5>(target_2);
+                        const u8 green_2 = bits::get<5, 5>(target_2);
+                        const u8 blue_2 = bits::get<10, 5>(target_2);
 
                         red = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)red + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)red_2;
                         green = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)green + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)green_2;

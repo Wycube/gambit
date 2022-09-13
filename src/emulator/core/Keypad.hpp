@@ -19,7 +19,7 @@ enum KeypadInput : u16 {
     BUTTON_L
 };
 
-class Keypad {
+class Keypad final {
 public:
 
     Keypad(InputDevice &input_device);

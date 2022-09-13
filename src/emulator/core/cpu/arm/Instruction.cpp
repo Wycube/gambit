@@ -28,7 +28,7 @@ constexpr char ARM_ENCODINGS[16][13] = {
 };
 
 auto armDetermineType(u32 instruction) -> ArmInstructionType {
-    u16 decoding_bits = (((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF));
+    const u16 decoding_bits = (((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF));
     size_t index = common::const_match_bits<16, 13, ARM_ENCODINGS>(decoding_bits, ARM_UNDEFINED);
     index -= index >= 2; //Adjust for the two PSR Transfer patterns
 

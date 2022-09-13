@@ -26,9 +26,9 @@ auto Background::read(u32 address) -> u8 {
 }
 
 auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
-    int map_width = 32 << (screen_size & 1);
-    int map_height = 32 << (screen_size >> 1);
-    int tile_width = color_mode ? 8 : 4;
+    const int map_width = 32 << (screen_size & 1);
+    const int map_height = 32 << (screen_size >> 1);
+    const int tile_width = color_mode ? 8 : 4;
 
     //Apply offset
     x += h_offset;
@@ -36,15 +36,15 @@ auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
     y += v_offset;
     y %= map_height * 8;
 
-    int tile_x = x / 8;
-    int tile_y = y / 8;
-    int screen_block = (tile_x / 32) + (tile_y / 32) * (map_width / 32);
+    const int tile_x = x / 8;
+    const int tile_y = y / 8;
+    const int screen_block = (tile_x / 32) + (tile_y / 32) * (map_width / 32);
 
-    u32 tile_index = screen_block * 1024 + (tile_x % 32) + (tile_y % 32) * 32;
-    u32 map_data_address = 0x800 * scr_base_block + tile_index * 2;
-    u16 tile_entry = (vram[map_data_address + 1] << 8) | vram[map_data_address];
-    bool mirror_x = bits::get_bit<10>(tile_entry);
-    bool mirror_y = bits::get_bit<11>(tile_entry);
+    const u32 tile_index = screen_block * 1024 + (tile_x % 32) + (tile_y % 32) * 32;
+    const u32 map_data_address = 0x800 * scr_base_block + tile_index * 2;
+    const u16 tile_entry = (vram[map_data_address + 1] << 8) | vram[map_data_address];
+    const bool mirror_x = bits::get_bit<10>(tile_entry);
+    const bool mirror_y = bits::get_bit<11>(tile_entry);
     int tile_pixel_x = x % 8;
     int tile_pixel_y = y % 8;
 
@@ -52,7 +52,7 @@ auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
     if(mirror_y) tile_pixel_y = 7 - tile_pixel_y;
     tile_pixel_x >>= !color_mode;
 
-    u8 palette_selected = bits::get<12, 4>(tile_entry);
+    const u8 palette_selected = bits::get<12, 4>(tile_entry);
     u8 palette_index = vram[0x4000 * char_base_block + bits::get<0, 10>(tile_entry) * tile_width * 8 + tile_pixel_x + tile_pixel_y * tile_width];
     if(!color_mode) {
         bool odd = (x & 1) ^ mirror_x;
@@ -79,36 +79,38 @@ void Background::updateAffineParams() {
 }
 
 auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
-    int map_size = 16 << screen_size;
-    int x2 = _a * (float)x + _b * (float)y + _x;
-    int y2 = _c * (float)x + _d * (float)y + _y;
+    const int map_size = 16 << screen_size;
+    const int x2 = _a * (float)x + _b * (float)y + _x;
+    const int y2 = _c * (float)x + _d * (float)y + _y;
 
     //TODO: Handle the setting in the background control register
     if(x2 < 0 || x2 >= map_size * 8 || y2 < 0 || y2 >= map_size * 8) {
         return 0;
     }
 
-    int tile_x = x2 / 8;
-    int tile_y = y2 / 8;
-    int tile_pixel_x = x2 % 8;
-    int tile_pixel_y = y2 % 8;
+    const int tile_x = x2 / 8;
+    const int tile_y = y2 / 8;
+    const int tile_pixel_x = x2 % 8;
+    const int tile_pixel_y = y2 % 8;
 
-    u32 tile_index = tile_x + tile_y * map_size;
-    u8 tile_entry = vram[0x800 * scr_base_block + tile_index];
-    u8 palette_index = vram[0x4000 * char_base_block + tile_entry * 64 + tile_pixel_x + tile_pixel_y * 8];
+    const u32 tile_index = tile_x + tile_y * map_size;
+    const u8 tile_entry = vram[0x800 * scr_base_block + tile_index];
+    const u8 palette_index = vram[0x4000 * char_base_block + tile_entry * 64 + tile_pixel_x + tile_pixel_y * 8];
 
     return palette_index;
 }
 
 auto Background::getBitmapPixelMode3(int x, int y, const u8 *vram) -> u16 {
-    u32 index = x + y * 240;
+    const u32 index = x + y * 240;
+    
     return (vram[index * 2 + 1] << 8) | vram[index * 2];
 }
 
 auto Background::getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u16 {
-    u32 index = x + y * 240;
-    u32 data_start = frame_1 ? 0xA000 : 0;
-    u8 color_index = vram[data_start + index];
+    const u32 index = x + y * 240;
+    const u32 data_start = frame_1 ? 0xA000 : 0;
+    const u8 color_index = vram[data_start + index];
+    
     return (palette[color_index * 2 + 1] << 8) | palette[color_index * 2];
 }
 
@@ -124,10 +126,10 @@ auto Background::getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1)
 
 //TODO: Window has some weird behavior to implement
 auto Window::insideWindow0(int x, int y) -> bool {
-    u8 left = win0h >> 8;
-    u8 right = win0h & 0xFF;
-    u8 top = win0v >> 8;
-    u8 bottom = win0v & 0xFF;
+    const u8 left = win0h >> 8;
+    const u8 right = win0h & 0xFF;
+    const u8 top = win0v >> 8;
+    const u8 bottom = win0v & 0xFF;
 
     bool in_horizontal = x >= left && x < right;
     bool in_vertical = y >= top && y < bottom;
@@ -144,10 +146,10 @@ auto Window::insideWindow0(int x, int y) -> bool {
 }
 
 auto Window::insideWindow1(int x, int y) -> bool {
-    u8 left = win1h >> 8;
-    u8 right = win1h & 0xFF;
-    u8 top = win1v >> 8;
-    u8 bottom = win1v & 0xFF;
+    const u8 left = win1h >> 8;
+    const u8 right = win1h & 0xFF;
+    const u8 top = win1v >> 8;
+    const u8 bottom = win1v & 0xFF;
 
     bool in_horizontal = x >= left && x < right;
     bool in_vertical = y >= top && y < bottom;
