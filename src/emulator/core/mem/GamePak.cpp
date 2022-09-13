@@ -69,14 +69,6 @@ void GamePak::write(u32 address, T value) {
                 return m_save->write(sub_address, value & 0xFF);
             }
     }
-
-    if(sub_address >= m_rom.size()) {
-       return;
-    }
-
-    for(int i = 0; i < sizeof(T); i++) {
-        m_rom[sub_address + i] = (value >> i * 8) & 0xFF;
-    }
 }
 
 auto GamePak::getHeader() -> GamePakHeader& {

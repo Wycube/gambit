@@ -55,7 +55,7 @@ void log_debug(const std::string &message, LogLevel level, const char *file, con
 #define LOG_MESSAGE(level, message, ...) common::log::log(fmt::format(message, ##__VA_ARGS__), level)
 #define DEBUG_LOG(level, message, ...) common::log::log_debug(fmt::format(message, ##__VA_ARGS__), level, __FILE__, __func__, __LINE__)
 
-// #define ____DEBUG
+#define ____DEBUG
 #if defined(____DEBUG)
     #define LOG_DEBUG(message, ...)     LOG_MESSAGE(common::log::DEBUG, message, ##__VA_ARGS__)
     #define LOGD_DEBUG(message, ...)    DEBUG_LOG(common::log::DEBUG, message, ##__VA_ARGS__)

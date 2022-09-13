@@ -1,5 +1,5 @@
 #include "emulator/core/cpu/CPU.hpp"
-#include "emulator/core/cpu/FunctionMap.hpp"
+#include "emulator/core/cpu/Names.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
@@ -433,7 +433,8 @@ void CPU::thumbConditionalBranch(u16 instruction) {
 
 void CPU::thumbSoftwareInterrupt(u16 instruction) {
     const u8 comment = bits::get<0, 8>(instruction);
-    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_map[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 4);
+    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 4);
+    LOG_DEBUG("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", get_reg(0), get_reg(1), get_reg(2));
 
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
     set_reg(14, get_reg(15) - 2, MODE_SUPERVISOR);

@@ -1,5 +1,5 @@
 #include "emulator/core/cpu/CPU.hpp"
-#include "emulator/core/cpu/FunctionMap.hpp"
+#include "emulator/core/cpu/Names.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
@@ -521,7 +521,8 @@ void CPU::armBranch(u32 instruction) {
 
 void CPU::armSoftwareInterrupt(u32 instruction) {
     const u8 comment = bits::get<16, 8>(instruction);
-    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_map[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 8);
+    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 8);
+    LOG_DEBUG("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", get_reg(0), get_reg(1), get_reg(2));
 
     set_reg(14, get_reg(15) - 4, MODE_SUPERVISOR);
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;

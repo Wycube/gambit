@@ -1,4 +1,5 @@
 #include "CPU.hpp"
+#include "Names.hpp"
 #include "arm/Instruction.hpp"
 #include "thumb/Instruction.hpp"
 #include "common/Log.hpp"
@@ -15,20 +16,10 @@ void CPU::reset() {
     //Setup register banks
     for(int i = 0; i < 16; i++) {
         m_state.banks[0][i] = &get_reg_ref(i, MODE_SYSTEM);
-    }
-    for(int i = 0; i < 16; i++) {
         m_state.banks[1][i] = &get_reg_ref(i, MODE_FIQ);
-    }
-    for(int i = 0; i < 16; i++) {
         m_state.banks[2][i] = &get_reg_ref(i, MODE_IRQ);
-    }
-    for(int i = 0; i < 16; i++) {
         m_state.banks[3][i] = &get_reg_ref(i, MODE_SUPERVISOR);
-    }
-    for(int i = 0; i < 16; i++) {
         m_state.banks[4][i] = &get_reg_ref(i, MODE_ABORT);
-    }
-    for(int i = 0; i < 16; i++) {
         m_state.banks[5][i] = &get_reg_ref(i, MODE_UNDEFINED);
     }
 
@@ -59,6 +50,10 @@ void CPU::step() {
         // }
 
         //08020B0C
+
+        // if(m_state.pc < 0x10000) {
+        //     m_debug.forceBreak();
+        // }
 
         // ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
 
@@ -298,7 +293,7 @@ void CPU::service_interrupt() {
         bool request = bits::get_bit(IF, i);
 
         if(enabled && request) {
-            LOG_DEBUG("Interrupt serviced from source {} at pc = 0x{:08X}", i, m_state.pc);
+            LOG_DEBUG("Interrupt serviced from source {}({}) at pc = 0x{:08X}", interrupt_names[i], i, m_state.pc);
             get_spsr(MODE_IRQ) = m_state.cpsr;
             m_state.cpsr.mode = MODE_IRQ;
             set_reg(14, m_state.cpsr.t ? get_reg(15) + 2 : get_reg(15));

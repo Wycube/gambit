@@ -153,6 +153,13 @@ auto Debugger::getBreakpoints() -> const std::vector<u32>& {
     return m_breakpoints;
 }
 
+void Debugger::forceBreak() {
+    u32 pc = m_cpu_state->cpsr.t ? m_cpu_state->pc - 2 : m_cpu_state->pc - 4;
+
+    if(m_on_break) m_on_break();
+    LOG_DEBUG("Forced break at pc={:08X}", pc);
+}
+
 } //namespace dbg
 
 } //namespace emu

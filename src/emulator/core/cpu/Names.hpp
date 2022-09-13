@@ -3,7 +3,24 @@
 
 namespace emu {
 
-static const char *function_map[] = {
+static const char *interrupt_names[] = {
+    "LCD V-Blank",
+    "LCD H-Blank",
+    "LCD V-Counter",
+    "Timer 0 Overflow",
+    "Timer 1 Overflow",
+    "Timer 2 Overflow",
+    "Timer 3 Overflow",
+    "Serial Communication",
+    "DMA 0",
+    "DMA 1",
+    "DMA 2",
+    "DMA 3",
+    "Keypad",
+    "Game Pak"
+};
+
+static const char *function_names[] = {
     "SoftReset",                       //0x00
     "RegisterRamReset",                //0x01
     "Halt",                            //0x02

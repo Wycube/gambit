@@ -49,6 +49,7 @@ public:
     void addBreakpoint(u32 address);
     void removeBreakpoint(u32 address);
     auto getBreakpoints() -> const std::vector<u32>&;
+    void forceBreak();
 
 private:
 

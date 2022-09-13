@@ -32,14 +32,6 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.getVideoDevice())) {
         m_region_sizes[7] = m_gba.getGamePak().size();
-        // m_debugger.addBreakpoint(0x02038000);
-        // m_debugger.addBreakpoint(0x08005C70);
-        // m_debugger.addBreakpoint(0x08000A92); //Good
-        // m_debugger.addBreakpoint(0x08004D20); //Bad
-        // m_debugger.addBreakpoint(0x08004D10); //Good
-        // m_debugger.addBreakpoint(0x03004210);
-        
-        m_debugger.addBreakpoint(0x0800756E);
     }
 
     void drawScreen() {
