@@ -8,7 +8,7 @@ namespace emu {
 
 enum SaveType {
     NONE,
-    SRAM_32K,       //32KiB
+    SRAM_32K,   //32KiB
     FLASH_64K,  //64KiB
     FLASH_128K, //128KiB
     EEPROM_512, //512 bytes
@@ -19,8 +19,8 @@ class Save {
 public:
 
     virtual ~Save() { }
+
     virtual void reset() = 0;
-    
     virtual auto read(u32 address) -> u8 = 0;
     virtual void write(u32 address, u8 value) = 0;
     // void loadFromFile(const std::string &path);

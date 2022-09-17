@@ -67,7 +67,15 @@ public:
         // m_debugger.addBreakpoint(0x080003C0);
         // m_debugger.addBreakpoint(0x080003B2);
         // m_debugger.addBreakpoint(0x08003168);
-        m_debugger.addBreakpoint(0x080032FC);
+        // m_debugger.addBreakpoint(0x080032FC);
+        // m_debugger.addBreakpoint(0x08003328);
+        // m_debugger.addBreakpoint(0x08011DCA);
+
+        // m_debugger.addBreakpoint(0x08011D5A);
+        // m_debugger.addBreakpoint(0x0800CF2E); //Write to 0x0203B0B4
+        // m_debugger.addBreakpoint(0x0800B46C);
+        // m_debugger.addBreakpoint(0x080B0942);
+        // m_debugger.addBreakpoint(0x080B0498); //Read Flash 128k in chip identification mode 0x0E000001
     }
 
     void drawScreen() {

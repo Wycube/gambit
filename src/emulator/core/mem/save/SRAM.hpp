@@ -12,12 +12,8 @@ public:
     ~SRAM() = default;
 
     void reset() override;
-
     auto read(u32 address) -> u8 override;
     void write(u32 address, u8 value) override;
-
-private:
-
 };
 
 } //namespace emu

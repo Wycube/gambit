@@ -91,6 +91,7 @@ Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_
     m_show_cpu_debug = false;
     m_show_disasm_debug = false;
     m_show_bkpt_debug = false;
+    m_show_scheduler_debug = false;
     m_show_about = false;
     m_show_pak_info = false;
     m_user_data = {this, &m_core};

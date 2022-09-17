@@ -1,6 +1,8 @@
 #include "GamePak.hpp"
 #include "save/EEPROM.hpp"
+#include "save/Flash.hpp"
 #include "save/SRAM.hpp"
+#include "common/Log.hpp"
 
 
 namespace emu {
@@ -22,8 +24,8 @@ auto GamePak::read(u32 address) -> T {
                 return m_save->read(sub_address);
             }
             return 0;
-        case 0xE : //SRAM
-            if(m_save->getType() == SRAM_32K) {
+        case 0xE : //SRAM or Flash
+            if(m_save->getType() == SRAM_32K || m_save->getType() == FLASH_64K || m_save->getType() == FLASH_128K) {
                 return m_save->read(sub_address);
             }
             return 0;
@@ -51,10 +53,12 @@ void GamePak::write(u32 address, T value) {
             if(sizeof(T) == 2 && (m_save->getType() == EEPROM_512 || m_save->getType() == EEPROM_8K)) {
                 return m_save->write(sub_address, value & 0xFF);
             }
-        case 0xE : //SRAM
-            if(m_save->getType() == SRAM_32K) {
+            break;
+        case 0xE : //SRAM or Flash
+            if(m_save->getType() == SRAM_32K || m_save->getType() == FLASH_64K || m_save->getType() == FLASH_128K) {
                 return m_save->write(sub_address, value & 0xFF);
             }
+            break;
     }
 }
 
@@ -75,12 +79,18 @@ void GamePak::loadROM(std::vector<u8> &&rom) {
     parseHeader();
 
     //Get save type, somehow
-    if(strcmp((const char*)m_header.title, "GBAZELDA") == 0 || strcmp((const char*)m_header.title, "GBAZELDA MC") == 0) {
+    if(m_title == "GBAZELDA" || m_title == "GBAZELDA MC") {
         m_save = std::make_unique<EEPROM>(EEPROM_8K);
-    } else if(strcmp((const char*)m_header.title, "METROID4USA") == 0) {
+        LOG_INFO("EEPROM 8k save type detected!");
+    } else if(m_title == "POKEMON EMER" || m_title == "POKEMON RUBY" || m_title == "POKEMON FIRE" || m_title == "POKE DUNGEON") {
+        m_save = std::make_unique<Flash>(FLASH_128K);
+        LOG_INFO("Flash 128k save type detected!");
+    } else if(m_title == "METROID4USA") {
         m_save = std::make_unique<SRAM>();
+        LOG_INFO("SRAM save type detected!");
     } else {
         m_save = std::make_unique<NoSave>();
+        LOG_INFO("No save type detected!");
     }
 }
 
