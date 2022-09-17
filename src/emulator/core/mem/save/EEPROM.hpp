@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Save.hpp"
-#include "common/Types.hpp"
 
 
 namespace emu {

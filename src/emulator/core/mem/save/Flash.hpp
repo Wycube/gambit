@@ -37,6 +37,7 @@ private:
 
     bool m_chip_id_mode;
     bool m_bank_2;
+    bool m_erase_next;
 };
 
 } //namespace emu

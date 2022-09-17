@@ -23,6 +23,7 @@ void Flash::reset() {
     m_state = READY;
     m_chip_id_mode = false;
     m_bank_2 = false;
+    m_erase_next = false;
     
     //Clear all bytes to 255
     memset(m_data.data(), 0xFF, m_data.size());
@@ -30,6 +31,8 @@ void Flash::reset() {
 
 auto Flash::read(u32 address) -> u8 {
     address &= 0xFFFF;
+
+    // LOG_INFO("Flash read from 0x0E00{:04X}", address);
 
     if(m_chip_id_mode && address <= 1) {
         return CHIP_IDS[m_type == FLASH_128K][address];
@@ -55,9 +58,33 @@ void Flash::write(u32 address, u8 value) {
             }
             break;
         case CMD_2:
+            // LOG_INFO("CMD_2 recieving command {:02X} at address 0x0E00{:04X}", value, address);
+
+            if(m_erase_next && (address & 0xFFF) == 0) {
+                if(value == ERASE_SECTOR) {
+                    if(m_bank_2) {
+                        memset(m_data.data() + address + 0x10000, 0xFF, 0x1000);
+                    } else {
+                        memset(m_data.data() + address, 0xFF, 0x1000);
+                    }
+                    m_erase_next = false;
+                    m_state = READY;
+                }
+                break;
+            }
+
             if(address == 0x5555) {
                 //Read the command and do the stuff
-                // LOG_INFO("CMD_2 recieving command {:02X}", value);
+
+                if(m_erase_next) {
+                    if(value == ERASE_CHIP) {
+                        memset(m_data.data(), 0xFF, m_data.size());
+                        m_erase_next = false;
+                        m_state = READY;
+                    }
+                    break;
+                }
+
                 if(value == ENTER_CHIP_ID) {
                     m_chip_id_mode = true;
                     m_state = READY;
@@ -79,12 +106,18 @@ void Flash::write(u32 address, u8 value) {
                     break;
                 }
 
+                if(value == PREPARE_FOR_ERASE) {
+                    m_state = READY;
+                    m_erase_next = true;
+                    break;
+                }
+
                 LOG_ERROR("Unknown Flash command {:02X}", value);
             }
             break;
         case WRITE:
             if(m_bank_2) {
-                m_data[0x1000 + address] = value;
+                m_data[0x10000 + address] = value;
             } else {
                 m_data[address] = value;
             }
