@@ -11,7 +11,7 @@ EmuThread::EmuThread(emu::GBA &core) : m_core(core) {
     m_cycles_left.store(0);
     m_cycle_diff = 0;
 
-    m_core.getDebugger().registerOnBreak([this] () {
+    m_core.debugger.onBreak([this] () {
         m_running.store(false);
         m_clock_speed.store(0);
     });
@@ -34,7 +34,7 @@ void EmuThread::start() {
     }
 
     m_clock_speed.store(0);
-    m_clock_start = m_core.getCurrentTimestamp();
+    m_clock_start = m_core.scheduler.getCurrentTimestamp();
     m_start = std::chrono::steady_clock::now();
     m_running.store(true);
 
@@ -42,8 +42,8 @@ void EmuThread::start() {
         while(true) {
             if(std::chrono::steady_clock::now() >= (m_start + std::chrono::seconds(1))) {
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_start);
-                m_clock_speed.store((m_core.getCurrentTimestamp() - m_clock_start) / ((float)duration.count() / 1000.0f));
-                m_clock_start = m_core.getCurrentTimestamp();
+                m_clock_speed.store((m_core.scheduler.getCurrentTimestamp() - m_clock_start) / ((float)duration.count() / 1000.0f));
+                m_clock_start = m_core.scheduler.getCurrentTimestamp();
                 m_start = std::chrono::steady_clock::now();
             }
 
@@ -159,9 +159,9 @@ void Frontend::drawInterface() {
     //     if(ImGui::MenuItem("Framebuffer")) {
     //         show_vram_debug = true;
     //     }
-    //     if(ImGui::MenuItem("Scheduler")) {
-    //         show_scheduler_debug = true;
-    //     }
+        if(ImGui::MenuItem("Scheduler")) {
+            m_show_scheduler_debug = true;
+        }
         if(ImGui::MenuItem("Pak Info")) {
             m_show_pak_info = true;
         }
@@ -230,10 +230,10 @@ void Frontend::drawInterface() {
     //     ImGui::End();
     // }
 
-    // if(show_scheduler_debug) {
-    //     if(ImGui::Begin("Scheduler", &show_scheduler_debug)) debug_ui.drawSchedulerViewer();
-    //     ImGui::End();
-    // }
+    if(m_show_scheduler_debug) {
+        if(ImGui::Begin("Scheduler", &m_show_scheduler_debug)) m_debug_ui.drawSchedulerViewer();
+        ImGui::End();
+    }
 
     if(m_show_pak_info) {
         if(ImGui::Begin("Pak Info", &m_show_pak_info)) {

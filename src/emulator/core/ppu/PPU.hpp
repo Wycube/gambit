@@ -1,18 +1,16 @@
 #pragma once
 
-#include "emulator/core/Scheduler.hpp"
-#include "emulator/core/mem/Bus.hpp"
-#include "emulator/core/DMA.hpp"
-#include "emulator/device/VideoDevice.hpp"
 #include "Types.hpp"
 
 
 namespace emu {
 
+class GBA;
+
 class PPU final {
 public:
 
-    PPU(VideoDevice &video_device, Scheduler &scheduler, Bus &bus, DMA &dma);
+    PPU(GBA &core);
 
     void reset();
 
@@ -32,8 +30,6 @@ public:
     template<typename T>
     void writeOAM(u32 address, T value);
 
-    void attachDebugger(dbg::Debugger &debugger);
-
 private:
 
     PPUState m_state;
@@ -43,10 +39,7 @@ private:
     u8 m_obj_col[240];
     u8 m_obj_prios[240];
 
-    VideoDevice &m_video_device;
-    Scheduler &m_scheduler;
-    Bus &m_bus;
-    DMA &m_dma;
+    GBA &m_core;
 
     void hblankStart(u64 current, u64 late);
     void hblankEnd(u64 current, u64 late);

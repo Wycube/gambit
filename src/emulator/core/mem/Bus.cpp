@@ -1,12 +1,11 @@
 #include "Bus.hpp"
-#include "emulator/core/DMA.hpp"
-#include "emulator/core/ppu/PPU.hpp"
+#include "emulator/core/GBA.hpp"
 #include "common/Log.hpp"
 
 
 namespace emu {
 
-Bus::Bus(Scheduler &scheduler, Keypad &keypad, Timer &timer, DMA &dma, PPU &ppu) : m_scheduler(scheduler), m_keypad(keypad), m_timer(timer), m_dma(dma), m_ppu(ppu) {
+Bus::Bus(GBA &core) : m_core(core) {
     reset();
 }
 
@@ -17,7 +16,7 @@ void Bus::reset() {
 }
 
 void Bus::cycle(u32 cycles) {
-    m_scheduler.step(cycles);
+    m_core.scheduler.step(cycles);
 }
 
 auto Bus::read8(u32 address) -> u8 {
@@ -138,11 +137,11 @@ auto Bus::read(u32 address) -> T {
 
             return value;
         break;
-        case 0x5 : return m_ppu.readPalette<T>(sub_address); //Palette RAM
+        case 0x5 : return m_core.ppu.readPalette<T>(sub_address); //Palette RAM
         break;
-        case 0x6 : return m_ppu.readVRAM<T>(sub_address); //VRAM
+        case 0x6 : return m_core.ppu.readVRAM<T>(sub_address); //VRAM
         break;
-        case 0x7 : return m_ppu.readOAM<T>(sub_address); //OAM - OBJ Attributes
+        case 0x7 : return m_core.ppu.readOAM<T>(sub_address); //OAM - OBJ Attributes
         break;
         case 0x8 : 
         case 0x9 : //Pak ROM Waitstate 0
@@ -194,11 +193,11 @@ void Bus::write(u32 address, T value) {
                 writeIO((sub_address + i) % sizeof(m_mem.io), (value >> i * 8) & 0xFF);
             }
         break;
-        case 0x5 : m_ppu.writePalette<T>(sub_address, value); //Palette RAM
+        case 0x5 : m_core.ppu.writePalette<T>(sub_address, value); //Palette RAM
         break;
-        case 0x6 : m_ppu.writeVRAM<T>(sub_address, value); //VRAM
+        case 0x6 : m_core.ppu.writeVRAM<T>(sub_address, value); //VRAM
         break;
-        case 0x7 : m_ppu.writeOAM<T>(sub_address, value); //OAM - OBJ Attributes
+        case 0x7 : m_core.ppu.writeOAM<T>(sub_address, value); //OAM - OBJ Attributes
         break;
         case 0x8 : 
         case 0x9 : //Pak ROM Waitstate 0
@@ -224,7 +223,7 @@ void Bus::write(u32 address, T value) {
 
 auto Bus::readIO(u32 address) -> u8 {
     if(address <= 0x56) {
-        return m_ppu.readIO(address);
+        return m_core.ppu.readIO(address);
     }
 
     //BIOS SOUNDBIAS Stub
@@ -233,13 +232,13 @@ auto Bus::readIO(u32 address) -> u8 {
     }
 
     if(address >= 0xB0 && address <= 0xE0) {
-        return m_dma.read8(address);
+        return m_core.dma.read8(address);
     }
     if(address >= 0x100 && address <= 0x10F) {
-        return m_timer.read8(address);
+        return m_core.timer.read8(address);
     }
     if(address >= 0x130 && address <= 0x133) {
-        return m_keypad.read8(address);
+        return m_core.keypad.read8(address);
     }
 
     return m_mem.io[address];
@@ -247,17 +246,17 @@ auto Bus::readIO(u32 address) -> u8 {
 
 void Bus::writeIO(u32 address, u8 value) {
     if(address <= 0x56) {
-        m_ppu.writeIO(address, value);
+        m_core.ppu.writeIO(address, value);
         return;
     }
     if(address >= 0xB0 && address <= 0xE0) {
-        m_dma.write8(address, value);
+        m_core.dma.write8(address, value);
     }
     if(address >= 0x100 && address <= 0x10F) {
-        return m_timer.write8(address, value);
+        return m_core.timer.write8(address, value);
     }
     if(address >= 0x130 && address <= 0x133) {
-        m_keypad.write8(address, value);
+        m_core.keypad.write8(address, value);
         return;
     }
     if((address & ~3) == 0x208) {
@@ -269,6 +268,13 @@ void Bus::writeIO(u32 address, u8 value) {
     if((address & ~1) == 0x202) {
         m_mem.io[address] &= ~value;
         return;
+    }
+
+    //HALTCNT
+    if(address == 0x301) {
+        if(value >> 7 == 0) {
+            m_core.cpu.halt();
+        }
     }
 
     m_mem.io[address] = value;

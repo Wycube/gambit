@@ -12,19 +12,6 @@ template void GamePak::write<u8>(u32 address, u8 value);
 template void GamePak::write<u16>(u32 address, u16 value);
 template void GamePak::write<u32>(u32 address, u32 value);
 
-
-auto GamePak::read8(u32 address) -> u8 {
-    if(address >= m_rom.size()) {
-       return 0;
-    }
-
-    return m_rom[address];
-}
-
-void GamePak::write8(u32 address, u8 value) {
-    //RAM
-}
-
 template<typename T>
 auto GamePak::read(u32 address) -> T {
     u32 sub_address = address & 0xFFFFFF;

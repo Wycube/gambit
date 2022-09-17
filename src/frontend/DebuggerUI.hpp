@@ -30,8 +30,44 @@ inline auto get_mode_str(u8 mode_bits) -> std::string {
 class DebuggerUI {
 public:
 
-    DebuggerUI(emu::GBA &gba) : m_debugger(gba.getDebugger()), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.getVideoDevice())) {
+    DebuggerUI(emu::GBA &gba) : m_debugger(gba.debugger), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.video_device)) {
         m_region_sizes[7] = m_gba.getGamePak().size();
+    
+        // m_debugger.addBreakpoint(0x0304B65C);
+        // m_debugger.addBreakpoint(0x080000C0);
+        // m_debugger.addBreakpoint(0x08000238);
+        // m_debugger.addBreakpoint(0x0800076E);
+        // m_debugger.addBreakpoint(0x080047CE);
+        // m_debugger.addBreakpoint(0x08004802);
+        // m_debugger.addBreakpoint(0x08000E60);
+
+        // m_debugger.addBreakpoint(0x03002864);
+        // m_debugger.addBreakpoint(0x080007d4);
+        // m_debugger.addBreakpoint(0x08000868);
+
+        // m_debugger.addBreakpoint(0x0800D090);
+        // m_debugger.addBreakpoint(0x08011BE4);
+        // m_debugger.addBreakpoint(0x08011BE0);
+        // m_debugger.addBreakpoint(0x08011C0E);
+        // m_debugger.addBreakpoint(0x080B4F66);
+        // m_debugger.addBreakpoint(0x080B29A0);
+        // m_debugger.addBreakpoint(0x080B3946);
+        // m_debugger.addBreakpoint(0x080B30C2);
+        // m_debugger.addBreakpoint(0x080B2B08);
+        // m_debugger.addBreakpoint(0x080B4BFE);
+        // m_debugger.addBreakpoint(0x080B4BEE);
+        // m_debugger.addBreakpoint(0x080B4BDE);
+        // m_debugger.addBreakpoint(0x080B2A7A);
+        // m_debugger.addBreakpoint(0x080B5172);
+        // m_debugger.addBreakpoint(0x080B2A52);
+        // m_debugger.addBreakpoint(0x080B2A36);
+        // m_debugger.addBreakpoint(0x080B27D6);
+        // m_debugger.addBreakpoint(0x08011AB6);
+        // m_debugger.addBreakpoint(0x080003CA);
+        // m_debugger.addBreakpoint(0x080003C0);
+        // m_debugger.addBreakpoint(0x080003B2);
+        // m_debugger.addBreakpoint(0x08003168);
+        m_debugger.addBreakpoint(0x080032FC);
     }
 
     void drawScreen() {
@@ -120,47 +156,49 @@ public:
 
         ImGui::Spacing();
 
-        if(!running) {
-            u32 sp = m_debugger.getCPURegister(13);
-            for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
-                ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
-            }
+        u32 cpsr = m_debugger.getCPUCPSR();
+        u32 spsr = m_debugger.getCPUSPSR(mode);
+        static constexpr char flag_name[7] = {'N', 'Z', 'C', 'V', 'I', 'F', 'T'};
+        static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
+
+        ImGui::Text("CPSR");
+        ImGui::Text("%08X", cpsr);
+        ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(cpsr)).c_str());
+        for(int i = 0; i < sizeof(flag_name); i++) {
+            ImGui::Text("%c:", flag_name[i]);
+            ImGui::SameLine();
+
+            bool set = (cpsr >> flag_bit[i]) & 0x1;
+            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
+            ImGui::Text("%1i", set);
+            ImGui::PopStyleColor();
+
+            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
         }
 
-        // u32 cpsr = m_debugger.getCPUCPSR();
-        // u32 spsr = m_debugger.getCPUSPSR(mode);
-        // static constexpr char flag_name[7] = {'N', 'Z', 'C', 'V', 'I', 'F', 'T'};
-        // static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
+        ImGui::Text("SPSR");
+        ImGui::Text("%08X", spsr);
+        ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(spsr)).c_str());
+        for(int i = 0; i < sizeof(flag_name); i++) {
+            ImGui::Text("%c:", flag_name[i]);
+            ImGui::SameLine();
 
-        // ImGui::Text("CPSR");
-        // ImGui::Text("%08X", cpsr);
-        // ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(cpsr)).c_str());
-        // for(int i = 0; i < sizeof(flag_name); i++) {
-        //     ImGui::Text("%c:", flag_name[i]);
-        //     ImGui::SameLine();
+            bool set = (spsr >> flag_bit[i]) & 0x1;
+            ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
+            ImGui::Text("%1i", set);
+            ImGui::PopStyleColor();
 
-        //     bool set = (cpsr >> flag_bit[i]) & 0x1;
-        //     ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
-        //     ImGui::Text("%1i", set);
-        //     ImGui::PopStyleColor();
+            if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
+        }
 
-        //     if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
-        // }
+        ImGui::Spacing();
 
-        // ImGui::Text("SPSR");
-        // ImGui::Text("%08X", spsr);
-        // ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(spsr)).c_str());
-        // for(int i = 0; i < sizeof(flag_name); i++) {
-        //     ImGui::Text("%c:", flag_name[i]);
-        //     ImGui::SameLine();
-
-        //     bool set = (spsr >> flag_bit[i]) & 0x1;
-        //     ImGui::PushStyleColor(ImGuiCol_Text, set ? ImVec4(0.0f, 0.7f, 0.0f, 1.0f) : ImVec4(0.7f, 0.0f, 0.0f, 1.0f));
-        //     ImGui::Text("%1i", set);
-        //     ImGui::PopStyleColor();
-
-        //     if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
-        // }
+        if(!running) {
+            // u32 sp = m_debugger.getCPURegister(13);
+            // for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
+            //     ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
+            // }
+        }
 
         
         ImGui::EndGroup();
@@ -254,18 +292,25 @@ public:
         ImGui::Checkbox("Thumb", &use_thumb);
 
         static bool go_to_address;
+        static bool go_to_pc;
         static u32 address_input;
 
         ImGui::SameLine();
         if(ImGui::InputScalar("Go to", ImGuiDataType_U32, &address_input, 0, 0, "%X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_AlwaysInsertMode)) {
-            go_to_address = true;
+            // go_to_address = true;
         }
 
-        if(ImGui::Button("Go to button")) {
-            go_to_address = true;
+        // if(ImGui::Button("Go to button")) {
+        //     go_to_address = true;
+        // }
+
+        if(ImGui::Button("Go to PC")) {
+            go_to_pc = true;
+            address_input = m_debugger.getCPURegister(15) - (use_thumb ? 2 : 4);
         }
 
         emu::GamePak &pak = m_gba.getGamePak();
+
 
         if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             ImGui::BeginTable("##Disassembly_Table", 4);
@@ -278,15 +323,15 @@ public:
             bool thumb = use_thumb; //(m_debugger.getCPUCPSR() >> 5) & 1;
             u8 instr_size = thumb ? 2 : 4;
 
-            ImGuiListClipper clipper(pak.size());
+            ImGuiListClipper clipper(101);
             
             while(clipper.Step()) {
-                for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
 
                     //u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
-                    u32 address = 0x08000000 + i * instr_size;
+                    u32 address = address_input + (i - 50) * instr_size;
                     ImGui::Text("%08X: ", address);
 
                     ImGui::TableNextColumn();
@@ -303,14 +348,14 @@ public:
                     }
 
                     //Instruction in hexadecimal
-                    u32 bytes = thumb ? pak.read<u32>(i * instr_size) & 0xFFFF : pak.read<u32>(i * instr_size); //m_debugger.read16(address) : m_debugger.read32(address);
+                    u32 bytes = thumb ? m_debugger.read32(address) & 0xFFFF : m_debugger.read32(address); //m_debugger.read16(address) : m_debugger.read32(address);
                     ImGui::Text("%s", fmt::format(instr_size == 2 ? "{2:02X} {3:02X}" : "{:02X} {:02X} {:02X} {:02X}", 
-                        pak.read8(i * instr_size + 3), pak.read8(i * instr_size + 2), 
-                        pak.read8(i * instr_size + 1), pak.read8(i * instr_size + 0)).c_str());
+                        m_debugger.read8(address + 3), m_debugger.read8(address + 2), 
+                        m_debugger.read8(address + 1), m_debugger.read8(address + 0)).c_str());
 
                     //Actual disassembly
                     ImGui::TableNextColumn();
-                    std::string disassembled = thumb ? emu::thumbDecodeInstruction(bytes, address, pak.read<u16>(i * instr_size - 2)).disassembly : emu::armDecodeInstruction(bytes, address).disassembly;
+                    std::string disassembled = thumb ? emu::thumbDecodeInstruction(bytes, address, m_debugger.read16(address - 2)).disassembly : emu::armDecodeInstruction(bytes, address).disassembly;
 
                     //Seperate mnemonic and registers
                     size_t space = disassembled.find_first_of(' ');
@@ -330,6 +375,13 @@ public:
             if(go_to_address && (address_input >= 0x08000000 && address_input < (0x08000000 + pak.size()))) {
                 ImGui::SetScrollY((address_input - 0x08000000) / instr_size * clipper.ItemsHeight);
                 go_to_address = false;
+            }
+
+            u32 pc = m_debugger.getCPURegister(15);
+
+            if(go_to_pc) {
+                ImGui::SetScrollY(45 * clipper.ItemsHeight);
+                go_to_pc = false;
             }
             
         }

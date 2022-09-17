@@ -2,13 +2,14 @@
 #include "Names.hpp"
 #include "arm/Instruction.hpp"
 #include "thumb/Instruction.hpp"
+#include "emulator/core/GBA.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
 
 
 namespace emu {
 
-CPU::CPU(Bus &bus, dbg::Debugger &debug) : m_bus(bus), m_debug(debug) {
+CPU::CPU(GBA &core) : m_core(core) {
     reset();
 }
 
@@ -23,6 +24,7 @@ void CPU::reset() {
         m_state.banks[5][i] = &get_reg_ref(i, MODE_UNDEFINED);
     }
 
+    m_state.halted = false;
     m_state.cpsr.fromInt(0);
     m_state.cpsr.mode = MODE_SYSTEM;
     std::memset(m_state.spsr, 0, sizeof(m_state.spsr));
@@ -32,6 +34,8 @@ void CPU::reset() {
     set_reg(13, 0x03007FE0, MODE_SUPERVISOR);
     set_reg(14, 0x00000000);
     set_reg(15, 0x08000000);
+
+    m_core.debugger.attachCPUState(&m_state);
 }
 
 void CPU::step() {
@@ -41,7 +45,7 @@ void CPU::step() {
         u32 instruction = m_state.pipeline[0];
 
         m_state.pipeline[0] = m_state.pipeline[1];
-        m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
+        m_state.pipeline[1] = m_core.bus.read32(m_state.pc + 4);
         m_state.pc += 4;
 
         // if(instruction == 0) {
@@ -65,7 +69,7 @@ void CPU::step() {
         u16 instruction = m_state.pipeline[0];
 
         m_state.pipeline[0] = m_state.pipeline[1];
-        m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
+        m_state.pipeline[1] = m_core.bus.read16(m_state.pc + 2);
         m_state.pc += 2;
 
         // if(instruction == 0) {
@@ -81,20 +85,33 @@ void CPU::step() {
     }
 }
 
-void CPU::flushPipeline() {
-    if(!m_state.cpsr.t) {
-        m_state.pipeline[0] = m_bus.read32(m_state.pc);
-        m_state.pipeline[1] = m_bus.read32(m_state.pc + 4);
-        m_state.pc += 4;
-    } else {
-        m_state.pipeline[0] = m_bus.read16(m_state.pc);
-        m_state.pipeline[1] = m_bus.read16(m_state.pc + 2);
-        m_state.pc += 2;
+void CPU::halt() {
+    m_state.halted = true;
+}
+
+auto CPU::halted() -> bool {
+    return m_state.halted;
+}
+
+void CPU::checkForInterrupt() {
+    u16 IE = m_core.bus.debugRead16(0x04000200);
+    u16 IF = m_core.bus.debugRead16(0x04000202);
+
+    if(IE && IF) {
+        m_state.halted = false;
     }
 }
 
-void CPU::attachDebugger(dbg::Debugger &debugger) {
-    debugger.attachCPUState(&m_state);
+void CPU::flushPipeline() {
+    if(!m_state.cpsr.t) {
+        m_state.pipeline[0] = m_core.bus.read32(m_state.pc);
+        m_state.pipeline[1] = m_core.bus.read32(m_state.pc + 4);
+        m_state.pc += 4;
+    } else {
+        m_state.pipeline[0] = m_core.bus.read16(m_state.pc);
+        m_state.pipeline[1] = m_core.bus.read16(m_state.pc + 2);
+        m_state.pc += 2;
+    }
 }
 
 auto CPU::get_reg_ref(u8 reg, u8 mode) -> u32& {
@@ -279,9 +296,9 @@ void CPU::execute_thumb(u16 instruction) {
 }
 
 void CPU::service_interrupt() {
-    u16 IE = m_bus.debugRead16(0x04000200);
-    u16 IF = m_bus.debugRead16(0x04000202);
-    bool IME = m_bus.debugRead8(0x04000208) & 1;
+    u16 IE = m_core.bus.debugRead16(0x04000200);
+    u16 IF = m_core.bus.debugRead16(0x04000202);
+    bool IME = m_core.bus.debugRead8(0x04000208) & 1;
 
     if(!IME || IE == 0 || IF == 0 || m_state.cpsr.i) {
         return;

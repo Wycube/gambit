@@ -11,16 +11,15 @@
 
 namespace emu {
 
-class Bus;
+class GBA;
 struct Event;
-
 
 namespace dbg {
 
 class Debugger final {
 public:
 
-    Debugger(Bus &bus);
+    Debugger(GBA &core);
 
     auto read8(u32 address) -> u8;
     auto read16(u32 address) -> u16;
@@ -44,7 +43,7 @@ public:
     void updateBgImages();
     auto getBgImage(int index) -> const u32*;
 
-    void registerOnBreak(std::function<void ()> on_break);
+    void onBreak(const std::function<void ()> &callback);
     auto checkBreakpoints() -> bool;
     void addBreakpoint(u32 address);
     void removeBreakpoint(u32 address);
@@ -65,7 +64,7 @@ private:
 
     const u8 *m_ppu_vram;
 
-    Bus &m_bus;
+    GBA &m_core;
 };
 
 } //namespace dbg

@@ -1,18 +1,16 @@
 #pragma once
 
-#include "emulator/core/Scheduler.hpp"
 #include "common/Types.hpp"
 
 
 namespace emu {
 
-class Bus;
-
+class GBA;
 
 class Timer final {
 public:
 
-    Timer(Scheduler &scheduler, Bus &bus);
+    Timer(GBA &core);
 
     void reset();
 
@@ -26,8 +24,7 @@ private:
     u16 m_timer_reload[4];
     u16 m_tmcnt[4];
 
-    Scheduler &m_scheduler;
-    Bus &m_bus;
+    GBA &m_core;
 
     auto isTimerRunning(int timer) -> bool;
     auto getTimerIntermediateValue(int timer, bool running) -> u16;

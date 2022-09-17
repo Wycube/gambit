@@ -1,13 +1,13 @@
 #pragma once
 
-#include "emulator/core/mem/Bus.hpp"
-#include "emulator/core/debug/Debugger.hpp"
 #include "Types.hpp"
 #include "common/Types.hpp"
 #include <array>
 
 
 namespace emu {
+
+class GBA;
 
 /* 
  * The CPU is an ARM7TDMI that uses the ARMv4T architecture which supports 
@@ -16,19 +16,16 @@ namespace emu {
 class CPU final {
 public:
 
-    CPU(Bus &bus, dbg::Debugger &debug);
+    CPU(GBA &core);
 
     void reset();
 
     void step();
     void flushPipeline();
-    
-    //Temp
-    auto getPC() const -> u32 {
-        return m_state.pc;
-    }
 
-    void attachDebugger(dbg::Debugger &debugger);
+    void halt();
+    auto halted() -> bool;
+    void checkForInterrupt();
 
 private:
 
@@ -36,8 +33,7 @@ private:
     CPUState m_state;
 
     //Hardware
-    Bus &m_bus;
-    dbg::Debugger &m_debug;
+    GBA &m_core;
 
     auto get_reg_ref(u8 reg, u8 mode = 0) -> u32&;
     auto get_reg_banked(u8 reg, u8 mode = 0) -> u32&;

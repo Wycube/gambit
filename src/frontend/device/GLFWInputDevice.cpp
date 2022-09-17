@@ -24,7 +24,7 @@ void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int
 
     if(user_data != nullptr && action != GLFW_REPEAT) {
         emu::GBA *core = reinterpret_cast<emu::GBA*>(user_data->core);
-        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(core->getInputDevice());
+        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(core->input_device);
         bool pressed = action == GLFW_PRESS;
 
         std::lock_guard lock(device.m_key_mutex);

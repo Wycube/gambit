@@ -1,11 +1,12 @@
 #include "Keypad.hpp"
+#include "emulator/core/GBA.hpp"
 #include "common/Bits.hpp"
 
 
 namespace emu {
 
-Keypad::Keypad(InputDevice &input_device) : m_input_device(input_device) {
-    m_input_device.registerCallback([this] { checkForInterrupt(); });
+Keypad::Keypad(GBA &core) : m_core(core) {
+    m_core.input_device.onInput([this] { checkForInterrupt(); });
     reset();
 }
 
@@ -15,7 +16,7 @@ void Keypad::reset() {
 }
 
 auto Keypad::read8(u32 address) -> u8 {
-    m_keyinput = m_input_device.getKeys();
+    m_keyinput = m_core.input_device.getKeys();
 
     switch(address) {
         case 0x130 : return bits::get<0, 8>(m_keyinput);

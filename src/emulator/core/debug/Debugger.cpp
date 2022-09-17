@@ -1,8 +1,7 @@
 #include "Debugger.hpp"
-#include "emulator/core/mem/Bus.hpp"
 #include "emulator/core/cpu/arm/Instruction.hpp"
 #include "emulator/core/cpu/thumb/Instruction.hpp"
-#include "emulator/core/Scheduler.hpp"
+#include "emulator/core/GBA.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
 
@@ -11,26 +10,26 @@ namespace emu {
 
 namespace dbg {
 
-Debugger::Debugger(Bus &bus) : m_bus(bus) { }
+Debugger::Debugger(GBA &core) : m_core(core) { }
 
 auto Debugger::read8(u32 address) -> u8 {
-    return m_bus.debugRead8(address);
+    return m_core.bus.debugRead8(address);
 }
 
 auto Debugger::read16(u32 address) -> u16 {
-    return m_bus.debugRead16(address);
+    return m_core.bus.debugRead16(address);
 }
 
 auto Debugger::read32(u32 address) -> u32 {
-    return m_bus.debugRead32(address);
+    return m_core.bus.debugRead32(address);
 }
 
 auto Debugger::armDisassembleAt(u32 address) -> std::string {
-    return armDecodeInstruction(m_bus.debugRead32(address), address).disassembly;
+    return armDecodeInstruction(m_core.bus.debugRead32(address), address).disassembly;
 }
 
 auto Debugger::thumbDisassembleAt(u32 address) -> std::string {
-    return thumbDecodeInstruction(m_bus.debugRead16(address), address, m_bus.debugRead16(address - 2)).disassembly;
+    return thumbDecodeInstruction(m_core.bus.debugRead16(address), address, m_core.bus.debugRead16(address - 2)).disassembly;
 }
 
 void Debugger::attachCPUState(const CPUState *state) {
@@ -118,8 +117,8 @@ void Debugger::attachPPU(const u8 *vram) {
     m_ppu_vram = vram;
 }
 
-void Debugger::registerOnBreak(std::function<void ()> on_break) {
-    m_on_break = on_break;
+void Debugger::onBreak(const std::function<void ()> &callback) {
+    m_on_break = callback;
 }
 
 auto Debugger::checkBreakpoints() -> bool {

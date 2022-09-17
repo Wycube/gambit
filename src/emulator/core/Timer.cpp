@@ -1,15 +1,14 @@
 #include "Timer.hpp"
-#include "emulator/core/mem/Bus.hpp"
+#include "emulator/core/GBA.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
+
+constexpr u32 PRESCALER_SELECTIONS[4] = {1, 64, 256, 1024};
 
 
 namespace emu {
 
-static constexpr u32 PRESCALER_SELECTIONS[4] = {1, 64, 256, 1024};
-
-
-Timer::Timer(Scheduler &scheduler, Bus &bus) : m_scheduler(scheduler), m_bus(bus) {
+Timer::Timer(GBA &core) : m_core(core) {
     reset();
 }
 
@@ -89,7 +88,7 @@ auto Timer::isTimerRunning(int timer) -> bool {
 auto Timer::getTimerIntermediateValue(int timer, bool running) -> u16 {
     if(running) {
         //Calculate value based on how long it's been running
-        return m_timer_counter[timer] + (m_scheduler.getCurrentTimestamp() - m_timer_start[timer]) / PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
+        return m_timer_counter[timer] + (m_core.scheduler.getCurrentTimestamp() - m_timer_start[timer]) / PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
     } else {
         return m_timer_counter[timer];
     }
@@ -115,36 +114,36 @@ void Timer::updateTimer(int timer, u8 old_tmcnt) {
 }
 
 void Timer::startTimer(int timer) {
-    LOG_DEBUG("Timer {} started", timer);
+    LOG_INFO("Timer {} started", timer);
 
     //Cascade, timer is incremented when the preceding one overflows
     if(bits::get_bit<2>(m_tmcnt[timer]) && timer != 0) {
         return;
     }
-    
+
     u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-    m_timer_start[timer] = m_scheduler.getCurrentTimestamp();
-    m_scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow);
+    m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
+    m_core.scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow);
 }
 
 void Timer::stopTimer(int timer) {
-    LOG_DEBUG("Timer {} stopped", timer);
+    LOG_INFO("Timer {} stopped", timer);
 
     m_timer_counter[timer] = getTimerIntermediateValue(timer, true);
-    m_scheduler.removeEvent(fmt::format("Timer {} Overflow", timer));
+    m_core.scheduler.removeEvent(fmt::format("Timer {} Overflow", timer));
 }
 
 void Timer::timerOverflowEvent(int timer, u32 current, u32 cycles_late) {
     timerOverflow(timer);
 
     u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-    m_timer_start[timer] = m_scheduler.getCurrentTimestamp();
-    m_scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow - cycles_late);
+    m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
+    m_core.scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow - cycles_late);
 }
 
 void Timer::timerOverflow(int timer) {
     m_timer_counter[timer] = m_timer_reload[timer];
-
+ 
     if(timer < 3 && bits::get_bit<2>(m_tmcnt[timer + 1])) {
         if(++m_timer_counter[timer + 1] == 0) {
             timerOverflow(timer + 1);
@@ -153,7 +152,7 @@ void Timer::timerOverflow(int timer) {
 
     //Request Interrupt if enabled
     if(bits::get_bit<6>(m_tmcnt[timer])) {
-        m_bus.requestInterrupt(static_cast<InterruptSource>(INT_TIM_0 << timer));
+        m_core.bus.requestInterrupt(static_cast<InterruptSource>(INT_TIM_0 << timer));
     }
 }
 

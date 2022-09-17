@@ -1,16 +1,16 @@
 #pragma once
 
-#include "emulator/core/Scheduler.hpp"
-#include "emulator/core/mem/Bus.hpp"
 #include "common/Types.hpp"
 
 
 namespace emu {
 
+class GBA;
+
 class DMA final {
 public:
 
-    DMA(Scheduler &scheduler, Bus &bus);
+    DMA(GBA &core);
 
     void reset();
     auto running() -> bool;
@@ -23,8 +23,7 @@ public:
 
 private:
 
-    Scheduler &m_scheduler; 
-    Bus &m_bus;
+    GBA &m_core;
 
     struct DMAChannel {
         bool active;
@@ -34,6 +33,7 @@ private:
         //Internal Registers
         u32 _source, _destination;
         u16 _length;
+        u32 source_address_mask, destination_address_mask;
     } m_channel[4];
 
     // bool m_dma_active[4];

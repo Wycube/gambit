@@ -70,6 +70,7 @@ private:
     bool m_show_cpu_debug;
     bool m_show_disasm_debug;
     bool m_show_bkpt_debug;
+    bool m_show_scheduler_debug;
     bool m_show_about;
     bool m_show_pak_info;
 

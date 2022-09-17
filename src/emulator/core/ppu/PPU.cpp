@@ -1,4 +1,5 @@
 #include "PPU.hpp"
+#include "emulator/core/GBA.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
 #include <algorithm>
@@ -29,12 +30,12 @@ constexpr int OBJECT_WIDTH_LUT[16]  = {8, 16, 32, 64, 16, 32, 32, 64, 8, 8, 16, 
 constexpr int OBJECT_HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 64, 0, 0, 0, 0};
 
 
-PPU::PPU(VideoDevice &video_device, Scheduler &scheduler, Bus &bus, DMA &dma) : m_video_device(video_device), m_scheduler(scheduler), m_bus(bus), m_dma(dma) {
+PPU::PPU(GBA &core) : m_core(core) {
     reset();
 }
 
 void PPU::reset() {
-    m_scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960);
+    m_core.scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960);
     m_state.dispcnt = 0x80;
     m_state.dispstat = 0;
     m_state.line = 125;
@@ -42,6 +43,8 @@ void PPU::reset() {
     std::memset(m_state.vram, 0, sizeof(m_state.vram));
     std::memset(m_state.palette, 0, sizeof(m_state.palette));
     std::memset(m_state.oam, 0, sizeof(m_state.oam));
+
+    m_core.debugger.attachPPU(m_state.vram);
 }
 
 auto PPU::readIO(u32 address) -> u8 {
@@ -251,16 +254,12 @@ void PPU::writeOAM(u32 address, T value) {
     }
 }
 
-void PPU::attachDebugger(dbg::Debugger &debugger) {
-    debugger.attachPPU(m_state.vram);
-}
-
 void PPU::hblankStart(u64 current, u64 late) {
     m_state.dispstat |= 2;
 
     //Request H-Blank interrupt if enabled
     if(bits::get_bit<4>(m_state.dispstat)) {
-        m_bus.requestInterrupt(INT_LCD_HB);
+        m_core.bus.requestInterrupt(INT_LCD_HB);
     }
 
     //Draw Scanline
@@ -272,7 +271,7 @@ void PPU::hblankStart(u64 current, u64 late) {
         compositeLine();
     }
 
-    m_scheduler.addEvent("Hblank End", [this](u32 a, u32 b) { hblankEnd(a, b); }, 272 - late);
+    m_core.scheduler.addEvent("Hblank End", [this](u32 a, u32 b) { hblankEnd(a, b); }, 272 - late);
 }
 
 void PPU::hblankEnd(u64 current, u64 late) {
@@ -285,16 +284,16 @@ void PPU::hblankEnd(u64 current, u64 late) {
         m_state.dispstat |= 4;
         
         if(bits::get_bit<5>(m_state.dispstat)) {
-            m_bus.requestInterrupt(INT_LCD_VC);
+            m_core.bus.requestInterrupt(INT_LCD_VC);
         }
     }
 
     //DMA Stuff
     if(m_state.line < 160) {
-        m_dma.onHBlank();
+        m_core.dma.onHBlank();
     }
 
-    m_scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960 - late);
+    m_core.scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960 - late);
     
     if(m_state.line == 226) {
         m_state.dispstat &= ~1;
@@ -308,12 +307,12 @@ void PPU::hblankEnd(u64 current, u64 late) {
 
     if(m_state.line == 160) {
         m_state.dispstat |= 1;
-        m_video_device.presentFrame();
-        m_dma.onVBlank();
+        m_core.video_device.presentFrame();
+        m_core.dma.onVBlank();
 
         if(bits::get_bit<3>(m_state.dispstat)) {
             LOG_DEBUG("VBLANK interrupt requested");
-            m_bus.requestInterrupt(INT_LCD_VB);
+            m_core.bus.requestInterrupt(INT_LCD_VB);
         }
     }
 }
@@ -611,7 +610,7 @@ void PPU::compositeLine() {
             blue = blue > 31 ? 31 : blue;
         }
 
-        m_video_device.setPixel(i, m_state.line, (red * 8 << 24) | (green * 8 << 16) | (blue * 8 << 8) | 0xFF);
+        m_core.video_device.setPixel(i, m_state.line, (red * 8 << 24) | (green * 8 << 16) | (blue * 8 << 8) | 0xFF);
     }
 }
 

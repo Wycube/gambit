@@ -1,5 +1,6 @@
 #include "emulator/core/cpu/CPU.hpp"
 #include "emulator/core/cpu/Names.hpp"
+#include "emulator/core/GBA.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
@@ -257,12 +258,12 @@ void CPU::armSingleDataSwap(u32 instruction) {
     const u8 rn = bits::get<16, 4>(instruction);
     const u8 rd = bits::get<12, 4>(instruction);
     const u8 rm = bits::get<0, 4>(instruction);
-    const u32 data_32 = m_bus.readRotated32(get_reg(rn));
+    const u32 data_32 = m_core.bus.readRotated32(get_reg(rn));
 
     if(b) {
-        m_bus.write8(get_reg(rn), get_reg(rm) & 0xFF);
+        m_core.bus.write8(get_reg(rn), get_reg(rm) & 0xFF);
     } else {
-        m_bus.write32(get_reg(rn), get_reg(rm));
+        m_core.bus.write32(get_reg(rn), get_reg(rm));
     }
 
     set_reg(rd, b ? data_32 & 0xFF : data_32);
@@ -294,10 +295,10 @@ void CPU::armHalfwordTransfer(u32 instruction) {
     }
 
     if(sh != 2) {
-        data = l ? m_bus.readRotated16(address) : get_reg(rd);
+        data = l ? m_core.bus.readRotated16(address) : get_reg(rd);
     } else {
         //Should not happen with a store
-        data = m_bus.read8(address);
+        data = m_core.bus.read8(address);
     }
 
     if(l) {
@@ -321,7 +322,7 @@ void CPU::armHalfwordTransfer(u32 instruction) {
             set_reg(rn, offset_address);
         }
 
-        m_bus.write16(address, data);
+        m_core.bus.write16(address, data);
     }
 }
 
@@ -377,9 +378,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         u32 value;
 
         if(b) {
-            value = m_bus.read8(address);
+            value = m_core.bus.read8(address);
         } else {
-            value = m_bus.readRotated32(address);
+            value = m_core.bus.readRotated32(address);
         }
 
         //Writeback is optional with pre-indexed addressing
@@ -400,9 +401,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         }
 
         if(b) {
-            m_bus.write8(address, value & 0xFF);
+            m_core.bus.write8(address, value & 0xFF);
         } else {
-            m_bus.write32(address, value);
+            m_core.bus.write32(address, value);
         }
 
         if(!p || w) {
@@ -444,13 +445,13 @@ void CPU::armBlockTransfer(u32 instruction) {
     if(l) {
         for(int i = 0; i < 15; i++) {
             if(bits::get_bit(registers, i)) {
-                set_reg(i, m_bus.read32(address), mode);
+                set_reg(i, m_core.bus.read32(address), mode);
                 address += 4;
             }
         }
 
         if(registers == 0 || bits::get<15, 1>(registers)) {
-            m_state.pc = m_bus.read32(address) & ~3;
+            m_state.pc = m_core.bus.read32(address) & ~3;
             flushPipeline();
 
             if(registers && s) {
@@ -475,9 +476,9 @@ void CPU::armBlockTransfer(u32 instruction) {
             if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && w && lowest_set) {
-                    m_bus.write32(address, writeback);
+                    m_core.bus.write32(address, writeback);
                 } else {
-                    m_bus.write32(address, get_reg(i, mode));
+                    m_core.bus.write32(address, get_reg(i, mode));
                 }
 
                 address += 4;
@@ -491,7 +492,7 @@ void CPU::armBlockTransfer(u32 instruction) {
                 address += (pu == 0 || pu == 3) ? 4 : 0;
             }
 
-            m_bus.write32(address, m_state.pc + 4);
+            m_core.bus.write32(address, m_state.pc + 4);
         }
 
         if(w && !s) {

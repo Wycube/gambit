@@ -3,81 +3,69 @@
 
 namespace emu {
 
-GBA::GBA(VideoDevice &video_device, InputDevice &input_device) 
-: m_video_device(video_device), m_input_device(input_device), m_keypad(m_input_device), m_timer(m_scheduler, m_bus), m_dma(m_scheduler, m_bus), 
-m_ppu(m_video_device, m_scheduler, m_bus, m_dma), m_bus(m_scheduler, m_keypad, m_timer, m_dma, m_ppu), m_cpu(m_bus, m_debugger), m_debugger(m_bus) {
-    m_scheduler.attachDebugger(m_debugger);
-    m_cpu.attachDebugger(m_debugger);
-    m_ppu.attachDebugger(m_debugger);
+GBA::GBA(VideoDevice &video_device, InputDevice &input_device) : video_device(video_device), input_device(input_device), 
+        debugger(*this), keypad(*this), timer(*this), dma(*this), ppu(*this), bus(*this), cpu(*this) {
+    scheduler.attachDebugger(debugger);
 }
 
 void GBA::reset() {
-    m_scheduler.reset();
-    m_keypad.reset();
-    m_timer.reset();
-    m_dma.reset();
-    m_ppu.reset();
-    m_bus.reset();
-    m_cpu.reset();
-    m_cpu.flushPipeline();
+    scheduler.reset();
+    keypad.reset();
+    timer.reset();
+    dma.reset();
+    ppu.reset();
+    bus.reset();
+    cpu.reset();
+    cpu.flushPipeline();
 }
 
 void GBA::step() {
-    if(m_dma.running()) {
-        m_scheduler.runToNext();
+    if(dma.running() || cpu.halted()) {
+        scheduler.runToNext();
+        cpu.checkForInterrupt();
+        
         return;
     }
 
-    m_cpu.step();
+    cpu.step();
 }
 
 auto GBA::run(u32 cycles) -> u32 {
-    u64 target = m_scheduler.getCurrentTimestamp() + cycles;
+    u64 target = scheduler.getCurrentTimestamp() + cycles;
 
-    while(m_scheduler.getCurrentTimestamp() < target) {
-        if(m_dma.running()) {
-            if(m_scheduler.nextEventTime() < target) {
-                m_scheduler.runToNext();
+    while(scheduler.getCurrentTimestamp() < target) {
+        if(dma.running() || cpu.halted()) {
+            if(scheduler.nextEventTime() < target) {
+                scheduler.runToNext();
             } else {
-                m_scheduler.step(target - m_scheduler.getCurrentTimestamp());
+                scheduler.step(target - scheduler.getCurrentTimestamp());
             }
 
+            cpu.checkForInterrupt();
             continue;
         }
          
-        m_cpu.step();
+        cpu.step();
 
-        if(m_debugger.checkBreakpoints()) {
+        if(debugger.checkBreakpoints()) {
             break;
         }
     }
 
-    return m_scheduler.getCurrentTimestamp() - (target - cycles);
+    return scheduler.getCurrentTimestamp() - (target - cycles);
 }
 
 auto GBA::getGamePak() -> GamePak& {
-    return m_bus.getLoadedPak();
+    return bus.getLoadedPak();
 }
 
 void GBA::loadROM(std::vector<u8> &&rom) {
-    m_bus.loadROM(std::move(rom));
-    m_cpu.flushPipeline();
+    bus.loadROM(std::move(rom));
+    cpu.flushPipeline();
 }
 
 void GBA::loadBIOS(const std::vector<u8> &bios) {
-    m_bus.loadBIOS(bios);
-}
-
-auto GBA::getVideoDevice() -> VideoDevice& {
-    return m_video_device;
-}
-
-auto GBA::getInputDevice() -> InputDevice& {
-    return m_input_device;
-}
-
-auto GBA::getDebugger() -> dbg::Debugger& {
-    return m_debugger;
+    bus.loadBIOS(bios);
 }
 
 } //namespace emu

@@ -2,22 +2,18 @@
 
 #include "GamePak.hpp"
 #include "emulator/core/cpu/Types.hpp"
-#include "emulator/core/Scheduler.hpp"
-#include "emulator/core/Keypad.hpp"
-#include "emulator/core/Timer.hpp"
 #include "common/Types.hpp"
 #include <vector>
 
 
 namespace emu {
 
-class DMA;
-class PPU;
+class GBA;
 
 class Bus final {
 public:
 
-    Bus(Scheduler &scheduler, Keypad &keypad, Timer &timer, DMA &dma, PPU &ppu);
+    Bus(GBA &core);
 
     void reset();
 
@@ -54,11 +50,7 @@ private:
     } m_mem;
 
     GamePak m_pak;
-    Scheduler &m_scheduler;
-    Keypad &m_keypad;
-    Timer &m_timer;
-    DMA &m_dma;
-    PPU &m_ppu;
+    GBA &m_core;
 
     template<typename T>
     auto read(u32 address) -> T;

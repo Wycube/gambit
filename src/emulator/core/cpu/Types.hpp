@@ -72,6 +72,7 @@ struct StatusRegister {
 };
 
 struct CPUState {
+    u32 pipeline[2];
     u32 regs[13];
     u32 banked_regs[12];
     u32 fiq_regs[5];
@@ -79,8 +80,7 @@ struct CPUState {
     u32 *banks[6][16];
     StatusRegister cpsr;
     StatusRegister spsr[5];
-
-    u32 pipeline[2];
+    bool halted;
 };
 
 } //namespace emu

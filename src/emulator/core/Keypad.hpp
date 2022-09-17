@@ -1,10 +1,11 @@
 #pragma once
 
-#include "emulator/device/InputDevice.hpp"
 #include "common/Types.hpp"
 
 
 namespace emu {
+
+class GBA;
 
 enum KeypadInput : u16 {
     BUTTON_A,
@@ -22,7 +23,7 @@ enum KeypadInput : u16 {
 class Keypad final {
 public:
 
-    Keypad(InputDevice &input_device);
+    Keypad(GBA &core);
 
     void reset();
 
@@ -33,7 +34,7 @@ public:
 
 private:
 
-    InputDevice &m_input_device;
+    GBA &m_core;
     u16 m_keyinput;
     u16 m_keycnt;
 };

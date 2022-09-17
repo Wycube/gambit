@@ -1,5 +1,6 @@
 #include "emulator/core/cpu/CPU.hpp"
 #include "emulator/core/cpu/Names.hpp"
+#include "emulator/core/GBA.hpp"
 #include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
@@ -8,7 +9,7 @@
 namespace emu {
 
 void CPU::thumbUnimplemented(u16 instruction) {
-    ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
+    ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_core.bus.debugRead16(m_state.pc - 6));
 
     LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", m_state.pc - 4, decoded.type, decoded.disassembly);
 }
@@ -109,7 +110,7 @@ void CPU::thumbALUOperation(u16 instruction) {
     const u8 opcode = bits::get<6, 4>(instruction);
     const u8 rm = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    const u32 op_1 = get_reg(rd);
+    u32 op_1 = get_reg(rd);
     const u32 op_2 = get_reg(rm);
     u32 result;
     bool shift_carry = m_state.cpsr.c;
@@ -124,7 +125,7 @@ void CPU::thumbALUOperation(u16 instruction) {
         case 0x6 : result = op_1 - op_2 - !m_state.cpsr.c; break;               //SBC
         case 0x7 : result = bits::ror_c(op_1, op_2 & 0xFF, shift_carry); break; //ROR
         case 0x8 : result = op_1 & op_2; break;  //TST
-        case 0x9 : result = -op_2; break;        //NEG
+        case 0x9 : result = -op_2; op_1 = 0; break;        //NEG
         case 0xA : result = op_1 - op_2; break;  //CMP
         case 0xB : result = op_1 + op_2; break;  //CMN
         case 0xC : result = op_1 | op_2; break;  //ORR
@@ -192,7 +193,7 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
         m_state.cpsr.n = result >> 31;
         m_state.cpsr.z = result == 0;
         m_state.cpsr.c = op_1 >= op_2;
-        m_state.cpsr.v = (op_1 >> 31) ^ !(op_2 >> 31) && (op_1 >> 31) ^ (result >> 31);
+        m_state.cpsr.v = (op_1 >> 31) ^ (op_2 >> 31) && (op_1 >> 31) ^ (result >> 31);
     }
 }
 
@@ -217,7 +218,7 @@ void CPU::thumbPCRelativeLoad(u16 instruction) {
     const u16 offset = bits::get<0, 8>(instruction) * 4;
     const u32 address = bits::align<u32>(get_reg(15)) + offset;
     
-    set_reg(rd, m_bus.read32(address));
+    set_reg(rd, m_core.bus.read32(address));
 }
 
 void CPU::thumbLoadStoreRegister(u16 instruction) {
@@ -230,15 +231,15 @@ void CPU::thumbLoadStoreRegister(u16 instruction) {
 
     if(l) {
         if(b) {
-            set_reg(rd, m_bus.read8(address));
+            set_reg(rd, m_core.bus.read8(address));
         } else {
-            set_reg(rd, m_bus.readRotated32(address));
+            set_reg(rd, m_core.bus.readRotated32(address));
         }
     } else {
         if(b) {
-            m_bus.write8(address, get_reg(rd) & 0xFF);
+            m_core.bus.write8(address, get_reg(rd) & 0xFF);
         } else {
-            m_bus.write32(address, get_reg(rd));
+            m_core.bus.write32(address, get_reg(rd));
         }
     }
 }
@@ -251,10 +252,10 @@ void CPU::thumbLoadStoreSigned(u16 instruction) {
     const u32 address = get_reg(rn) + get_reg(rm);
 
     switch(opcode) {
-        case 0 : m_bus.write16(address, get_reg(rd)); break;
-        case 1 : set_reg(rd, bits::sign_extend<8, u32>(m_bus.read8(address))); break;
-        case 2 : set_reg(rd, m_bus.readRotated16(address)); break;
-        case 3 : set_reg(rd, (address & 1) ? bits::sign_extend<8, u32>(m_bus.readRotated16(address) & 0xFF) : bits::sign_extend<16, u32>(m_bus.readRotated16(address))); break;
+        case 0 : m_core.bus.write16(address, get_reg(rd)); break;
+        case 1 : set_reg(rd, bits::sign_extend<8, u32>(m_core.bus.read8(address))); break;
+        case 2 : set_reg(rd, m_core.bus.readRotated16(address)); break;
+        case 3 : set_reg(rd, (address & 1) ? bits::sign_extend<8, u32>(m_core.bus.readRotated16(address) & 0xFF) : bits::sign_extend<16, u32>(m_core.bus.readRotated16(address))); break;
     }
 }
 
@@ -268,15 +269,15 @@ void CPU::thumbLoadStoreImmediate(u16 instruction) {
 
     if(l) {
         if(b) {
-            set_reg(rd, m_bus.read8(address));
+            set_reg(rd, m_core.bus.read8(address));
         } else {
-            set_reg(rd, m_bus.readRotated32(address));
+            set_reg(rd, m_core.bus.readRotated32(address));
         }
     } else {
         if(b) {
-            m_bus.write8(address, get_reg(rd) & 0xFF);
+            m_core.bus.write8(address, get_reg(rd) & 0xFF);
         } else {
-            m_bus.write32(address, get_reg(rd));
+            m_core.bus.write32(address, get_reg(rd));
         }
     }
 }
@@ -289,9 +290,9 @@ void CPU::thumbLoadStoreHalfword(u16 instruction) {
     const u32 address = get_reg(rn) + offset;
 
     if(l) {
-        set_reg(rd, m_bus.readRotated16(address));
+        set_reg(rd, m_core.bus.readRotated16(address));
     } else {
-        m_bus.write16(address, get_reg(rd));
+        m_core.bus.write16(address, get_reg(rd));
     }
 }
 
@@ -302,9 +303,9 @@ void CPU::thumbSPRelativeLoadStore(u16 instruction) {
     const u32 address = get_reg(13) + offset;
 
     if(l) {
-        set_reg(rd, m_bus.readRotated32(address));
+        set_reg(rd, m_core.bus.readRotated32(address));
     } else {
-        m_bus.write32(address, get_reg(rd));
+        m_core.bus.write32(address, get_reg(rd));
     }
 }
 
@@ -334,14 +335,14 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
 
         for(int i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                set_reg(i, m_bus.read32(address));
+                set_reg(i, m_core.bus.read32(address));
                 address += 4;
             }
         }
 
         //Set PC
         if(r) {
-            set_reg(15, m_bus.read32(address));
+            set_reg(15, m_core.bus.read32(address));
             flushPipeline();
             address += 4;
         }
@@ -352,14 +353,14 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
 
         for(int i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                m_bus.write32(address, get_reg(i));
+                m_core.bus.write32(address, get_reg(i));
                 address += 4;
             }
         }
 
         //Store LR
         if(r) {
-            m_bus.write32(address, get_reg(14));
+            m_core.bus.write32(address, get_reg(14));
             address += 4;
         }
 
@@ -377,13 +378,13 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
     if(l) {
         for(int i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                set_reg(i, m_bus.read32(address));
+                set_reg(i, m_core.bus.read32(address));
                 address += 4;
             }
         }
 
         if(registers == 0) {
-            set_reg(15, m_bus.read32(address));
+            set_reg(15, m_core.bus.read32(address));
             flushPipeline();
             writeback = get_reg(rn) + 0x40;
         }
@@ -399,9 +400,9 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
             if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && lowest_set) {
-                    m_bus.write32(address, writeback);
+                    m_core.bus.write32(address, writeback);
                 } else {
-                    m_bus.write32(address, get_reg(i));
+                    m_core.bus.write32(address, get_reg(i));
                 }
 
                 address += 4;
@@ -410,7 +411,7 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
         }
 
         if(registers == 0) {
-            m_bus.write32(address, get_reg(15) + 2);
+            m_core.bus.write32(address, get_reg(15) + 2);
             writeback = get_reg(rn) + 0x40;
         }
 
@@ -462,6 +463,7 @@ void CPU::thumbLongBranch(u16 instruction) {
         flushPipeline();
     } else {
         set_reg(14, get_reg(15) + bits::sign_extend<23, s32>(bits::get<0, 11>(instruction) << 12));
+        // LOG_INFO("Branch long at {:08X}", m_state.pc);
     }
 }
 
