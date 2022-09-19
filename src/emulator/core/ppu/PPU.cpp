@@ -402,7 +402,7 @@ void PPU::drawObjects() {
         if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 0 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
             const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
             const int y = m_state.oam[i * 8];
-            const int bottom = (y + height) % 0x100;
+            const int bottom = (y + height) & 0xFF;
             bool in_vertical = y <= m_state.line && m_state.line < bottom;
 
             if(bottom < y) {
@@ -415,7 +415,7 @@ void PPU::drawObjects() {
                 const int x = ((m_state.oam[i * 8 + 3] & 1) << 8) | m_state.oam[i * 8 + 2];
                 
                 //Check if object is visible on screen
-                if((x + width) % 0x200 < x || x < 240) {
+                if(((x + width) & 0x1FF) < x || x < 240) {
                     active_objs.push_back(ObjectLine{i, x, y > bottom ? bits::sign_extend<8, int>(y) : y, width});
                 }
             }
@@ -450,14 +450,14 @@ void PPU::drawObjects() {
             const int tile_x = local_x / 8;
             local_x %= 8;
 
-            int tile_address = tile_index;
+            int tile_address = tile_index >> color_mode;
             if(linear_mapping) {
                 tile_address += tile_x + tile_y * (obj.width / 8);
             } else {
                 tile_address += tile_x + tile_y * 32;
             }
 
-            u8 palette_index = m_state.vram[0x10000 + tile_address * 32 + (local_x >> !color_mode) + local_y * tile_width];
+            u8 palette_index = m_state.vram[0x10000 + tile_address * (32 << color_mode) + (local_x >> !color_mode) + local_y * tile_width];
             u8 palette_index_4 = palette_index;
 
             if(!color_mode) {

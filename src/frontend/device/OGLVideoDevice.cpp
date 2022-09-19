@@ -1,10 +1,14 @@
 #include "OGLVideoDevice.hpp"
+#include "common/Log.hpp"
 
 
 OGLVideoDevice::OGLVideoDevice() {
+    new_frame = false;
+    m_present_framebuffer = new u32[sizeof(m_internal_framebuffer)];
+
     createTexture();
     clear(0);
-    updateTexture(m_internal_framebuffer);
+    updateTexture(m_present_framebuffer);
 }
 
 OGLVideoDevice::~OGLVideoDevice() {
@@ -14,8 +18,11 @@ OGLVideoDevice::~OGLVideoDevice() {
 }
 
 void OGLVideoDevice::clear(u32 color) {
+    std::lock_guard lock(m_update_mutex);
+
     for(int i = 0; i < sizeof(m_internal_framebuffer) / 4; i++) {
         m_internal_framebuffer[i] = color;
+        m_present_framebuffer[i] = color;
     }
 }
 
@@ -25,13 +32,16 @@ void OGLVideoDevice::setPixel(int x, int y, u32 color) {
 
 void OGLVideoDevice::presentFrame() {
     std::lock_guard lock(m_update_mutex);
+
+    memcpy(m_present_framebuffer, m_internal_framebuffer, sizeof(m_internal_framebuffer));
     new_frame = true;
 }
 
 auto OGLVideoDevice::getTextureID() -> GLuint {
     std::lock_guard lock(m_update_mutex);
+    
     if(new_frame) {
-        updateTexture(m_internal_framebuffer);
+        updateTexture(m_present_framebuffer);
         new_frame = false;
     }
 

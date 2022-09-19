@@ -141,8 +141,26 @@ void Frontend::drawInterface() {
             m_emu_thread.start();
         }
 
+        if(!m_emu_thread.running() && ImGui::MenuItem("Next Frame", "N")) {
+            m_core.run(280896); //1 frame of cycles
+        }
+
         ImGui::EndMenu();
     }
+
+    static bool last_key, last_key_2;
+
+    if(!m_emu_thread.running() && !last_key && glfwGetKey(m_window, GLFW_KEY_N) == GLFW_PRESS) {
+        m_core.run(280896);
+    }
+
+    last_key = glfwGetKey(m_window, GLFW_KEY_N) == GLFW_PRESS;
+
+    if(m_emu_thread.running() && !last_key && glfwGetKey(m_window, GLFW_KEY_P) == GLFW_PRESS) {
+        m_emu_thread.stop();
+    }
+
+    last_key_2 = glfwGetKey(m_window, GLFW_KEY_P) == GLFW_PRESS;
 
     if(ImGui::BeginMenu("Debug")) {
         if(ImGui::MenuItem("CPU")) {
