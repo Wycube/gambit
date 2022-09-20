@@ -12,6 +12,7 @@ struct PPUState {
     u16 bldcnt;
     u16 bldalpha;
     u32 bldy;
+    u32 mosaic;
     u8 palette[1_KiB];
     u8 vram[96_KiB];
     u8 oam[1_KiB];

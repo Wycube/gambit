@@ -75,6 +75,10 @@ auto PPU::readIO(u32 address) -> u8 {
         case 0x49 : return bits::get<8, 8>(m_state.win.winin);
         case 0x4A : return bits::get<0, 8>(m_state.win.winout);
         case 0x4B : return bits::get<8, 8>(m_state.win.winout);
+        case 0x4C : return bits::get<0, 8>(m_state.mosaic);
+        case 0x4D : return bits::get<8, 8>(m_state.mosaic);
+        case 0x4E : return bits::get<16, 8>(m_state.mosaic);
+        case 0x4F : return bits::get<24, 8>(m_state.mosaic);
         case 0x50 : return bits::get<0, 8>(m_state.bldcnt);
         case 0x51 : return bits::get<8, 8>(m_state.bldcnt);
         case 0x52 : return bits::get<0, 8>(m_state.bldalpha);
@@ -170,6 +174,10 @@ void PPU::writeIO(u32 address, u8 value) {
         case 0x49 : bits::set<8, 8>(m_state.win.winin, value); break;
         case 0x4A : bits::set<0, 8>(m_state.win.winout, value); break;
         case 0x4B : bits::set<8, 8>(m_state.win.winout, value); break;
+        case 0x4C : bits::set<0, 8>(m_state.mosaic, value); break;
+        case 0x4D : bits::set<8, 8>(m_state.mosaic, value); break;
+        case 0x4E : bits::set<16, 8>(m_state.mosaic, value); break;
+        case 0x4F : bits::set<24, 8>(m_state.mosaic, value); break;
         case 0x50 : bits::set<0, 8>(m_state.bldcnt, value); break;
         case 0x51 : bits::set<8, 8>(m_state.bldcnt, value); break;
         case 0x52 : bits::set<0, 8>(m_state.bldalpha, value); break;
@@ -184,7 +192,7 @@ void PPU::writeIO(u32 address, u8 value) {
 template<typename T>
 auto PPU::readPalette(u32 address) -> T {
     T value = 0;
-    
+
     for(int i = 0; i < sizeof(T); i++) {
         value |= (m_state.palette[(address + i) % sizeof(m_state.palette)] << i * 8);
     }
@@ -213,7 +221,7 @@ auto PPU::readVRAM(u32 address) -> T {
 template<typename T>
 auto PPU::readOAM(u32 address) -> T {
     T value = 0;
-    
+
     for(int i = 0; i < sizeof(T); i++) {
         value |= (m_state.oam[(address + i) % sizeof(m_state.oam)] << i * 8);
     }
@@ -277,7 +285,7 @@ void PPU::hblankStart(u64 current, u64 late) {
 void PPU::hblankEnd(u64 current, u64 late) {
     m_state.line++;
     m_state.dispstat &= ~2;
-    
+
     //Check VCOUNT
     m_state.dispstat &= ~4;
     if(m_state.line == bits::get<8, 8>(m_state.dispstat)) {
@@ -294,7 +302,7 @@ void PPU::hblankEnd(u64 current, u64 late) {
     }
 
     m_core.scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960 - late);
-    
+
     if(m_state.line == 226) {
         m_state.dispstat &= ~1;
     }
@@ -350,11 +358,11 @@ void PPU::getWindowLine() {
             }
         }
     }
-    
+
     for(int i = 0; i < 240; i++) {
         //Bit 0-3 are bg 0-3 display, and bit 4 is obj display
         m_win_line[i] = bits::get<13, 3>(m_state.dispcnt) != 0 ? bits::get<0, 6>(m_state.win.winout) : 0x3F;
-        
+
         //Window 0
         if(bits::get_bit<13>(m_state.dispcnt) && m_state.win.insideWindow0(i, m_state.line)) {
             m_win_line[i] = bits::get<0, 6>(m_state.win.winin);
@@ -373,7 +381,7 @@ void PPU::getWindowLine() {
             const int left = ((m_state.oam[obj * 8 + 3] & 1) << 8) | m_state.oam[obj * 8 + 2];
             const int right = (left + width) % 0x1FF;
             bool in_horizontal = left <= i && i < right;
-            
+
             if(left > right) {
                 in_horizontal = !(left > i && i >= right);
             }
@@ -431,13 +439,19 @@ void PPU::drawObjects() {
         const int tile_index = ((m_state.oam[obj.obj * 8 + 5] & 3) << 8) | m_state.oam[obj.obj * 8 + 4];
         const bool color_mode = bits::get_bit<5>(m_state.oam[obj.obj * 8 + 1]);
         const int tile_width = color_mode ? 8 : 4;
+        const bool mosaic = bits::get_bit<4>(m_state.oam[obj.obj * 8 + 1]);
     
+        if(mosaic) {
+            local_y = local_y / (bits::get<12, 4>(m_state.mosaic) + 1) * (bits::get<12, 4>(m_state.mosaic) + 1);
+        }
         if(mirror_y) local_y = height - local_y - 1;
+
         const int tile_y = local_y / 8;
         local_y %= 8;
 
         for(int i = 0; i < obj.width; i++) {
-            const int screen_x = (obj.x + i) % 512;
+            int screen_x = (obj.x + i) % 512;
+
 
             if(screen_x >= 240 || !bits::get_bit<4>(m_win_line[screen_x])) {
                 continue;
@@ -445,7 +459,11 @@ void PPU::drawObjects() {
 
             int local_x = i;
 
+            if(mosaic) {
+                local_x = local_x / (bits::get<8, 4>(m_state.mosaic) + 1) * (bits::get<8, 4>(m_state.mosaic) + 1);
+            }
             if(mirror_x) local_x = obj.width - local_x - 1;
+
 
             const int tile_x = local_x / 8;
             local_x %= 8;
