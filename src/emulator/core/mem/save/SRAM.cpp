@@ -4,7 +4,7 @@
 namespace emu {
 
 SRAM::SRAM() {
-    m_data.reserve(32_KiB);
+    m_data.resize(32_KiB);
     m_type = SRAM_32K;
 }
 
@@ -13,19 +13,11 @@ void SRAM::reset() {
 }
 
 auto SRAM::read(u32 address) -> u8 {
-    if(address >= m_data.size()) {
-        return 0;
-    }
-
-    return m_data[address];
+    return m_data[address & 0x7FFF];
 }
 
 void SRAM::write(u32 address, u8 value) {
-    if(address >= m_data.size()) {
-        return;
-    }
-
-    m_data[address] = value;
+    m_data[address & 0x7FFF] = value;
 }
 
 } //namespace emu

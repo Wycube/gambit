@@ -4,7 +4,6 @@
 
 OGLVideoDevice::OGLVideoDevice() {
     new_frame = false;
-    m_present_framebuffer = new u32[sizeof(m_internal_framebuffer)];
 
     createTexture();
     clear(0);
@@ -12,6 +11,8 @@ OGLVideoDevice::OGLVideoDevice() {
 }
 
 OGLVideoDevice::~OGLVideoDevice() {
+    delete[] m_present_framebuffer;
+
     if(m_texture_id != 0) {
         glDeleteTextures(1, &m_texture_id);
     }

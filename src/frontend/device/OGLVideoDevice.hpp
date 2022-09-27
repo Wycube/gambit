@@ -22,7 +22,7 @@ private:
     void createTexture();
     void updateTexture(u32 *pixels);
 
-    u32 *m_present_framebuffer;
+    u32 *m_present_framebuffer = new u32[sizeof(m_internal_framebuffer)];
     GLuint m_texture_id;
     std::mutex m_update_mutex;
     bool new_frame;

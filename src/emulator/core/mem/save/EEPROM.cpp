@@ -10,7 +10,7 @@ EEPROM::EEPROM(SaveType type) {
     }
 
     m_type = type;
-    m_data.reserve(type == EEPROM_512 ? 512 : 8192);
+    m_data.resize(type == EEPROM_512 ? 512 : 8192);
     m_bus_size = type == EEPROM_512 ? 6 : 14;
     reset();
 }

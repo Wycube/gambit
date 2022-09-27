@@ -12,16 +12,17 @@ void Background::write(u32 address, u8 value) {
     } else {
         priority = value & 3;
         char_base_block = (value >> 2) & 3;
+        unused = (value >> 4) & 3;
         mosaic = (value >> 6) & 1;
         color_mode = (value >> 7) & 1;
     }
 }
 
-auto Background::read(u32 address) -> u8 {
+auto Background::read(u32 address, bool regular) -> u8 {
     if(address & 1) {
-        return scr_base_block | (disp_overflow << 5) | (screen_size << 6);
+        return scr_base_block | ((!regular && disp_overflow) << 5) | (screen_size << 6);
     } else {
-        return priority | (char_base_block << 2) | (mosaic << 6) | (color_mode << 7);
+        return priority | (char_base_block << 2) | (unused << 4) | (mosaic << 6) | (color_mode << 7);
     }
 }
 
@@ -68,24 +69,27 @@ auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
     return palette_index;
 }
 
-void Background::updateAffineParams() {
-    _x = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_x)) + (float)bits::get<0, 8>(reference_x) / 256.0f);
-    _y = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_y)) + (float)bits::get<0, 8>(reference_y) / 256.0f);
-
-    _a = ((s8)bits::get<8, 8>(param_a) + (float)bits::get<0, 8>(param_a) / 256.0f);
-    _b = ((s8)bits::get<8, 8>(param_b) + (float)bits::get<0, 8>(param_b) / 256.0f);
-    _c = ((s8)bits::get<8, 8>(param_c) + (float)bits::get<0, 8>(param_c) / 256.0f);
-    _d = ((s8)bits::get<8, 8>(param_d) + (float)bits::get<0, 8>(param_d) / 256.0f);
-}
-
 auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
-    const int map_size = 16 << screen_size;
-    const int x2 = _a * (float)x + _b * (float)y + _x;
-    const int y2 = _c * (float)x + _d * (float)y + _y;
+    float _x = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_x)) + (float)bits::get<0, 8>(reference_x) / 256.0f);
+    float _y = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_y)) + (float)bits::get<0, 8>(reference_y) / 256.0f);
 
-    //TODO: Handle the setting in the background control register
+    float _a = ((s8)bits::get<8, 8>(param_a) + (float)bits::get<0, 8>(param_a) / 256.0f);
+    float _b = ((s8)bits::get<8, 8>(param_b) + (float)bits::get<0, 8>(param_b) / 256.0f);
+    float _c = ((s8)bits::get<8, 8>(param_c) + (float)bits::get<0, 8>(param_c) / 256.0f);
+    float _d = ((s8)bits::get<8, 8>(param_d) + (float)bits::get<0, 8>(param_d) / 256.0f);
+
+    const int map_size = 16 << screen_size;
+    int x2 = _a * (float)x + _b * (float)(y - last_scanline) + _x;
+    int y2 = _c * (float)x + _d * (float)(y - last_scanline) + _y;
+    
     if(x2 < 0 || x2 >= map_size * 8 || y2 < 0 || y2 >= map_size * 8) {
-        return 0;
+        if(disp_overflow) {
+            //TODO: Handle edge cases
+            x2 %= map_size * 8;
+            y2 %= map_size * 8;
+        } else {
+            return 0;
+        }
     }
 
     const int tile_x = x2 / 8;
@@ -125,31 +129,11 @@ auto Background::getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1)
 }
 
 //TODO: Window has some weird behavior to implement
-auto Window::insideWindow0(int x, int y) -> bool {
-    const u8 left = win0h >> 8;
-    const u8 right = win0h & 0xFF;
-    const u8 top = win0v >> 8;
-    const u8 bottom = win0v & 0xFF;
-
-    bool in_horizontal = x >= left && x < right;
-    bool in_vertical = y >= top && y < bottom;
-
-    if(left > right) {
-        in_horizontal = !(x < left && x >= right);
-    }
-
-    if(top > bottom) {
-        in_vertical = !(y < top && y >= bottom);
-    }
-
-    return in_horizontal && in_vertical;
-}
-
-auto Window::insideWindow1(int x, int y) -> bool {
-    const u8 left = win1h >> 8;
-    const u8 right = win1h & 0xFF;
-    const u8 top = win1v >> 8;
-    const u8 bottom = win1v & 0xFF;
+auto Window::insideWindow(int x, int y, int window) -> bool {
+    const u8 left = winh[window] >> 8;
+    const u8 right = winh[window] & 0xFF;
+    const u8 top = winv[window] >> 8;
+    const u8 bottom = winv[window] & 0xFF;
 
     bool in_horizontal = x >= left && x < right;
     bool in_vertical = y >= top && y < bottom;

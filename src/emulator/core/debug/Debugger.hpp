@@ -39,10 +39,6 @@ public:
     auto getEventCycles(u32 index) -> u64;
     auto getCurrentCycle() -> u64;
 
-    void attachPPU(const u8 *vram);
-    void updateBgImages();
-    auto getBgImage(int index) -> const u32*;
-
     void onBreak(const std::function<void ()> &callback);
     auto checkBreakpoints() -> bool;
     void addBreakpoint(u32 address);
@@ -61,8 +57,6 @@ private:
     //Pointer to Scheduler stuff
     const std::vector<Event> *m_scheduler_events;
     const u64 *m_scheduler_timestamp;
-
-    const u8 *m_ppu_vram;
 
     GBA &m_core;
 };

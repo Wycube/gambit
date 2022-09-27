@@ -15,7 +15,7 @@ Flash::Flash(SaveType type) {
     }
 
     m_type = type;
-    m_data.reserve(type == FLASH_64K ? 64_KiB : 128_KiB);
+    m_data.resize(type == FLASH_64K ? 64_KiB : 128_KiB);
     reset();
 }
 

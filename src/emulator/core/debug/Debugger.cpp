@@ -113,10 +113,6 @@ auto Debugger::getCurrentCycle() -> u64 {
     return *m_scheduler_timestamp;
 }
 
-void Debugger::attachPPU(const u8 *vram) {
-    m_ppu_vram = vram;
-}
-
 void Debugger::onBreak(const std::function<void ()> &callback) {
     m_on_break = callback;
 }

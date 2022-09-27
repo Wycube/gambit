@@ -4,6 +4,11 @@
 #include "common/Log.hpp"
 
 
+//Internal Memory (27 bit address) or Any Memory (28 bit address)
+static constexpr u32 source_address_mask[4] = {0x07FFFFFF, 0x0FFFFFFF, 0x0FFFFFFF, 0x0FFFFFFF};
+static constexpr u32 destination_address_mask[4] = {0x07FFFFFF, 0x07FFFFFF, 0x07FFFFFF, 0x0FFFFFFF};
+static constexpr u16 length_mask[4] = {0x3FFF, 0x3FFF, 0x3FFF, 0xFFFF};
+
 namespace emu {
 
 DMA::DMA(GBA &core) : m_core(core) {
@@ -17,10 +22,6 @@ void DMA::reset() {
         m_channel[i].destination = 0;
         m_channel[i].length = 0;
         m_channel[i].control = 0;
-        
-        //Internal Memory (27 bit address) or Any Memory (28 bit address)
-        m_channel[i].source_address_mask = i == 0 ? 0x07FFFFFF : 0x0FFFFFFF;
-        m_channel[i].destination_address_mask = i != 3 ? 0x07FFFFFF : 0x0FFFFFFF;
     }
 }
 
@@ -70,6 +71,7 @@ void DMA::write8(u32 address, u8 value) {
         }
 
         LOG_DEBUG("DMA {} enabled", dma_n);
+        LOG_DEBUG("DMA Number of transfers: {}", bits::get<0, 16>(control));
         LOG_DEBUG("DMA start timing {}", bits::get<12, 2>(control));
         LOG_DEBUG("DMA destination control {}", bits::get<5, 2>(control));
         LOG_DEBUG("DMA source control {}", bits::get<7, 2>(control));
@@ -141,10 +143,10 @@ void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
 template<typename T>
 void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
-    u32 source = m_channel[dma_n]._source & m_channel[dma_n].source_address_mask;
-    u32 destination = m_channel[dma_n]._destination & m_channel[dma_n].destination_address_mask;
+    u32 source = m_channel[dma_n]._source & source_address_mask[dma_n];
+    u32 destination = m_channel[dma_n]._destination & destination_address_mask[dma_n];
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x1F : m_channel[dma_n].control;
-    int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length;
+    int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & length_mask[dma_n];
     LOG_DEBUG("WOAH, DMA-ing from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
 
     for(int i = 0; i < length; i++) {

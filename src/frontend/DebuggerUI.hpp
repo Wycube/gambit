@@ -76,6 +76,8 @@ public:
         // m_debugger.addBreakpoint(0x0800B46C);
         // m_debugger.addBreakpoint(0x080B0942);
         // m_debugger.addBreakpoint(0x080B0498); //Read Flash 128k in chip identification mode 0x0E000001
+
+        m_debugger.addBreakpoint(0x080E1C4E);
     }
 
     void drawScreen() {
@@ -299,21 +301,27 @@ public:
         static bool use_thumb; 
         ImGui::Checkbox("Thumb", &use_thumb);
 
-        static bool go_to_address;
-        static bool go_to_pc;
+        static bool scroll_to_center;
+        static bool follow_pc;
         static u32 address_input;
 
         ImGui::SameLine();
         if(ImGui::InputScalar("Go to", ImGuiDataType_U32, &address_input, 0, 0, "%X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_AlwaysInsertMode)) {
-            // go_to_address = true;
+            scroll_to_center = true;
         }
 
         // if(ImGui::Button("Go to button")) {
         //     go_to_address = true;
         // }
 
-        if(ImGui::Button("Go to PC")) {
-            go_to_pc = true;
+        ImGui::Checkbox("Follow PC", &follow_pc);
+
+        if(!follow_pc) {
+            ImGui::SameLine();
+        }
+
+        if(follow_pc || ImGui::Button("Go to PC")) {
+            scroll_to_center = true;
             address_input = m_debugger.getCPURegister(15) - (use_thumb ? 2 : 4);
         }
 
@@ -380,16 +388,16 @@ public:
             //     ImGui::SetScrollY(47.5f * clipper.ItemsHeight);
             // }
 
-            if(go_to_address && (address_input >= 0x08000000 && address_input < (0x08000000 + pak.size()))) {
-                ImGui::SetScrollY((address_input - 0x08000000) / instr_size * clipper.ItemsHeight);
-                go_to_address = false;
-            }
+            // if(go_to_address && (address_input >= 0x08000000 && address_input < (0x08000000 + pak.size()))) {
+            //     ImGui::SetScrollY((address_input - 0x08000000) / instr_size * clipper.ItemsHeight);
+            //     go_to_address = false;
+            // }
 
             u32 pc = m_debugger.getCPURegister(15);
 
-            if(go_to_pc) {
+            if(scroll_to_center) {
                 ImGui::SetScrollY(45 * clipper.ItemsHeight);
-                go_to_pc = false;
+                scroll_to_center = false;
             }
             
         }

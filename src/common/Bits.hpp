@@ -17,8 +17,8 @@ constexpr auto get_bit(T value) -> bool {
 
 template<typename T>
 constexpr auto get_bit(T value, u8 bit) -> bool {
-    // assert(std::is_integral_v<T>);
-    // assert(bit < sizeof(T) * 8);
+    assert(std::is_integral_v<T>);
+    assert(bit < sizeof(T) * 8);
 
 
     return value >> bit & 1;
@@ -46,7 +46,7 @@ constexpr void set(T &value, U other) {
 template<typename T>
 constexpr auto get(u8 start, u8 size, T value) -> T {
     static_assert(std::is_integral_v<T>);
-    // assert((start + size) <= sizeof(T) * 8);
+    assert((start + size) <= sizeof(T) * 8);
 
     return value >> start & ((static_cast<T>(1) << size) - 1);
 }
@@ -55,8 +55,8 @@ template<typename T, typename U>
 constexpr void set(u8 start, u8 size, T &value, U other) {
     static_assert(std::is_integral_v<T>);
     static_assert(std::is_integral_v<U>);
-    // assert((start + size) <= sizeof(T) * 8);
-    // assert(size <= sizeof(U) * 8);
+    assert((start + size) <= sizeof(T) * 8);
+    assert(size <= sizeof(U) * 8);
 
     T mask = (static_cast<T>(1) << size) - 1;
     value = (value & ~(mask << start)) | ((other & mask) << start);
