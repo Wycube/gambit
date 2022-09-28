@@ -71,7 +71,6 @@ void DMA::write8(u32 address, u8 value) {
         }
 
         LOG_DEBUG("DMA {} enabled", dma_n);
-        LOG_DEBUG("DMA Number of transfers: {}", bits::get<0, 16>(control));
         LOG_DEBUG("DMA start timing {}", bits::get<12, 2>(control));
         LOG_DEBUG("DMA destination control {}", bits::get<5, 2>(control));
         LOG_DEBUG("DMA source control {}", bits::get<7, 2>(control));

@@ -336,7 +336,7 @@ void PPU::clearBuffers() {
     memset(m_bg_col[2], 0, sizeof(m_bg_col[2]));
     memset(m_bg_col[3], 0, sizeof(m_bg_col[3]));
     memset(m_obj_col, 0, sizeof(m_obj_col));
-    memset(m_obj_prios, 6, sizeof(m_obj_prios));
+    memset(m_obj_info, 6, sizeof(m_obj_info));
 }
 
 void PPU::getWindowLine() {
@@ -398,23 +398,22 @@ void PPU::getWindowLine() {
     }
 }
 
-struct ObjectLine {
-    int obj, x, y, width;
-};
-
-void PPU::drawObjects() {
-    if(!bits::get_bit<12>(m_state.dispcnt)) {
-        return;
-    }
-
-    std::vector<ObjectLine> active_objs;
-    const bool linear_mapping = bits::get_bit<6>(m_state.dispcnt);
+auto PPU::getSpriteLines() -> std::vector<Object> {
+    std::vector<Object> lines;
 
     for(int i = 127; i >= 0; i--) {
-        if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 0 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
-            const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+        u8 mode = bits::get<2, 2>(m_state.oam[i * 8 + 1]);
+        u8 flags = bits::get<0, 2>(m_state.oam[i * 8 + 1]);
+        
+        if(mode < 2 && flags != 2) {
+            int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+            
+            // if(flags == 3) {
+            //     height *= 2;
+            // }
+            
             const int y = m_state.oam[i * 8];
-            const int bottom = (y + height) & 0xFF;
+            const int bottom = (y + (flags == 3 ? height * 2 : height)) & 0xFF;
             bool in_vertical = y <= m_state.line && m_state.line < bottom;
 
             if(bottom < y) {
@@ -423,41 +422,55 @@ void PPU::drawObjects() {
 
             //Check if object is on this line
             if(in_vertical) {
-                const int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+                int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
                 const int x = ((m_state.oam[i * 8 + 3] & 1) << 8) | m_state.oam[i * 8 + 2];
                 
+                // if(flags == 3) {
+                //     width *= 2;
+                // }
+
                 //Check if object is visible on screen
                 if(((x + width) & 0x1FF) < x || x < 240) {
-                    active_objs.push_back(ObjectLine{i, x, y > bottom ? bits::sign_extend<8, int>(y) : y, width});
+                    Object obj;
+                    obj.x = x;
+                    obj.y = y > bottom ? bits::sign_extend<8, int>(y) : y;
+                    obj.index = i;
+                    obj.width = width;
+                    obj.height = height;
+                    obj.affine = (flags & 1) == 1;
+                    obj.double_size = flags == 3;
+                    obj.param_select = bits::get<1, 5>(m_state.oam[i * 8 + 3]);
+                    lines.push_back(obj);
                 }
             }
         }
     }
 
+    return lines;
+}
+
+void PPU::drawObjects() {
+    if(!bits::get_bit<12>(m_state.dispcnt)) {
+        return;
+    }
+
+    std::vector<Object> active_objs = getSpriteLines();
+
     for(const auto &obj : active_objs) {
-        int local_y = m_state.line - obj.y;
-        const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[obj.obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj.obj * 8 + 3])];
-        const int priority = bits::get<2, 2>(m_state.oam[obj.obj * 8 + 5]);
-        const bool mirror_x = bits::get_bit<4>(m_state.oam[obj.obj * 8 + 3]);
-        const bool mirror_y = bits::get_bit<5>(m_state.oam[obj.obj * 8 + 3]);
-        const int tile_index = (((m_state.oam[obj.obj * 8 + 5] & 3) << 8) | m_state.oam[obj.obj * 8 + 4]);
-        const bool color_mode = bits::get_bit<5>(m_state.oam[obj.obj * 8 + 1]);
-        const int tile_width = color_mode ? 8 : 4;
-        const bool mosaic = bits::get_bit<4>(m_state.oam[obj.obj * 8 + 1]);
+        int local_y = m_state.line - obj.y;  
+        const int priority = bits::get<2, 2>(m_state.oam[obj.index * 8 + 5]);
+        const bool mosaic = bits::get_bit<4>(m_state.oam[obj.index * 8 + 1]);
     
         if(mosaic) {
             local_y = local_y / (bits::get<12, 4>(m_state.mosaic) + 1) * (bits::get<12, 4>(m_state.mosaic) + 1);
         }
-        if(mirror_y) local_y = height - local_y - 1;
 
-        const int tile_y = local_y / 8;
-        local_y %= 8;
+        int obj_width = obj.double_size ? obj.width * 2 : obj.width;
 
-        for(int i = 0; i < obj.width; i++) {
-            int screen_x = (obj.x + i) % 512;
+        for(int i = 0; i < obj_width; i++) {
+            int screen_x = obj.getScreenX(i);
 
-
-            if(screen_x >= 240 || !bits::get_bit<4>(m_win_line[screen_x])) {
+            if(screen_x > 240 || !bits::get_bit<4>(m_win_line[screen_x])) {
                 continue;
             }
 
@@ -466,35 +479,14 @@ void PPU::drawObjects() {
             if(mosaic) {
                 local_x = local_x / (bits::get<8, 4>(m_state.mosaic) + 1) * (bits::get<8, 4>(m_state.mosaic) + 1);
             }
-            if(mirror_x) local_x = obj.width - local_x - 1;
 
+            u8 palette_index = obj.getObjectPixel(local_x, local_y, m_state);
 
-            int tile_x = local_x / 8;
-            local_x %= 8;
+            if(priority <= (m_obj_info[screen_x] & 7) && palette_index != 0) {
+                bool is_semi_transparent = bits::get<2, 2>(m_state.oam[obj.index * 8 + 1]) == 1;
 
-            if(color_mode) {
-                tile_x <<= 1;
-            }
-
-            int tile_address = tile_index;
-            if(linear_mapping) {
-                tile_address += tile_x + tile_y * (obj.width >> (color_mode ? 2 : 3));
-            } else {
-                tile_address += (tile_x & (color_mode ? ~1 : ~0)) + tile_y * 32;
-            }
-            tile_address &= 0x3FF;
-
-            u8 palette_index = m_state.vram[0x10000 + tile_address * 32 + (local_x >> !color_mode) + local_y * tile_width];
-            u8 palette_index_4 = palette_index;
-
-            if(!color_mode) {
-                palette_index = (palette_index >> (local_x & 1) * 4) & 0xF;
-                palette_index_4 = palette_index + bits::get<4, 4>(m_state.oam[obj.obj * 8 + 5]) * 16;
-            }
-
-            if(priority <= m_obj_prios[screen_x] && palette_index != 0) {
-                m_obj_col[screen_x] = palette_index_4;
-                m_obj_prios[screen_x] = priority;
+                m_obj_col[screen_x] = palette_index;
+                m_obj_info[screen_x] = priority | (is_semi_transparent << 3);
             }
         }
     }
@@ -564,7 +556,7 @@ void PPU::compositeLine() {
         priorities[3] |= m_bg_col[3][i] != 0 && bits::get_bit<3>(m_win_line[i]) ? m_state.bg[3].priority + 1 : 6;
 
         //Object pixel
-        priorities[4] |= m_obj_col[i] != 0 && bits::get_bit<4>(m_win_line[i]) ? m_obj_prios[i] : 6;
+        priorities[4] |= m_obj_col[i] != 0 && bits::get_bit<4>(m_win_line[i]) ? m_obj_info[i] & 7 : 6;
         
         //Backdrop
         priorities[5] |= 5;
@@ -575,14 +567,18 @@ void PPU::compositeLine() {
 
         u16 target_1;
 
-        //Find first target (Topmost pixel)
-        switch(priorities[0] >> 3) {
-            case 0 : target_1 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
-            case 1 : target_1 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
-            case 2 : target_1 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
-            case 3 : target_1 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
-            case 4 : target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
-            case 5 : target_1 = zero_color; break;
+        if(m_obj_info[i] >> 3 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3)) {
+            target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2];
+        } else {
+            //Find first target (Topmost pixel)
+            switch(priorities[0] >> 3) {
+                case 0 : target_1 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
+                case 1 : target_1 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
+                case 2 : target_1 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
+                case 3 : target_1 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
+                case 4 : target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
+                case 5 : target_1 = zero_color; break;
+            }
         }
 
         u8 red = bits::get<0, 5>(target_1);

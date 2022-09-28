@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Types.hpp"
+#include <vector>
 
 
 namespace emu {
@@ -37,7 +38,7 @@ private:
     u16 m_bmp_col[240];
     u8 m_bg_col[4][240];
     u8 m_obj_col[240];
-    u8 m_obj_prios[240];
+    u8 m_obj_info[240];
 
     GBA &m_core;
 
@@ -46,9 +47,14 @@ private:
 
     void clearBuffers();
     void getWindowLine();
+    auto getSpriteLines() -> std::vector<Object>;
     void drawObjects();
     void drawBackground();
     void compositeLine();
+
+    //auto getObjectPosition()
+    //auto getObjectPositionAffine()
+    //auto getObjectPixel()
 };
 
 } //namespace emu

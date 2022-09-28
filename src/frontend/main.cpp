@@ -114,8 +114,8 @@ int main(int argc, char *argv[]) {
             bios[i] = static_cast<u8>(bios_file.get());
         }
 
-        app.loadROM(std::move(rom));
         app.loadBIOS(bios);
+        app.loadROM(std::move(rom));
     }
 
     //Close file streams

@@ -5,6 +5,8 @@
 
 namespace emu {
 
+struct PPUState;
+
 enum BackgroundType {
     REGULAR,
     AFFINE,
@@ -31,18 +33,32 @@ struct Background {
 
     auto getTextPixel(int x, int y, const u8 *vram) -> u8;
     auto getAffinePixel(int x, int y, const u8 *vram) -> u8;
-
     auto getBitmapPixelMode3(int x, int y, const u8 *vram) -> u16;
     auto getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u16;
     auto getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1) -> u16;
 
     u8 last_scanline = 0;
 
-    private:
+private:
+
+    void getAffineCoords(int &x, int &y);
 
     //Switch to fixed-point later on
     // float _x, _y;
     // float _a, _b, _c, _d;
+};
+
+struct Object {
+    auto getScreenX(int local_x) const -> int;
+    auto getObjectPixel(int local_x, int local_y, const PPUState &state) const -> u8;
+    void getAffineCoords(int &local_x, int &local_y, const PPUState &state) const;
+
+    int width, height;
+    int index;
+    int x, y;
+    bool affine;
+    bool double_size;
+    int param_select;
 };
 
 struct Window {

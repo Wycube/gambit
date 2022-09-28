@@ -1,4 +1,5 @@
 #include "Drawing.hpp"
+#include "Types.hpp"
 #include "common/Bits.hpp"
 
 
@@ -70,32 +71,23 @@ auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
 }
 
 auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
-    float _x = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_x)) + (float)bits::get<0, 8>(reference_x) / 256.0f);
-    float _y = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_y)) + (float)bits::get<0, 8>(reference_y) / 256.0f);
-
-    float _a = ((s8)bits::get<8, 8>(param_a) + (float)bits::get<0, 8>(param_a) / 256.0f);
-    float _b = ((s8)bits::get<8, 8>(param_b) + (float)bits::get<0, 8>(param_b) / 256.0f);
-    float _c = ((s8)bits::get<8, 8>(param_c) + (float)bits::get<0, 8>(param_c) / 256.0f);
-    float _d = ((s8)bits::get<8, 8>(param_d) + (float)bits::get<0, 8>(param_d) / 256.0f);
-
     const int map_size = 16 << screen_size;
-    int x2 = _a * (float)x + _b * (float)(y - last_scanline) + _x;
-    int y2 = _c * (float)x + _d * (float)(y - last_scanline) + _y;
-    
-    if(x2 < 0 || x2 >= map_size * 8 || y2 < 0 || y2 >= map_size * 8) {
+    getAffineCoords(x, y);
+
+    if(x < 0 || x >= map_size * 8 || y < 0 || y >= map_size * 8) {
         if(disp_overflow) {
             //TODO: Handle edge cases
-            x2 %= map_size * 8;
-            y2 %= map_size * 8;
+            x %= map_size * 8;
+            y %= map_size * 8;
         } else {
             return 0;
         }
     }
 
-    const int tile_x = x2 / 8;
-    const int tile_y = y2 / 8;
-    const int tile_pixel_x = x2 % 8;
-    const int tile_pixel_y = y2 % 8;
+    const int tile_x = x / 8;
+    const int tile_y = y / 8;
+    const int tile_pixel_x = x % 8;
+    const int tile_pixel_y = y % 8;
 
     const u32 tile_index = tile_x + tile_y * map_size;
     const u8 tile_entry = vram[0x800 * scr_base_block + tile_index];
@@ -105,12 +97,14 @@ auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
 }
 
 auto Background::getBitmapPixelMode3(int x, int y, const u8 *vram) -> u16 {
+    getAffineCoords(x, y);
     const u32 index = x + y * 240;
     
     return (vram[index * 2 + 1] << 8) | vram[index * 2];
 }
 
 auto Background::getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u16 {
+    getAffineCoords(x, y);
     const u32 index = x + y * 240;
     const u32 data_start = frame_1 ? 0xA000 : 0;
     const u8 color_index = vram[data_start + index];
@@ -119,6 +113,8 @@ auto Background::getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *pal
 }
 
 auto Background::getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1) -> u16 {
+    getAffineCoords(x, y);
+
     if(x > 160 || y > 128) {
         return 0;
     }
@@ -126,6 +122,97 @@ auto Background::getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1)
     u32 index = x + y * 160;
     u32 data_start = frame_1 ? 0xA000 : 0;
     return vram[data_start + index];
+}
+
+void Background::getAffineCoords(int &x, int &y) {
+    //This could be done better
+    float _x = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_x)) + (float)bits::get<0, 8>(reference_x) / 256.0f);
+    float _y = (bits::sign_extend<20, s32>(bits::get<8, 20>(reference_y)) + (float)bits::get<0, 8>(reference_y) / 256.0f);
+
+    float _a = ((s8)bits::get<8, 8>(param_a) + (float)bits::get<0, 8>(param_a) / 256.0f);
+    float _b = ((s8)bits::get<8, 8>(param_b) + (float)bits::get<0, 8>(param_b) / 256.0f);
+    float _c = ((s8)bits::get<8, 8>(param_c) + (float)bits::get<0, 8>(param_c) / 256.0f);
+    float _d = ((s8)bits::get<8, 8>(param_d) + (float)bits::get<0, 8>(param_d) / 256.0f);
+
+    int new_x = _a * (float)x + _b * (float)(y - last_scanline) + _x;
+    int new_y = _c * (float)x + _d * (float)(y - last_scanline) + _y;
+
+    x = new_x;
+    y = new_y;
+}
+
+auto Object::getScreenX(int local_x) const -> int {
+    return (x + local_x) & 0x1FF;
+}
+
+auto Object::getObjectPixel(int local_x, int local_y, const PPUState &state) const -> u8 {
+    const bool color_mode = bits::get_bit<5>(state.oam[index * 8 + 1]);
+    const bool mirror_x = bits::get_bit<4>(state.oam[index * 8 + 3]);
+    const bool mirror_y = bits::get_bit<5>(state.oam[index * 8 + 3]);
+    const int tile_width = color_mode ? 8 : 4;
+    
+    if(affine) {
+        getAffineCoords(local_x, local_y, state);
+
+        if(local_x < 0 || local_x >= width || local_y < 0 || local_y >= height) {
+            return 0;
+        }
+    }
+
+    if(!affine && mirror_x) local_x = width - local_x - 1;
+    if(!affine && mirror_y) local_y = height - local_y - 1;
+
+    int tile_x = local_x / 8;
+    int tile_y = local_y / 8;
+    local_x %= 8;
+    local_y %= 8;
+
+    if(color_mode) {
+        tile_x <<= 1;
+    }
+
+    int tile_address = (((state.oam[index * 8 + 5] & 3) << 8) | state.oam[index * 8 + 4]);
+    if(bits::get_bit<6>(state.dispcnt)) {
+        tile_address += tile_x + tile_y * (width >> (color_mode ? 2 : 3));
+    } else {
+        tile_address += (tile_x & (color_mode ? ~1 : ~0)) + tile_y * 32;
+    }
+    tile_address &= 0x3FF;
+
+    u8 palette_index = state.vram[0x10000 + tile_address * 32 + (local_x >> !color_mode) + local_y * tile_width];
+
+    if(!color_mode) {
+        palette_index = (palette_index >> (local_x & 1) * 4) & 0xF;
+
+        if(palette_index == 0) {
+            return 0;
+        }
+
+        palette_index = palette_index + bits::get<4, 4>(state.oam[index * 8 + 5]) * 16;
+    }
+
+    return palette_index;
+}
+
+void Object::getAffineCoords(int &local_x, int &local_y, const PPUState &state) const {
+    u32 param_address = param_select * 4;
+    u16 param_a = (state.oam[(param_address + 0) * 8 + 7] << 8) | state.oam[(param_address + 0) * 8 + 6];
+    u16 param_b = (state.oam[(param_address + 1) * 8 + 7] << 8) | state.oam[(param_address + 1) * 8 + 6];
+    u16 param_c = (state.oam[(param_address + 2) * 8 + 7] << 8) | state.oam[(param_address + 2) * 8 + 6];
+    u16 param_d = (state.oam[(param_address + 3) * 8 + 7] << 8) | state.oam[(param_address + 3) * 8 + 6];
+    float _a = ((s8)bits::get<8, 8>(param_a) + (float)bits::get<0, 8>(param_a) / 256.0f);
+    float _b = ((s8)bits::get<8, 8>(param_b) + (float)bits::get<0, 8>(param_b) / 256.0f);
+    float _c = ((s8)bits::get<8, 8>(param_c) + (float)bits::get<0, 8>(param_c) / 256.0f);
+    float _d = ((s8)bits::get<8, 8>(param_d) + (float)bits::get<0, 8>(param_d) / 256.0f);
+
+    local_x -= double_size ? width : width / 2;
+    local_y -= double_size ? height : height / 2;
+
+    int new_x = _a * (float)local_x + _b * (float)local_y + width / 2;
+    int new_y = _c * (float)local_x + _d * (float)local_y + height / 2;
+
+    local_x = new_x;
+    local_y = new_y;
 }
 
 //TODO: Window has some weird behavior to implement
