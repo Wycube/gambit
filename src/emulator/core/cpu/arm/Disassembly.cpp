@@ -226,7 +226,7 @@ auto registerOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::string
 //[<Rn>, #+/-<offset_8>]!  Pre-indexed
 //[<Rn>], #+/-<offset_8>   Post-indexed
 auto immediateOffset(u8 rn, u16 addr_mode, bool p, bool u, bool w) -> std::string {
-    const u8 offset_8 = (bits::get<8, 4>(addr_mode) << 4) | bits::get<0, 4>(addr_mode); //((addr_mode >> 4) & 0xF0) | (addr_mode & 0xF);
+    const u8 offset_8 = (bits::get<8, 4>(addr_mode) << 4) | bits::get<0, 4>(addr_mode);
     const std::string sign = u ? "+" : "-";
     std::string disassembly = fmt::format("[r{}", rn);
 
@@ -260,7 +260,6 @@ auto armDisassembleHalfwordTransfer(u32 instruction, u32 address) -> std::string
     } else {
         disassembly = fmt::format("str{}h", CONDITION_EXTENSIONS[condition]);
     }
-
     disassembly += fmt::format(" r{}, {}", rd, i ? immediateOffset(rn, instruction & 0xFFF, p, u, w) : registerOffset(rn, instruction & 0xFFF, p, u, w));
 
     return disassembly;

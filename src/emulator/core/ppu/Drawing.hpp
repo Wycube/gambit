@@ -42,10 +42,6 @@ struct Background {
 private:
 
     void getAffineCoords(int &x, int &y);
-
-    //Switch to fixed-point later on
-    // float _x, _y;
-    // float _a, _b, _c, _d;
 };
 
 struct Object {

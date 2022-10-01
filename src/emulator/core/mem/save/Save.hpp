@@ -33,10 +33,10 @@ protected:
     SaveType m_type;
 };
 
-class NoSave final : public Save {
+class None final : public Save {
 public:
 
-    NoSave() { m_type = NONE; }
+    None() { m_type = NONE; }
     
     void reset() override { }
     auto read(u32 address) -> u8 override { return 0; }

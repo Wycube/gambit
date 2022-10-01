@@ -231,6 +231,11 @@ auto Bus::readIO(u32 address) -> u8 {
         return 2;
     }
 
+    //SIOCNT stub
+    if(address == 0x128) {
+        return 0;
+    }
+
     if(address >= 0xB0 && address <= 0xE0) {
         return m_core.dma.read8(address);
     }

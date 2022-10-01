@@ -26,7 +26,7 @@ auto GamePak::read(u32 address) -> T {
             return 0;
         case 0xE : //SRAM or Flash
             if(m_save->getType() == SRAM_32K || m_save->getType() == FLASH_64K || m_save->getType() == FLASH_128K) {
-                return m_save->read(sub_address);
+                return m_save->read(sub_address) * 0x01010101;
             }
             return 0;
     }
@@ -79,7 +79,7 @@ void GamePak::loadROM(std::vector<u8> &&rom) {
     parseHeader();
 
     //Get save type, somehow
-    if(m_title == "GBAZELDA" || m_title == "GBAZELDA MC" || m_title == "SUPER MARIOB") {
+    if(m_title == "GBAZELDA" || m_title == "GBAZELDA MC" || m_title == "SUPER MARIOB" || m_title == "SUPER MARIO") {
         m_save = std::make_unique<EEPROM>(EEPROM_8K);
         LOG_INFO("EEPROM 8k save type detected!");
     } else if(m_title == "POKEMON EMER" || m_title == "POKEMON RUBY" || m_title == "POKEMON FIRE" || m_title == "POKE DUNGEON") {
@@ -92,7 +92,7 @@ void GamePak::loadROM(std::vector<u8> &&rom) {
         m_save = std::make_unique<SRAM>();
         LOG_INFO("SRAM save type detected!");
     } else {
-        m_save = std::make_unique<NoSave>();
+        m_save = std::make_unique<None>();
         LOG_INFO("No save type detected!");
     }
 }

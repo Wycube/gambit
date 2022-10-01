@@ -144,7 +144,7 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
     u32 source = m_channel[dma_n]._source & source_address_mask[dma_n];
     u32 destination = m_channel[dma_n]._destination & destination_address_mask[dma_n];
-    u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x1F : m_channel[dma_n].control;
+    u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
     int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & length_mask[dma_n];
     LOG_DEBUG("WOAH, DMA-ing from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
 

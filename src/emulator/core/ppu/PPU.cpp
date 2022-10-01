@@ -69,10 +69,6 @@ auto PPU::readIO(u32 address) -> u8 {
         case 0x51 : return bits::get<8, 8>(m_state.bldcnt);
         case 0x52 : return bits::get<0, 8>(m_state.bldalpha);
         case 0x53 : return bits::get<8, 8>(m_state.bldalpha);
-        case 0x54 : return bits::get<0, 8>(m_state.bldy);
-        case 0x55 : return bits::get<8, 8>(m_state.bldy);
-        case 0x56 : return bits::get<16, 8>(m_state.bldy);
-        case 0x57 : return bits::get<24, 8>(m_state.bldy);
     }
 
     return 0;
@@ -157,13 +153,11 @@ void PPU::writeIO(u32 address, u8 value) {
         case 0x4E : bits::set<16, 8>(m_state.mosaic, value); break;
         case 0x4F : bits::set<24, 8>(m_state.mosaic, value); break;
         case 0x50 : bits::set<0, 8>(m_state.bldcnt, value); break;
-        case 0x51 : bits::set<8, 8>(m_state.bldcnt, value); break;
-        case 0x52 : bits::set<0, 8>(m_state.bldalpha, value); break;
-        case 0x53 : bits::set<8, 8>(m_state.bldalpha, value); break;
-        case 0x54 : bits::set<0, 8>(m_state.bldy, value); break;
-        case 0x55 : bits::set<8, 8>(m_state.bldy, value); break;
-        case 0x56 : bits::set<16, 8>(m_state.bldy, value); break;
-        case 0x57 : bits::set<24, 8>(m_state.bldy, value); break;
+        case 0x51 : bits::set<8, 8>(m_state.bldcnt, value & 0x3F); break;
+        case 0x52 : bits::set<0, 8>(m_state.bldalpha, value & 0x1F); break;
+        case 0x53 : bits::set<8, 8>(m_state.bldalpha, value & 0x1F); break;
+        case 0x54 : bits::set<0, 8>(m_state.bldy, value & 0x1F); break;
+        //0x55 - 0x57 BLDY - not R/W
     }
 }
 
@@ -267,11 +261,6 @@ void PPU::writeOAM(u32 address, T value) {
 void PPU::hblankStart(u64 current, u64 late) {
     m_state.dispstat |= 2;
 
-    //Request H-Blank interrupt if enabled
-    if(bits::get_bit<4>(m_state.dispstat)) {
-        m_core.bus.requestInterrupt(INT_LCD_HB);
-    }
-
     //Draw Scanline
     if(m_state.line < 160) {
         clearBuffers();
@@ -279,6 +268,11 @@ void PPU::hblankStart(u64 current, u64 late) {
         drawBackground();
         drawObjects();
         compositeLine();
+    }
+
+    //Request H-Blank interrupt if enabled
+    if(bits::get_bit<4>(m_state.dispstat)) {
+        m_core.bus.requestInterrupt(INT_LCD_HB);
     }
 
     m_core.scheduler.addEvent("Hblank End", [this](u32 a, u32 b) { hblankEnd(a, b); }, 272 - late);
@@ -300,23 +294,7 @@ void PPU::hblankEnd(u64 current, u64 late) {
         m_core.dma.onHBlank();
     }
 
-    m_state.line++;
-    m_state.dispstat &= ~2;
-    m_core.scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960 - late);
-
-    if(m_state.line == 226) {
-        m_state.dispstat &= ~1;
-    }
-
-    if(m_state.line >= 227) {
-        m_state.dispstat &= ~7;
-        m_state.line = 0;
-        m_state.bg[2].last_scanline = 0;
-        m_state.bg[3].last_scanline = 0;
-
-        return;
-    }
-
+    //VBlank Start
     if(m_state.line == 160) {
         m_state.dispstat |= 1;
         m_core.video_device.presentFrame();
@@ -327,6 +305,24 @@ void PPU::hblankEnd(u64 current, u64 late) {
             m_core.bus.requestInterrupt(INT_LCD_VB);
         }
     }
+
+    //VBlank flag cleared on last line
+    if(m_state.line == 226) {
+        m_state.dispstat &= ~1;
+    }
+
+    //End of VBlank
+    if(m_state.line >= 227) {
+        m_state.dispstat &= ~7;
+        m_state.line = 0;
+        m_state.bg[2].last_scanline = 0;
+        m_state.bg[3].last_scanline = 0;
+    } else {
+        m_state.line++;
+        m_state.dispstat &= ~2;
+    }
+
+    m_core.scheduler.addEvent("Hblank Start", [this](u32 a, u32 b) { hblankStart(a, b); }, 960 - late);
 }
 
 void PPU::clearBuffers() {
@@ -406,12 +402,7 @@ auto PPU::getSpriteLines() -> std::vector<Object> {
         u8 flags = bits::get<0, 2>(m_state.oam[i * 8 + 1]);
         
         if(mode < 2 && flags != 2) {
-            int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
-            
-            // if(flags == 3) {
-            //     height *= 2;
-            // }
-            
+            const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
             const int y = m_state.oam[i * 8];
             const int bottom = (y + (flags == 3 ? height * 2 : height)) & 0xFF;
             bool in_vertical = y <= m_state.line && m_state.line < bottom;
@@ -422,12 +413,8 @@ auto PPU::getSpriteLines() -> std::vector<Object> {
 
             //Check if object is on this line
             if(in_vertical) {
-                int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+                const int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
                 const int x = ((m_state.oam[i * 8 + 3] & 1) << 8) | m_state.oam[i * 8 + 2];
-                
-                // if(flags == 3) {
-                //     width *= 2;
-                // }
 
                 //Check if object is visible on screen
                 if(((x + width) & 0x1FF) < x || x < 240) {
@@ -567,7 +554,7 @@ void PPU::compositeLine() {
 
         u16 target_1;
 
-        if(m_obj_info[i] >> 3 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3)) {
+        if(m_obj_col[i] != 0 && m_obj_info[i] >> 3 == 0 && bits::get<0, 6>(m_state.bldcnt) != 0) {
             target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2];
         } else {
             //Find first target (Topmost pixel)
@@ -581,51 +568,64 @@ void PPU::compositeLine() {
             }
         }
 
-        u8 red = bits::get<0, 5>(target_1);
+        u8 red   = bits::get<0, 5>(target_1);
         u8 green = bits::get<5, 5>(target_1);
-        u8 blue = bits::get<10, 5>(target_1);
+        u8 blue  = bits::get<10, 5>(target_1);
 
         //Color Effects
         if((priorities[0] & 7) != 5 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3) && bits::get_bit<5>(m_win_line[i])) {
+            float blend_y = (float)(m_state.bldy & 0x1F) / 16.0f;
+            if(blend_y > 1.0f) {
+                blend_y = 1.0f;
+            }
+            
             switch(bits::get<6, 2>(m_state.bldcnt)) {
                 case 1 : //Alpha Blending
                     if(bits::get_bit(m_state.bldcnt, 8 + (priorities[1] >> 3))) {
+                        float blend_a1 = (float)(m_state.bldalpha & 0x1F) / 16.0f;
+                        if(blend_a1 > 1.0f) {
+                            blend_a1 = 1.0f;
+                        }
+                        float blend_a2 = (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f;
+                        if(blend_a2 > 1.0f) {
+                            blend_a2 = 1.0f;
+                        }
                         u16 target_2;
 
                         //Find second target (Next topmost pixel)
                         switch(priorities[1] >> 3) {
                             case 0 : target_2 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
-                            case 1 : target_2 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
+                            case 1 : target_2 = (m_state.palette[m_bg_col[1][i] *  2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
                             case 2 : target_2 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
                             case 3 : target_2 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
                             case 4 : target_2 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
                             case 5 : target_2 = zero_color; break;
-                        }
+                        } 
 
-                        const u8 red_2 = bits::get<0, 5>(target_2);
+                        const u8 red_2   = bits::get<0, 5>(target_2);
                         const u8 green_2 = bits::get<5, 5>(target_2);
-                        const u8 blue_2 = bits::get<10, 5>(target_2);
+                        const u8 blue_2  = bits::get<10, 5>(target_2);
 
-                        red = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)red + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)red_2;
-                        green = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)green + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)green_2;
-                        blue = (float)(m_state.bldalpha & 0x1F) / 16.0f * (float)blue + (float)((m_state.bldalpha >> 8) & 0x1F) / 16.0f * (float)blue_2;
+                        red   = blend_a1 * (float)red + blend_a2 * (float)red_2;
+                        green = blend_a1 * (float)green + blend_a2 * (float)green_2;
+                        blue  = blend_a1 * (float)blue + blend_a2 * (float)blue_2;
                     }
                     break;
                 case 2 : //Brightness Increase
-                    red = (float)red + (float)(m_state.bldy & 0x1F) / 16.0f * (float)(31 - red);
-                    green = (float)green + (float)(m_state.bldy & 0x1F) / 16.0f * (float)(31 - green);
-                    blue = (float)blue + (float)(m_state.bldy & 0x1F) / 16.0f * (float)(31 - blue);
+                    red   = (float)red + blend_y * (float)(31 - red);
+                    green = (float)green + blend_y * (float)(31 - green);
+                    blue  = (float)blue + blend_y * (float)(31 - blue);
                     break;
                 case 3 : //Brightness Decrease
-                    red = (float)red - (float)(m_state.bldy & 0x1F) / 16.0f * (float)red;
-                    green = (float)green - (float)(m_state.bldy & 0x1F) / 16.0f * (float)green;
-                    blue = (float)blue - (float)(m_state.bldy & 0x1F) / 16.0f * (float)blue;
+                    red   = (float)red - blend_y * (float)red;
+                    green = (float)green - blend_y * (float)green;
+                    blue  = (float)blue - blend_y * (float)blue;
                     break;
             }
 
-            red = red > 31 ? 31 : red;
+            red   = red > 31 ? 31 : red;
             green = green > 31 ? 31 : green;
-            blue = blue > 31 ? 31 : blue;
+            blue  = blue > 31 ? 31 : blue;
         }
 
         m_core.video_device.setPixel(i, m_state.line, (red * 8 << 24) | (green * 8 << 16) | (blue * 8 << 8) | 0xFF);
