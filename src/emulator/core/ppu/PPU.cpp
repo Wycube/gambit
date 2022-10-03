@@ -144,10 +144,10 @@ void PPU::writeIO(u32 address, u8 value) {
         case 0x45 : bits::set<8, 8>(m_state.win.winv[0], value); break;
         case 0x46 : bits::set<0, 8>(m_state.win.winv[1], value); break;
         case 0x47 : bits::set<8, 8>(m_state.win.winv[1], value); break;
-        case 0x48 : bits::set<0, 8>(m_state.win.winin, value); break;
-        case 0x49 : bits::set<8, 8>(m_state.win.winin, value); break;
-        case 0x4A : bits::set<0, 8>(m_state.win.winout, value); break;
-        case 0x4B : bits::set<8, 8>(m_state.win.winout, value); break;
+        case 0x48 : bits::set<0, 8>(m_state.win.winin, value & 0x3F); break;
+        case 0x49 : bits::set<8, 8>(m_state.win.winin, value & 0x3F); break;
+        case 0x4A : bits::set<0, 8>(m_state.win.winout, value & 0x3F); break;
+        case 0x4B : bits::set<8, 8>(m_state.win.winout, value & 0x3F); break;
         case 0x4C : bits::set<0, 8>(m_state.mosaic, value); break;
         case 0x4D : bits::set<8, 8>(m_state.mosaic, value); break;
         case 0x4E : bits::set<16, 8>(m_state.mosaic, value); break;
@@ -300,10 +300,10 @@ void PPU::hblankEnd(u64 current, u64 late) {
         m_core.video_device.presentFrame();
         m_core.dma.onVBlank();
 
-        if(bits::get_bit<3>(m_state.dispstat)) {
+        // if(bits::get_bit<3>(m_state.dispstat)) {
             LOG_DEBUG("VBLANK interrupt requested");
             m_core.bus.requestInterrupt(INT_LCD_VB);
-        }
+        // }
     }
 
     //VBlank flag cleared on last line
@@ -337,23 +337,42 @@ void PPU::clearBuffers() {
 
 void PPU::getWindowLine() {
     //Get objects that are windows and on this line
-    std::vector<int> win_objs;
+    std::vector<Object> win_objs;
 
     //TODO: Move to Window class
     if(bits::get_bit<15>(m_state.dispcnt)) {
         for(int i = 0; i < 128; i++) {
-            if(bits::get<2, 2>(m_state.oam[i * 8 + 1]) == 2 && bits::get<0, 2>(m_state.oam[i * 8 + 1]) == 0) {
+            u8 mode = bits::get<2, 2>(m_state.oam[i * 8 + 1]);
+            u8 flags = bits::get<0, 2>(m_state.oam[i * 8 + 1]);
+            
+            if(mode == 2 && flags != 2) {
                 const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
-                const int top = m_state.oam[i * 8];
-                const int bottom = (top + height) % 0xFF;
-                bool in_vertical = top <= m_state.line && m_state.line < bottom;
+                const int y = m_state.oam[i * 8];
+                const int bottom = (y + (flags == 3 ? height * 2 : height)) & 0xFF;
+                bool in_vertical = y <= m_state.line && m_state.line < bottom;
 
-                if(top > bottom) {
-                    in_vertical = !(top > m_state.line && m_state.line >= bottom);
+                if(bottom < y) {
+                    in_vertical = !(y > m_state.line && m_state.line >= bottom);
                 }
 
+                //Check if object is on this line
                 if(in_vertical) {
-                    win_objs.push_back(i);
+                    const int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
+                    const int x = ((m_state.oam[i * 8 + 3] & 1) << 8) | m_state.oam[i * 8 + 2];
+
+                    //Check if object is visible on screen
+                    if(((x + width) & 0x1FF) < x || x < 240) {
+                        Object obj;
+                        obj.x = x;
+                        obj.y = y > bottom ? bits::sign_extend<8, int>(y) : y;
+                        obj.index = i;
+                        obj.width = width;
+                        obj.height = height;
+                        obj.affine = (flags & 1) == 1;
+                        obj.double_size = flags == 3;
+                        obj.param_select = bits::get<1, 5>(m_state.oam[i * 8 + 3]);
+                        win_objs.push_back(std::move(obj));
+                    }
                 }
             }
         }
@@ -374,21 +393,24 @@ void PPU::getWindowLine() {
             m_win_line[i] = bits::get<8, 6>(m_state.win.winin);
             continue;
         }
+    }
 
-        //Object window
-        for(const auto &obj : win_objs) {
-            const int width = OBJECT_WIDTH_LUT[(bits::get<6, 2>(m_state.oam[obj * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[obj * 8 + 3])];
-            const int left = ((m_state.oam[obj * 8 + 3] & 1) << 8) | m_state.oam[obj * 8 + 2];
-            const int right = (left + width) % 0x1FF;
-            bool in_horizontal = left <= i && i < right;
+    //Object window
+    for(const auto &obj : win_objs) {
+        int local_y = m_state.line - obj.y;
+        int obj_width = obj.double_size ? obj.width * 2 : obj.width;
 
-            if(left > right) {
-                in_horizontal = !(left > i && i >= right);
+        for(int i = 0; i < obj_width; i++) {
+            int screen_x = obj.getScreenX(i);
+
+            if(screen_x > 240) {
+                continue;
             }
 
-            if(in_horizontal) {
-                m_win_line[i] = bits::get<8, 6>(m_state.win.winout);
-                break;
+            u8 palette_index = obj.getObjectPixel(i, local_y, m_state);
+
+            if(palette_index != 0) {
+                m_win_line[screen_x] = bits::get<8, 6>(m_state.win.winout);
             }
         }
     }
@@ -427,7 +449,7 @@ auto PPU::getSpriteLines() -> std::vector<Object> {
                     obj.affine = (flags & 1) == 1;
                     obj.double_size = flags == 3;
                     obj.param_select = bits::get<1, 5>(m_state.oam[i * 8 + 3]);
-                    lines.push_back(obj);
+                    lines.push_back(std::move(obj));
                 }
             }
         }
@@ -444,7 +466,7 @@ void PPU::drawObjects() {
     std::vector<Object> active_objs = getSpriteLines();
 
     for(const auto &obj : active_objs) {
-        int local_y = m_state.line - obj.y;  
+        int local_y = m_state.line - obj.y;
         const int priority = bits::get<2, 2>(m_state.oam[obj.index * 8 + 5]);
         const bool mosaic = bits::get_bit<4>(m_state.oam[obj.index * 8 + 1]);
     
@@ -554,9 +576,9 @@ void PPU::compositeLine() {
 
         u16 target_1;
 
-        if(m_obj_col[i] != 0 && m_obj_info[i] >> 3 == 0 && bits::get<0, 6>(m_state.bldcnt) != 0) {
-            target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2];
-        } else {
+        // if(m_obj_col[i] != 0 && m_obj_info[i] >> 3 == 0 && bits::get<0, 6>(m_state.bldcnt) != 0) {
+        //     target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2];
+        // } else {
             //Find first target (Topmost pixel)
             switch(priorities[0] >> 3) {
                 case 0 : target_1 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
@@ -566,7 +588,7 @@ void PPU::compositeLine() {
                 case 4 : target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
                 case 5 : target_1 = zero_color; break;
             }
-        }
+        // }
 
         u8 red   = bits::get<0, 5>(target_1);
         u8 green = bits::get<5, 5>(target_1);
