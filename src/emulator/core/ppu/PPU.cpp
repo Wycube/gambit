@@ -403,13 +403,13 @@ void PPU::getWindowLine() {
         for(int i = 0; i < obj_width; i++) {
             int screen_x = obj.getScreenX(i);
 
-            if(screen_x > 240) {
+            if(screen_x >= 240) {
                 continue;
             }
 
             u8 palette_index = obj.getObjectPixel(i, local_y, m_state);
 
-            if(palette_index != 0) {
+            if(palette_index != 0 && m_win_line[screen_x] == bits::get<0, 6>(m_state.win.winout)) {
                 m_win_line[screen_x] = bits::get<8, 6>(m_state.win.winout);
             }
         }
@@ -466,30 +466,19 @@ void PPU::drawObjects() {
     std::vector<Object> active_objs = getSpriteLines();
 
     for(const auto &obj : active_objs) {
-        int local_y = m_state.line - obj.y;
+        const int local_y = m_state.line - obj.y;
         const int priority = bits::get<2, 2>(m_state.oam[obj.index * 8 + 5]);
-        const bool mosaic = bits::get_bit<4>(m_state.oam[obj.index * 8 + 1]);
-    
-        if(mosaic) {
-            local_y = local_y / (bits::get<12, 4>(m_state.mosaic) + 1) * (bits::get<12, 4>(m_state.mosaic) + 1);
-        }
 
         int obj_width = obj.double_size ? obj.width * 2 : obj.width;
 
         for(int i = 0; i < obj_width; i++) {
             int screen_x = obj.getScreenX(i);
 
-            if(screen_x > 240 || !bits::get_bit<4>(m_win_line[screen_x])) {
+            if(screen_x >= 240) {
                 continue;
             }
 
-            int local_x = i;
-
-            if(mosaic) {
-                local_x = local_x / (bits::get<8, 4>(m_state.mosaic) + 1) * (bits::get<8, 4>(m_state.mosaic) + 1);
-            }
-
-            u8 palette_index = obj.getObjectPixel(local_x, local_y, m_state);
+            u8 palette_index = obj.getObjectPixel(i, local_y, m_state);
 
             if(priority <= (m_obj_info[screen_x] & 7) && palette_index != 0) {
                 bool is_semi_transparent = bits::get<2, 2>(m_state.oam[obj.index * 8 + 1]) == 1;
@@ -595,7 +584,7 @@ void PPU::compositeLine() {
         u8 blue  = bits::get<10, 5>(target_1);
 
         //Color Effects
-        if((priorities[0] & 7) != 5 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3) && bits::get_bit<5>(m_win_line[i])) {
+        if((priorities[0] & 7) < 6 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3) && bits::get_bit<5>(m_win_line[i])) {
             float blend_y = (float)(m_state.bldy & 0x1F) / 16.0f;
             if(blend_y > 1.0f) {
                 blend_y = 1.0f;

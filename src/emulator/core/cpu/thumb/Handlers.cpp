@@ -20,8 +20,8 @@ void CPU::thumbMoveShifted(u16 instruction) {
     const u8 rm = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
     const u32 value = get_reg(rm);
-    u32 result;
-    bool carry;
+    u32 result = 0;
+    bool carry = m_state.cpsr.c;
 
     if(immed_5 == 0 && opcode != 0) {
         immed_5 = 32;
@@ -175,12 +175,13 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
     const u8 rd = bits::get_bit<7>(instruction) << 3 | bits::get<0, 3>(instruction);
     const u32 op_1 = get_reg(rd);
     const u32 op_2 = get_reg(rs);
-    u32 result;
+    u32 result = 0;
 
     switch(opcode) {
         case 0 : result = op_1 + op_2; break; //ADD
         case 1 : result = op_1 - op_2; break; //CMP
         case 2 : result = op_2; break;        //MOV
+        //BX
     }
 
     if(opcode != 1) {
@@ -344,7 +345,6 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
         if(r) {
             set_reg(15, m_core.bus.read32(address));
             flushPipeline();
-            address += 4;
         }
 
         set_reg(13, get_reg(13) + 4 * (bits::popcount<u16>(registers) + r));
@@ -361,7 +361,6 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
         //Store LR
         if(r) {
             m_core.bus.write32(address, get_reg(14));
-            address += 4;
         }
 
         set_reg(13, get_reg(13) - 4 * (bits::popcount<u16>(registers) + r));

@@ -341,10 +341,10 @@ auto CPU::addressMode2(u16 addr_mode, bool i) -> u32 {
         }
         
         switch(opcode) {
-            case 0x0 : offset = bits::lsl(operand, shift_imm); break; //LSL
-            case 0x1 : offset = bits::lsr(operand, shift_imm); break; //LSR
-            case 0x2 : offset = bits::asr(operand, shift_imm); break; //ASR
-            case 0x3 : offset = shift_imm == 32 ? bits::rrx(operand, m_state.cpsr.c) : bits::ror(operand, shift_imm); break; //RRX and ROR
+            case 0x0 : offset = bits::lsl(operand, shift_imm); break;
+            case 0x1 : offset = bits::lsr(operand, shift_imm); break;
+            case 0x2 : offset = bits::asr(operand, shift_imm); break;
+            case 0x3 : offset = shift_imm == 32 ? bits::rrx(operand, m_state.cpsr.c) : bits::ror(operand, shift_imm); break;
         }
     }
 
@@ -509,7 +509,7 @@ void CPU::armBlockTransfer(u32 instruction) {
 void CPU::armBranch(u32 instruction) {
     const bool l = bits::get<24, 1>(instruction);
     //Sign extend 24-bit to 32-bit and multiply by 4 so it is word-aligned.
-    const s32 immediate = bits::sign_extend<24, s32>(bits::get<0, 24>(instruction)) << 2;
+    const s32 immediate = bits::sign_extend<24, s32>(bits::get<0, 24>(instruction)) * 4;
 
     //Store next instruction's address in the link register
     if(l) {

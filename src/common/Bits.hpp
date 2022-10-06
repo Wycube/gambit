@@ -80,6 +80,7 @@ constexpr auto sign_extend(T value) -> R {
     static_assert(std::is_integral_v<T>);
     static_assert(start_size <= sizeof(T) * 8);
     static_assert(start_size < sizeof(R) * 8);
+    static_assert(start_size > 0);
     static_assert(sizeof(T) <= sizeof(R));
 
     return static_cast<R>(value) | ((value >> (start_size - 1)) & 0x1 ? ~((static_cast<R>(1) << (start_size - 1)) - 1) : 0);
@@ -133,6 +134,10 @@ constexpr auto asr_c(u32 value, u8 shift, bool &carry, bool i = false) -> u32 {
 }
 
 constexpr auto ror(u32 value, u8 rotate) -> u32 {
+    if(rotate == 0) {
+        return value;
+    }
+
     return (value >> rotate) | (value << (32 - rotate));
 }
 

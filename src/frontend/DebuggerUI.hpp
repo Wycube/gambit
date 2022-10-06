@@ -393,8 +393,6 @@ public:
             //     go_to_address = false;
             // }
 
-            u32 pc = m_debugger.getCPURegister(15);
-
             if(scroll_to_center) {
                 ImGui::SetScrollY(45 * clipper.ItemsHeight);
                 scroll_to_center = false;

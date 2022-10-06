@@ -57,8 +57,8 @@ void DMA::write8(u32 address, u8 value) {
         case 0x7 :  bits::set<24, 8>(m_channel[dma_n].destination, value); break;
         case 0x8 :  bits::set<0, 8>(m_channel[dma_n].length, value); break;
         case 0x9 :  bits::set<8, 8>(m_channel[dma_n].length, value); break;
-        case 0xA :  bits::set<0, 8>(m_channel[dma_n].control, value); break;
-        case 0xB :  bits::set<8, 8>(m_channel[dma_n].control, value); break;
+        case 0xA :  bits::set<0, 8>(m_channel[dma_n].control, value & 0xE0); break;
+        case 0xB :  bits::set<8, 8>(m_channel[dma_n].control, value & (dma_n == 3 ? 0xFF : 0xF7)); break;
     }
 
     //Schedule any started DMAs
@@ -163,16 +163,18 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     m_channel[dma_n]._source = source;
     m_channel[dma_n]._destination = destination;
 
+    m_channel[dma_n].active = false;
+
     //TODO: Repeat Bit, more than this at least
     if(bits::get_bit<9>(control)) {
         if(bits::get<5, 2>(control) == 3) {
             m_channel[dma_n]._destination = m_channel[dma_n].destination & ~(sizeof(T) == 4 ? 3 : 1);
         }
+        m_channel[dma_n]._length = m_channel[dma_n].length;
     } else {
         m_channel[dma_n].control &= ~0x8000;
     }
 
-    m_channel[dma_n].active = false;
 
     if(bits::get_bit<14>(control)) {
         m_core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << dma_n));

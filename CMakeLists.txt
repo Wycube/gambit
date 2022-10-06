@@ -43,7 +43,6 @@ else()
 	message(FATAL_ERROR "Git was not found")
 endif()
 
-
 include_directories(${PROJECT_SOURCE_DIR}/lib/lest-1.35.1/include) # lest (Unit Testing)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
@@ -70,7 +69,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/lib/glad)
 include_directories(${PROJECT_SOURCE_DIR}/lib/miniaudio/include)
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/miniaudio)
 
-# Tests (if enabled)
+# Tests
 if(BUILD_TESTS)
 	add_subdirectory(${PROJECT_SOURCE_DIR}/src/tests)
 endif()

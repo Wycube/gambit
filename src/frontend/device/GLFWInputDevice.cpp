@@ -1,6 +1,7 @@
 #include "GLFWInputDevice.hpp"
 #include "emulator/core/GBA.hpp"
 #include "frontend/Types.hpp"
+#include <cstring>
 
 
 GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {

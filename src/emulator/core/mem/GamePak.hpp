@@ -45,6 +45,7 @@ private:
     std::unique_ptr<Save> m_save;
 
     void parseHeader();
+    auto findSaveType() -> bool;
 };
 
 } //namespace emu

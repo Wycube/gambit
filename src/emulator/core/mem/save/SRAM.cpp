@@ -1,4 +1,5 @@
 #include "SRAM.hpp"
+#include <cstring>
 
 
 namespace emu {

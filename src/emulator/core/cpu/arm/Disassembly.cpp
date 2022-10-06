@@ -369,7 +369,7 @@ auto armDisassembleBlockTransfer(u32 instruction, u32 address) -> std::string {
 auto armDisassembleBranch(u32 instruction, u32 address) -> std::string {
     const u8 condition = bits::get<28, 4>(instruction); //instruction >> 28;
     const bool l = bits::get_bit<24>(instruction); //(instruction >> 24) & 0x1;
-    const s32 immediate = bits::sign_extend<24, s32>(instruction & 0xFFFFFF) << 2; //Sign extend 24-bit to 32-bit
+    const s32 immediate = bits::sign_extend<24, s32>(instruction & 0xFFFFFF) * 4; //Sign extend 24-bit to 32-bit
 
     return fmt::format("b{}{} #0x{:x}", l ? "l" : "", CONDITION_EXTENSIONS[condition], address + 8 + immediate);
 }

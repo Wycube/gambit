@@ -81,11 +81,11 @@ void Timer::write8(u32 address, u8 value) {
     }
 }
 
-auto Timer::isTimerRunning(int timer) -> bool {
+auto Timer::isTimerRunning(u8 timer) -> bool {
     return bits::get_bit<7>(m_tmcnt[timer]) && !(bits::get_bit<2>(m_tmcnt[timer]) && timer != 0);
 }
 
-auto Timer::getTimerIntermediateValue(int timer, bool running) -> u16 {
+auto Timer::getTimerIntermediateValue(u8 timer, bool running) -> u16 {
     if(running) {
         //Calculate value based on how long it's been running
         return m_timer_counter[timer] + (m_core.scheduler.getCurrentTimestamp() - m_timer_start[timer]) / PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
@@ -94,7 +94,7 @@ auto Timer::getTimerIntermediateValue(int timer, bool running) -> u16 {
     }
 }
 
-void Timer::updateTimer(int timer, u8 old_tmcnt) {
+void Timer::updateTimer(u8 timer, u8 old_tmcnt) {
     bool new_enable = bits::get_bit<7>(m_tmcnt[timer]);
     bool old_enable = bits::get_bit<7>(old_tmcnt);
     bool new_cascade = bits::get_bit<2>(m_tmcnt[timer]);
@@ -113,7 +113,7 @@ void Timer::updateTimer(int timer, u8 old_tmcnt) {
     }
 }
 
-void Timer::startTimer(int timer) {
+void Timer::startTimer(u8 timer) {
     LOG_DEBUG("Timer {} started", timer);
 
     //Cascade, timer is incremented when the preceding one overflows
@@ -126,14 +126,14 @@ void Timer::startTimer(int timer) {
     m_core.scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow);
 }
 
-void Timer::stopTimer(int timer) {
+void Timer::stopTimer(u8 timer) {
     LOG_DEBUG("Timer {} stopped", timer);
 
     m_timer_counter[timer] = getTimerIntermediateValue(timer, true);
     m_core.scheduler.removeEvent(fmt::format("Timer {} Overflow", timer));
 }
 
-void Timer::timerOverflowEvent(int timer, u32 current, u32 cycles_late) {
+void Timer::timerOverflowEvent(u8 timer, u32 current, u32 cycles_late) {
     timerOverflow(timer);
 
     u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
@@ -141,7 +141,7 @@ void Timer::timerOverflowEvent(int timer, u32 current, u32 cycles_late) {
     m_core.scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow - cycles_late);
 }
 
-void Timer::timerOverflow(int timer) {
+void Timer::timerOverflow(u8 timer) {
     m_timer_counter[timer] = m_timer_reload[timer];
  
     if(timer < 3 && bits::get_bit<2>(m_tmcnt[timer + 1])) {

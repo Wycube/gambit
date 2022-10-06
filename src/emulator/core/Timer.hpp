@@ -26,13 +26,13 @@ private:
 
     GBA &m_core;
 
-    auto isTimerRunning(int timer) -> bool;
-    auto getTimerIntermediateValue(int timer, bool running) -> u16;
-    void updateTimer(int timer, u8 old_tmcnt);
-    void startTimer(int timer);
-    void stopTimer(int timer);
-    void timerOverflowEvent(int timer, u32 current, u32 cycles_late);
-    void timerOverflow(int timer);
+    auto isTimerRunning(u8 timer) -> bool;
+    auto getTimerIntermediateValue(u8 timer, bool running) -> u16;
+    void updateTimer(u8 timer, u8 old_tmcnt);
+    void startTimer(u8 timer);
+    void stopTimer(u8 timer);
+    void timerOverflowEvent(u8 timer, u32 current, u32 cycles_late);
+    void timerOverflow(u8 timer);
 };
 
 } //namespace emu

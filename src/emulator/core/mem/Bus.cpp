@@ -226,17 +226,17 @@ auto Bus::readIO(u32 address) -> u8 {
         return m_core.ppu.readIO(address);
     }
 
-    //BIOS SOUNDBIAS Stub
+    //SOUNDBIAS Stub (for BIOS)
     if(address == 0x89) {
         return 2;
     }
 
-    //SIOCNT stub
+    //SIOCNT stub (for AGS Aging Cart Tester)
     if(address == 0x128) {
         return 0;
     }
 
-    if(address >= 0xB0 && address <= 0xE0) {
+    if(address >= 0xB0 && address < 0xE0) {
         return m_core.dma.read8(address);
     }
     if(address >= 0x100 && address <= 0x10F) {
@@ -254,7 +254,7 @@ void Bus::writeIO(u32 address, u8 value) {
         m_core.ppu.writeIO(address, value);
         return;
     }
-    if(address >= 0xB0 && address <= 0xE0) {
+    if(address >= 0xB0 && address < 0xE0) {
         m_core.dma.write8(address, value);
     }
     if(address >= 0x100 && address <= 0x10F) {

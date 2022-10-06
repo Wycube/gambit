@@ -1,6 +1,7 @@
 #include "Drawing.hpp"
 #include "Types.hpp"
 #include "common/Bits.hpp"
+#include "common/Log.hpp"
 
 
 namespace emu {
@@ -75,13 +76,21 @@ auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
     getAffineCoords(x, y);
 
     if(x < 0 || x >= map_size * 8 || y < 0 || y >= map_size * 8) {
-        if(disp_overflow) {
+        // if(disp_overflow) {
             //TODO: Handle edge cases
             x %= map_size * 8;
             y %= map_size * 8;
-        } else {
-            return 0;
-        }
+
+            if(x < 0) {
+                x = map_size * 8 + x;
+            }
+
+            if(y < 0) {
+                y = map_size * 8 + y;
+            }
+        // } else {
+        //     return 0;
+        // }
     }
 
     const int tile_x = x / 8;
@@ -205,8 +214,8 @@ void Object::getAffineCoords(int &local_x, int &local_y, const PPUState &state) 
 
     local_x -= double_size ? width : width / 2;
     local_y -= double_size ? height : height / 2;
-    local_x <<= 8;
-    local_y <<= 8;
+    local_x = bits::sign_extend<24, int>((u32)local_x << 8);
+    local_y = bits::sign_extend<24, int>((u32)local_y << 8);
 
     int new_x = ((param_a * local_x + param_b * local_y) >> 16) + width / 2;
     int new_y = ((param_c * local_x + param_d * local_y) >> 16) + height / 2;

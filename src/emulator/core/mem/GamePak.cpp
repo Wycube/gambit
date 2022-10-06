@@ -79,19 +79,7 @@ void GamePak::loadROM(std::vector<u8> &&rom) {
     parseHeader();
 
     //Get save type, somehow
-    if(m_title == "GBAZELDA" || m_title == "GBAZELDA MC" || m_title == "SUPER MARIOB" || m_title == "SUPER MARIO") {
-        m_save = std::make_unique<EEPROM>(EEPROM_8K);
-        LOG_INFO("EEPROM 8k save type detected!");
-    } else if(m_title == "POKEMON EMER" || m_title == "POKEMON RUBY" || m_title == "POKEMON FIRE" || m_title == "POKE DUNGEON") {
-        m_save = std::make_unique<Flash>(FLASH_128K);
-        LOG_INFO("Flash 128k save type detected!");
-    } else if(m_title == "MOTHER3") {
-        m_save = std::make_unique<Flash>(FLASH_64K);
-        LOG_INFO("Flash 64k save type detected!");
-    } else if(m_title == "METROID4USA" || m_title == "YUGIOHGXDA" || m_title == "") {
-        m_save = std::make_unique<SRAM>();
-        LOG_INFO("SRAM save type detected!");
-    } else {
+    if(!findSaveType()) {
         m_save = std::make_unique<None>();
         LOG_INFO("No save type detected!");
     }
@@ -115,6 +103,67 @@ void GamePak::parseHeader() {
     memcpy(title_str, m_header.title, sizeof(m_header.title));
     title_str[12] = '\0';
     m_title = title_str;
+}
+
+auto GamePak::findSaveType() -> bool {
+    for(int i = 0; i < m_rom.size(); i++) {
+        char byte = static_cast<char>(m_rom[i]);
+
+        if(byte == 'E' && (i + 5) < m_rom.size()) {
+            //TODO: More stuff to detect size, possibly in EEPROM class
+            const char next[6] = {static_cast<char>(m_rom[i + 1]),
+                static_cast<char>(m_rom[i + 2]), static_cast<char>(m_rom[i + 3]), 
+                static_cast<char>(m_rom[i + 4]), static_cast<char>(m_rom[i + 5]), '\0'};
+            if(strcmp(next, "EPROM") == 0) {
+                m_save = std::make_unique<EEPROM>(EEPROM_8K);
+                LOG_INFO("EEPROM 8k save type detected!");
+
+                return true;
+            }
+        } else if(byte == 'S' && (i + 3) < m_rom.size()) {
+            const char next[4] = {static_cast<char>(m_rom[i + 1]),
+                static_cast<char>(m_rom[i + 2]), static_cast<char>(m_rom[i + 3]), '\0'};
+            if(strcmp(next, "RAM") == 0) {
+                m_save = std::make_unique<SRAM>();
+                LOG_INFO("SRAM save type detected!");
+
+                return true;
+            }
+        } else if(byte == 'F' && (i + 4) < m_rom.size()) {
+            const char next[5] = {static_cast<char>(m_rom[i + 1]),
+                static_cast<char>(m_rom[i + 2]), static_cast<char>(m_rom[i + 3]), 
+                static_cast<char>(m_rom[i + 4]), '\0'};
+            if(strcmp(next, "LASH") == 0) {
+                if((i + 5) < m_rom.size()) {
+                    char size = static_cast<char>(m_rom[i + 5]);
+
+                    if(size == '5') {
+                        m_save = std::make_unique<Flash>(FLASH_64K);
+                        LOG_INFO("Flash 64k save type detected!");
+                    
+                        return true;
+                    } else if(size == '1') {
+                        m_save = std::make_unique<Flash>(FLASH_128K);
+                        LOG_INFO("Flash 128k save type detected!");
+
+                        return true;
+                    } else {
+                        m_save = std::make_unique<Flash>(FLASH_128K);
+                        LOG_INFO("Flash save type detected! Assuming 128k");
+
+                        return true;
+                    }
+                } else {
+                    m_save = std::make_unique<Flash>(FLASH_128K);
+                    LOG_INFO("Flash save type detected! Assuming 128k");
+
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 } //namespace emu
