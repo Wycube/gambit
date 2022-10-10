@@ -3,6 +3,7 @@
 #include "save/Flash.hpp"
 #include "save/SRAM.hpp"
 #include "common/Log.hpp"
+#include "common/Bits.hpp"
 
 
 namespace emu {
@@ -17,28 +18,30 @@ template void GamePak::write<u32>(u32 address, u32 value);
 template<typename T>
 auto GamePak::read(u32 address) -> T {
     u32 sub_address = address & 0xFFFFFF;
+    u32 aligned = bits::align<T>(address) & 0xFFFFFF;
 
-    switch((address >> 24) & 0xF) {
+    switch(address >> 24) {
         case 0xD : //EEPROM
             if(m_save->getType() == EEPROM_512 || m_save->getType() == EEPROM_8K) {
                 return m_save->read(sub_address);
             }
             return 0;
-        case 0xE : //SRAM or Flash
+        case 0xE :
+        case 0xF : //SRAM or Flash
             if(m_save->getType() == SRAM_32K || m_save->getType() == FLASH_64K || m_save->getType() == FLASH_128K) {
                 return m_save->read(sub_address) * 0x01010101;
             }
             return 0;
     }
 
-    if(sub_address >= m_rom.size()) {
+    if(aligned >= m_rom.size()) {
        return 0;
     }
 
     T value = 0;
 
     for(int i = 0; i < sizeof(T); i++) {
-        value |= (m_rom[sub_address + i] << i * 8);
+        value |= (m_rom[aligned + i] << i * 8);
     }
 
     return value;
@@ -48,21 +51,25 @@ template<typename T>
 void GamePak::write(u32 address, T value) {
     u32 sub_address = address & 0xFFFFFF;
 
-    switch((address >> 24) & 0xF) {
+    switch(address >> 24) {
         case 0xD : //EEPROM
             if(sizeof(T) == 2 && (m_save->getType() == EEPROM_512 || m_save->getType() == EEPROM_8K)) {
                 return m_save->write(sub_address, value & 0xFF);
             }
             break;
-        case 0xE : //SRAM or Flash
+        case 0xE :
+        case 0xF : //SRAM or Flash
             if(m_save->getType() == SRAM_32K || m_save->getType() == FLASH_64K || m_save->getType() == FLASH_128K) {
+                if constexpr(sizeof(T) == 2) value >>= (address & 1) * 8;
+                if constexpr(sizeof(T) == 4) value >>= (address & 3) * 8;
+
                 return m_save->write(sub_address, value & 0xFF);
             }
             break;
     }
 }
 
-auto GamePak::getHeader() -> GamePakHeader& {
+auto GamePak::getHeader() -> const GamePakHeader& {
     return m_header;
 }
 

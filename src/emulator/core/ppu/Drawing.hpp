@@ -25,8 +25,8 @@ struct Background {
     u16 h_offset, v_offset;
 
     //Rotation/Scaling Registers
-    u32 reference_x, reference_y;
-    u16 param_a = 0x10, param_b, param_c = 0x10, param_d;
+    s32 reference_x, reference_y;
+    s16 param_a = 0x10, param_b, param_c = 0x10, param_d;
 
     void write(u32 address, u8 value);
     auto read(u32 address, bool regular) -> u8;

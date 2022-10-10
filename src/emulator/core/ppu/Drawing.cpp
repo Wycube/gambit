@@ -29,27 +29,26 @@ auto Background::read(u32 address, bool regular) -> u8 {
 }
 
 auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
-    const int map_width = 32 << (screen_size & 1);
-    const int map_height = 32 << (screen_size >> 1);
-    const int tile_width = color_mode ? 8 : 4;
+    const u16 map_width = 32 << (screen_size & 1);
+    const u16 map_height = 32 << (screen_size >> 1);
+    const u8 tile_width = color_mode ? 8 : 4;
 
-    //Apply offset
     x += h_offset;
-    x %= map_width * 8;
     y += v_offset;
+    x %= map_width * 8;
     y %= map_height * 8;
 
-    const int tile_x = x / 8;
-    const int tile_y = y / 8;
-    const int screen_block = (tile_x / 32) + (tile_y / 32) * (map_width / 32);
+    const u8 tile_x = x / 8;
+    const u8 tile_y = y / 8;
+    const u8 screen_block = (tile_x / 32) + (tile_y / 32) * (map_width / 32);
 
     const u32 tile_index = screen_block * 1024 + (tile_x % 32) + (tile_y % 32) * 32;
     const u32 map_data_address = 0x800 * scr_base_block + tile_index * 2;
     const u16 tile_entry = (vram[map_data_address + 1] << 8) | vram[map_data_address];
     const bool mirror_x = bits::get_bit<10>(tile_entry);
     const bool mirror_y = bits::get_bit<11>(tile_entry);
-    int tile_pixel_x = x % 8;
-    int tile_pixel_y = y % 8;
+    u8 tile_pixel_x = x % 8;
+    u8 tile_pixel_y = y % 8;
 
     if(mirror_x) tile_pixel_x = 7 - tile_pixel_x;
     if(mirror_y) tile_pixel_y = 7 - tile_pixel_y;
@@ -76,8 +75,7 @@ auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
     getAffineCoords(x, y);
 
     if(x < 0 || x >= map_size * 8 || y < 0 || y >= map_size * 8) {
-        // if(disp_overflow) {
-            //TODO: Handle edge cases
+        if(disp_overflow) {
             x %= map_size * 8;
             y %= map_size * 8;
 
@@ -88,15 +86,15 @@ auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
             if(y < 0) {
                 y = map_size * 8 + y;
             }
-        // } else {
-        //     return 0;
-        // }
+        } else {
+            return 0;
+        }
     }
 
-    const int tile_x = x / 8;
-    const int tile_y = y / 8;
-    const int tile_pixel_x = x % 8;
-    const int tile_pixel_y = y % 8;
+    const u8 tile_x = x / 8;
+    const u8 tile_y = y / 8;
+    const u8 tile_pixel_x = x % 8;
+    const u8 tile_pixel_y = y % 8;
 
     const u32 tile_index = tile_x + tile_y * map_size;
     const u8 tile_entry = vram[0x800 * scr_base_block + tile_index];
@@ -145,8 +143,8 @@ void Background::getAffineCoords(int &x, int &y) {
     x = x << 8;
     y = (y - last_scanline) << 8;
 
-    int new_x = (((s16)(param_a) * x + (s16)(param_b) * y) >> 8) + (s32)reference_x;
-    int new_y = (((s16)(param_c) * x + (s16)(param_d) * y) >> 8) + (s32)reference_y;
+    int new_x = ((param_a * x + param_b * y) >> 8) + reference_x;
+    int new_y = ((param_c * x + param_d * y) >> 8) + reference_y;
 
     x = new_x >> 8;
     y = new_y >> 8;
@@ -160,7 +158,7 @@ auto Object::getObjectPixel(int local_x, int local_y, const PPUState &state) con
     const bool color_mode = bits::get_bit<5>(state.oam[index * 8 + 1]);
     const bool mirror_x = bits::get_bit<4>(state.oam[index * 8 + 3]);
     const bool mirror_y = bits::get_bit<5>(state.oam[index * 8 + 3]);
-    const int tile_width = color_mode ? 8 : 4;
+    const u8 tile_width = color_mode ? 8 : 4;
     
     if(affine) {
         getAffineCoords(local_x, local_y, state);
@@ -173,8 +171,8 @@ auto Object::getObjectPixel(int local_x, int local_y, const PPUState &state) con
     if(!affine && mirror_x) local_x = width - local_x - 1;
     if(!affine && mirror_y) local_y = height - local_y - 1;
 
-    int tile_x = local_x / 8;
-    int tile_y = local_y / 8;
+    u8 tile_x = local_x / 8;
+    u8 tile_y = local_y / 8;
     local_x %= 8;
     local_y %= 8;
 
@@ -182,7 +180,7 @@ auto Object::getObjectPixel(int local_x, int local_y, const PPUState &state) con
         tile_x <<= 1;
     }
 
-    int tile_address = (((state.oam[index * 8 + 5] & 3) << 8) | state.oam[index * 8 + 4]);
+    u32 tile_address = (((state.oam[index * 8 + 5] & 3) << 8) | state.oam[index * 8 + 4]);
     if(bits::get_bit<6>(state.dispcnt)) {
         tile_address += tile_x + tile_y * (width >> (color_mode ? 2 : 3));
     } else {
@@ -214,8 +212,8 @@ void Object::getAffineCoords(int &local_x, int &local_y, const PPUState &state) 
 
     local_x -= double_size ? width : width / 2;
     local_y -= double_size ? height : height / 2;
-    local_x = bits::sign_extend<24, int>((u32)local_x << 8);
-    local_y = bits::sign_extend<24, int>((u32)local_y << 8);
+    local_x <<= 8;
+    local_y <<= 8;
 
     int new_x = ((param_a * local_x + param_b * local_y) >> 16) + width / 2;
     int new_y = ((param_c * local_x + param_d * local_y) >> 16) + height / 2;

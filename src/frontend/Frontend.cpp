@@ -8,7 +8,6 @@
 
 
 EmuThread::EmuThread(emu::GBA &core) : m_core(core) {
-    m_cycles_left.store(0);
     m_cycle_diff = 0;
 
     m_core.debugger.onBreak([this] () {
@@ -41,22 +40,27 @@ void EmuThread::start() {
     m_thread = std::thread([this]() {
         while(true) {
             if(std::chrono::steady_clock::now() >= (m_start + std::chrono::seconds(1))) {
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_start);
-                m_clock_speed.store((m_core.scheduler.getCurrentTimestamp() - m_clock_start) / ((float)duration.count() / 1000.0f));
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_start);
+                m_clock_speed.store((m_core.scheduler.getCurrentTimestamp() - m_clock_start) / ((float)duration.count() / 1000000.0f));
                 m_clock_start = m_core.scheduler.getCurrentTimestamp();
                 m_start = std::chrono::steady_clock::now();
             }
 
-            if(m_cycles_left.load() != 0) {
-                u32 cycles_left = m_cycles_left.exchange(0) + m_cycle_diff;
-                u32 actual = m_core.run(cycles_left);
-                m_cycle_diff = (s32)cycles_left - (s32)actual;
-            }
-            // m_core.run(167772);
-
+            std::unique_lock lock(m_mutex);
+            m_cv.wait(lock, [&]() { return m_run; });
+            m_run = false;
+            lock.unlock();
+            
             if(!m_running.load()) {
                 break;
             }
+
+            u32 cycles_left = (16777216 / 64) + m_cycle_diff;
+            // auto start = std::chrono::steady_clock::now();
+            u32 actual = m_core.run(cycles_left);
+            // LOG_INFO("Ran {} cycles in {}ms", cycles_left, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
+            m_cycle_diff = (s32)cycles_left - actual;
+            // m_core.run(16777216 / 64);
         }
     });
 }
@@ -76,8 +80,11 @@ auto EmuThread::running() const -> bool {
     return m_running.load();
 }
 
-void EmuThread::addCycles(u32 cycles) {
-    m_cycles_left.store(cycles);
+void EmuThread::runNext() {
+    m_mutex.lock();
+    m_run = true;
+    m_cv.notify_one();
+    m_mutex.unlock();
 }
 
 auto EmuThread::getClockSpeed() const -> u64 {
@@ -95,7 +102,6 @@ Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_
     m_show_about = false;
     m_show_pak_info = false;
     m_user_data = {this, &m_core};
-    m_sync_counter = 0;
 }
 
 void Frontend::init() {
@@ -257,7 +263,7 @@ void Frontend::drawInterface() {
     if(m_show_pak_info) {
         if(ImGui::Begin("Pak Info", &m_show_pak_info)) {
             emu::GamePak &pak = m_core.getGamePak();
-            emu::GamePakHeader &header = pak.getHeader();
+            const emu::GamePakHeader &header = pak.getHeader();
             ImGui::Text("Size: %u bytes", pak.size());
             ImGui::Text("Internal Title: %s", pak.getTitle().c_str());
             ImGui::Text("Game Code: %c%c%c%c", header.game_code[0], header.game_code[1], header.game_code[2], header.game_code[3]);
@@ -289,14 +295,7 @@ void Frontend::drawInterface() {
 
 void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
     Frontend *frontend = reinterpret_cast<Frontend*>(device->pUserData);
-    
-    if(frontend->m_sync_counter++ >= 25) {
-        //Add extra 4 every 25 to make up for the lost 16 cycles every second
-        frontend->m_emu_thread.addCycles(167776);
-        frontend->m_sync_counter = 0;
-    } else {
-        frontend->m_emu_thread.addCycles(167772);
-    }
+    frontend->m_emu_thread.runNext();
 }
 
 void Frontend::beginFrame() {

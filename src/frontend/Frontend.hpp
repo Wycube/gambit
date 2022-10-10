@@ -8,6 +8,7 @@
 #include <miniaudio.h>
 #include <thread>
 #include <atomic>
+#include <condition_variable>
 
 
 class EmuThread final {
@@ -21,7 +22,7 @@ public:
     void pause();
 
     auto running() const -> bool;
-    void addCycles(u32 cycles);
+    void runNext();
     auto getClockSpeed() const -> u64;
 
 private:
@@ -30,7 +31,10 @@ private:
 
     std::thread m_thread;
     std::atomic<bool> m_running;
-    std::atomic<u32> m_cycles_left;
+
+    std::condition_variable m_cv;
+    std::mutex m_mutex;
+    bool m_run;
     s32 m_cycle_diff;
 
     std::chrono::steady_clock::time_point m_start;
@@ -64,7 +68,6 @@ private:
     GLFWInputDevice m_input_device;
     emu::GBA m_core;
     EmuThread m_emu_thread;
-    u32 m_sync_counter;
 
     DebuggerUI m_debug_ui;
     bool m_show_cpu_debug;

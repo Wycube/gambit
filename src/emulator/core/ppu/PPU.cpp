@@ -263,11 +263,18 @@ void PPU::hblankStart(u64 current, u64 late) {
 
     //Draw Scanline
     if(m_state.line < 160) {
-        clearBuffers();
-        getWindowLine();
-        drawBackground();
-        drawObjects();
-        compositeLine();
+        if(!bits::get_bit<7>(m_state.dispcnt)) {
+            clearBuffers();
+            getWindowLine();
+            drawBackground();
+            drawObjects();
+            compositeLine();
+        } else {
+            //Forced Blank
+            for(int i = 0; i < 240; i++) {
+                m_core.video_device.setPixel(i, m_state.line, 0xFFFFFFFF);
+            }
+        }
     }
 
     //Request H-Blank interrupt if enabled
@@ -300,10 +307,10 @@ void PPU::hblankEnd(u64 current, u64 late) {
         m_core.video_device.presentFrame();
         m_core.dma.onVBlank();
 
-        // if(bits::get_bit<3>(m_state.dispstat)) {
+        if(bits::get_bit<3>(m_state.dispstat)) {
             LOG_DEBUG("VBLANK interrupt requested");
             m_core.bus.requestInterrupt(INT_LCD_VB);
-        // }
+        }
     }
 
     //VBlank flag cleared on last line
@@ -422,7 +429,7 @@ auto PPU::getSpriteLines() -> std::vector<Object> {
     for(int i = 127; i >= 0; i--) {
         u8 mode = bits::get<2, 2>(m_state.oam[i * 8 + 1]);
         u8 flags = bits::get<0, 2>(m_state.oam[i * 8 + 1]);
-        
+
         if(mode < 2 && flags != 2) {
             const int height = OBJECT_HEIGHT_LUT[(bits::get<6, 2>(m_state.oam[i * 8 + 1]) << 2) | bits::get<6, 2>(m_state.oam[i * 8 + 3])];
             const int y = m_state.oam[i * 8];

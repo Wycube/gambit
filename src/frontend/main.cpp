@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
     config.sampleRate = 48000;
     config.dataCallback = app.audio_sync;
     config.pUserData = &app;
+    config.periodSizeInFrames = 48000 / 64;
 
     ma_device device;
     if(ma_device_init(nullptr, &config, &device) != MA_SUCCESS) {

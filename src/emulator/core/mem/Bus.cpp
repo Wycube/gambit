@@ -26,22 +26,22 @@ auto Bus::read8(u32 address) -> u8 {
 
 auto Bus::read16(u32 address) -> u16 {
     cycle();
-    return read<u16>(bits::align<u16>(address));
+    return read<u16>(address);
 }
 
 auto Bus::readRotated16(u32 address) -> u32 {
     cycle();
-    return bits::ror(read<u16>(bits::align<u16>(address)), (address & 1) * 8);
+    return bits::ror(read<u16>(address), (address & 1) * 8);
 }
 
 auto Bus::read32(u32 address) -> u32 {
     cycle();
-    return read<u32>(bits::align<u32>(address));
+    return read<u32>(address);
 }
 
 auto Bus::readRotated32(u32 address) -> u32 {
     cycle();
-    return bits::ror(read<u32>(bits::align<u32>(address)), (address & 3) * 8);
+    return bits::ror(read<u32>(address), (address & 3) * 8);
 }
 
 void Bus::write8(u32 address, u8 value) {
@@ -51,12 +51,12 @@ void Bus::write8(u32 address, u8 value) {
 
 void Bus::write16(u32 address, u16 value) {
     cycle();
-    write<u16>(bits::align<u16>(address), value);
+    write<u16>(address, value);
 }
 
 void Bus::write32(u32 address, u32 value) {
     cycle();
-    write<u32>(bits::align<u32>(address), value);
+    write<u32>(address, value);
 }
 
 void Bus::requestInterrupt(InterruptSource source) {
@@ -110,12 +110,12 @@ auto Bus::read(u32 address) -> T {
     static_assert(std::is_integral_v<T>);
     static_assert(sizeof(T) <= 4);
     
-    u32 sub_address = address & 0xFFFFFF;
+    u32 sub_address = bits::align<T>(address) & 0xFFFFFF;
     u8 *memory_region = nullptr;
     u32 region_size = 0;
     T value = 0;
 
-    switch((address >> 24) & 0xF) {
+    switch(address >> 24) {
         case 0x0 : //BIOS
             memory_region = m_mem.bios;
             region_size = sizeof(m_mem.bios);
@@ -148,10 +148,9 @@ auto Bus::read(u32 address) -> T {
         case 0xA : 
         case 0xB : //Pak ROM Waitstate 1
         case 0xC : //return m_pak.read<T>(sub_address); //Pak ROM Waitstate 2
-        case 0xD : //if constexpr (sizeof(T) == 2) return m_eeprom.read();
-        case 0xE : return m_pak.read<T>(address); //Pak SRAM
-        break;
-        case 0xF : //Not Used
+        case 0xD :
+        case 0xE :
+        case 0xF : return m_pak.read<T>(address); //Pak SRAM
         break;
     }
 
@@ -171,11 +170,11 @@ void Bus::write(u32 address, T value) {
     static_assert(std::is_integral_v<T>);
     static_assert(sizeof(T) <= 4);
     
-    u32 sub_address = address & 0xFFFFFF;
+    u32 sub_address = bits::align<T>(address) & 0xFFFFFF;
     u8 *memory_region = nullptr;
     u32 region_size = 0;
 
-    switch((address >> 24) & 0xF) {
+    switch(address >> 24) {
         case 0x0 : //BIOS (Read-only)
         break;
         case 0x1 : //Not Used
@@ -205,10 +204,8 @@ void Bus::write(u32 address, T value) {
         case 0xB : //Pak ROM Waitstate 1
         case 0xC : //m_pak.write<T>(sub_address, value); //Pak ROM Waitstate 2
         case 0xD : //if constexpr (sizeof(T) == 2) m_eeprom.write(value);//LOG_DEBUG("Writing {:08X} to 0x0DXXXXXX address", value); return;
-        case 0xE : m_pak.write<T>(address, value); //SRAM
-            //LOG_FATAL("Write to SRAM");
-        break;
-        case 0xF : //Not Used
+        case 0xE :
+        case 0xF : m_pak.write<T>(address, value); //SRAM
         break;
     }
 

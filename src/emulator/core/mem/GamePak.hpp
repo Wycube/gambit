@@ -32,7 +32,7 @@ public:
     template<typename T>
     void write(u32 address, T value);
     
-    auto getHeader() -> GamePakHeader&;
+    auto getHeader() -> const GamePakHeader&;
     auto getTitle() -> const std::string&;
     auto size() -> u32;
     void loadROM(std::vector<u8> &&rom);

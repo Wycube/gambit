@@ -76,8 +76,6 @@ public:
         // m_debugger.addBreakpoint(0x0800B46C);
         // m_debugger.addBreakpoint(0x080B0942);
         // m_debugger.addBreakpoint(0x080B0498); //Read Flash 128k in chip identification mode 0x0E000001
-
-        m_debugger.addBreakpoint(0x080E1C4E);
     }
 
     void drawScreen() {
@@ -382,16 +380,6 @@ public:
             }
 
             ImGui::EndTable();
-            
-            // if(go_to_pc) {
-            //     //Scroll to 3 instructions before the current PC
-            //     ImGui::SetScrollY(47.5f * clipper.ItemsHeight);
-            // }
-
-            // if(go_to_address && (address_input >= 0x08000000 && address_input < (0x08000000 + pak.size()))) {
-            //     ImGui::SetScrollY((address_input - 0x08000000) / instr_size * clipper.ItemsHeight);
-            //     go_to_address = false;
-            // }
 
             if(scroll_to_center) {
                 ImGui::SetScrollY(45 * clipper.ItemsHeight);
