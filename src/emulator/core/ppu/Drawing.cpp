@@ -28,15 +28,23 @@ auto Background::read(u32 address, bool regular) -> u8 {
     }
 }
 
-auto Background::getTextPixel(int x, int y, const u8 *vram) -> u8 {
+auto Background::getTextPixel(int x, int y, const u8 *vram, const PPUState &state) -> u8 {
     const u16 map_width = 32 << (screen_size & 1);
     const u16 map_height = 32 << (screen_size >> 1);
     const u8 tile_width = color_mode ? 8 : 4;
+
+    if(mosaic) {
+        int mosaic_w = (bits::get<0, 4>(state.mosaic) + 1);
+        int mosaic_h = (bits::get<4, 4>(state.mosaic) + 1);
+        x = x / mosaic_w * mosaic_w;
+        y = y / mosaic_h * mosaic_h;
+    }
 
     x += h_offset;
     y += v_offset;
     x %= map_width * 8;
     y %= map_height * 8;
+
 
     const u8 tile_x = x / 8;
     const u8 tile_y = y / 8;

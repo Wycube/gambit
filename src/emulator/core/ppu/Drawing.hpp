@@ -31,7 +31,7 @@ struct Background {
     void write(u32 address, u8 value);
     auto read(u32 address, bool regular) -> u8;
 
-    auto getTextPixel(int x, int y, const u8 *vram) -> u8;
+    auto getTextPixel(int x, int y, const u8 *vram, const PPUState &state) -> u8;
     auto getAffinePixel(int x, int y, const u8 *vram) -> u8;
     auto getBitmapPixelMode3(int x, int y, const u8 *vram) -> u16;
     auto getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u16;

@@ -36,8 +36,8 @@ private:
     PPUState m_state;
     u8 m_win_line[240];
     u16 m_bmp_col[240];
-    u8 m_bg_col[4][240];
-    u8 m_obj_col[240];
+    u16 m_bg_col[4][240];
+    u16 m_obj_col[240];
     u8 m_obj_info[240];
 
     GBA &m_core;

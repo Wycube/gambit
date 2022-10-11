@@ -5,6 +5,8 @@
 #include <algorithm>
 
 
+//TODO: Mosaic for non-text backgrounds
+
 namespace emu {
 
 template auto PPU::readPalette<u8>(u32 address) -> u8;
@@ -473,10 +475,16 @@ void PPU::drawObjects() {
     std::vector<Object> active_objs = getSpriteLines();
 
     for(const auto &obj : active_objs) {
-        const int local_y = m_state.line - obj.y;
+        int local_y = m_state.line - obj.y;
         const int priority = bits::get<2, 2>(m_state.oam[obj.index * 8 + 5]);
+        const bool mosaic = bits::get_bit<4>(m_state.oam[obj.index * 8 + 1]);
 
         int obj_width = obj.double_size ? obj.width * 2 : obj.width;
+
+        if(mosaic) {
+            int mosaic_h = (bits::get<12, 4>(m_state.mosaic) + 1);
+            local_y = (m_state.line / mosaic_h * mosaic_h) - obj.y;
+        }
 
         for(int i = 0; i < obj_width; i++) {
             int screen_x = obj.getScreenX(i);
@@ -487,11 +495,11 @@ void PPU::drawObjects() {
 
             u8 palette_index = obj.getObjectPixel(i, local_y, m_state);
 
-            if(priority <= (m_obj_info[screen_x] & 7) && palette_index != 0) {
+            if(priority <= (m_obj_info[screen_x] & 7) && (palette_index != 0 || m_obj_info[screen_x] == 6)) {
                 bool is_semi_transparent = bits::get<2, 2>(m_state.oam[obj.index * 8 + 1]) == 1;
 
                 m_obj_col[screen_x] = palette_index;
-                m_obj_info[screen_x] = priority | (is_semi_transparent << 3);
+                m_obj_info[screen_x] = priority | (is_semi_transparent  << 3) | (mosaic << 4);
             }
         }
     }
@@ -501,16 +509,16 @@ void PPU::drawBackground() {
     switch(bits::get<0, 3>(m_state.dispcnt)) {
         case 0 : //BG 0-3 Text
             for(int i = 0; i < 240; i++) {
-                if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
-                if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
-                if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getTextPixel(i, m_state.line, m_state.vram);
-                if(bits::get_bit<11>(m_state.dispcnt)) m_bg_col[3][i] = m_state.bg[3].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram, m_state);
+                if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram, m_state);
+                if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getTextPixel(i, m_state.line, m_state.vram, m_state);
+                if(bits::get_bit<11>(m_state.dispcnt)) m_bg_col[3][i] = m_state.bg[3].getTextPixel(i, m_state.line, m_state.vram, m_state);
             }
             break;
         case 1 : //BG 0-1 Text BG 2 Affine
             for(int i = 0; i < 240; i++) {
-                if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram);
-                if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram);
+                if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram, m_state);
+                if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram, m_state);
                 if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
             }
             break;
@@ -554,6 +562,9 @@ void PPU::compositeLine() {
             priorities[i] = i << 3;
         }
 
+        int mosaic = (bits::get<8, 4>(m_state.mosaic) + 1);
+        int i_mosaic = (m_obj_info[i] & 0x10) == 0x10 ? i / mosaic * mosaic : i;
+
         //BG Pixels
         priorities[0] |= m_bg_col[0][i] != 0 && bits::get_bit<0>(m_win_line[i]) ? m_state.bg[0].priority + 1 : 6;
         priorities[1] |= m_bg_col[1][i] != 0 && bits::get_bit<1>(m_win_line[i]) ? m_state.bg[1].priority + 1 : 6;
@@ -561,7 +572,7 @@ void PPU::compositeLine() {
         priorities[3] |= m_bg_col[3][i] != 0 && bits::get_bit<3>(m_win_line[i]) ? m_state.bg[3].priority + 1 : 6;
 
         //Object pixel
-        priorities[4] |= m_obj_col[i] != 0 && bits::get_bit<4>(m_win_line[i]) ? m_obj_info[i] & 7 : 6;
+        priorities[4] |= m_obj_col[i_mosaic] != 0 && bits::get_bit<4>(m_win_line[i]) ? m_obj_info[i_mosaic] & 7 : 6;
         
         //Backdrop
         priorities[5] |= 5;
@@ -572,32 +583,26 @@ void PPU::compositeLine() {
 
         u16 target_1;
 
-        // if(m_obj_col[i] != 0 && m_obj_info[i] >> 3 == 0 && bits::get<0, 6>(m_state.bldcnt) != 0) {
-        //     target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2];
-        // } else {
-            //Find first target (Topmost pixel)
-            switch(priorities[0] >> 3) {
-                case 0 : target_1 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
-                case 1 : target_1 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
-                case 2 : target_1 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
-                case 3 : target_1 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
-                case 4 : target_1 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
-                case 5 : target_1 = zero_color; break;
-            }
-        // }
+        //Find first target (Topmost pixel)
+        switch(priorities[0] >> 3) {
+            case 0 : target_1 = (m_state.palette[m_bg_col[0][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[0][i] * 2]; break;
+            case 1 : target_1 = (m_state.palette[m_bg_col[1][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
+            case 2 : target_1 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
+            case 3 : target_1 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
+            case 4 : target_1 = (m_state.palette[0x200 + m_obj_col[i_mosaic] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i_mosaic] * 2]; break;
+            case 5 : target_1 = zero_color; break;
+        }
 
         u8 red   = bits::get<0, 5>(target_1);
         u8 green = bits::get<5, 5>(target_1);
         u8 blue  = bits::get<10, 5>(target_1);
 
+        //TODO: If semi-transparent obj is 2nd highest priority
+        bool semi_transparent = (priorities[0] >> 3) == 4 && (m_obj_info[i] & 0x8) == 0x8 && bits::get_bit(m_state.bldcnt, 8 + (priorities[1] >> 3));
+
         //Color Effects
-        if((priorities[0] & 7) < 6 && bits::get_bit(m_state.bldcnt, priorities[0] >> 3) && bits::get_bit<5>(m_win_line[i])) {
-            float blend_y = (float)(m_state.bldy & 0x1F) / 16.0f;
-            if(blend_y > 1.0f) {
-                blend_y = 1.0f;
-            }
-            
-            switch(bits::get<6, 2>(m_state.bldcnt)) {
+        if((priorities[0] & 7) < 6 && (semi_transparent || bits::get_bit(m_state.bldcnt, priorities[0] >> 3)) && bits::get_bit<5>(m_win_line[i])) {
+            switch(semi_transparent ? 1 : bits::get<6, 2>(m_state.bldcnt)) {
                 case 1 : //Alpha Blending
                     if(bits::get_bit(m_state.bldcnt, 8 + (priorities[1] >> 3))) {
                         float blend_a1 = (float)(m_state.bldalpha & 0x1F) / 16.0f;
@@ -616,7 +621,7 @@ void PPU::compositeLine() {
                             case 1 : target_2 = (m_state.palette[m_bg_col[1][i] *  2 + 1] << 8) | m_state.palette[m_bg_col[1][i] * 2]; break;
                             case 2 : target_2 = bitmap ? m_bmp_col[i] : (m_state.palette[m_bg_col[2][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[2][i] * 2]; break;
                             case 3 : target_2 = (m_state.palette[m_bg_col[3][i] * 2 + 1] << 8) | m_state.palette[m_bg_col[3][i] * 2]; break;
-                            case 4 : target_2 = (m_state.palette[0x200 + m_obj_col[i] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i] * 2]; break;
+                            case 4 : target_2 = (m_state.palette[0x200 + m_obj_col[i_mosaic] * 2 + 1] << 8) | m_state.palette[0x200 + m_obj_col[i_mosaic] * 2]; break;
                             case 5 : target_2 = zero_color; break;
                         } 
 
@@ -629,16 +634,28 @@ void PPU::compositeLine() {
                         blue  = blend_a1 * (float)blue + blend_a2 * (float)blue_2;
                     }
                     break;
-                case 2 : //Brightness Increase
+                case 2 : { //Brightness Increase
+                    float blend_y = (float)(m_state.bldy & 0x1F) / 16.0f;
+                    if(blend_y > 1.0f) {
+                        blend_y = 1.0f;
+                    }
+
                     red   = (float)red + blend_y * (float)(31 - red);
                     green = (float)green + blend_y * (float)(31 - green);
                     blue  = (float)blue + blend_y * (float)(31 - blue);
                     break;
-                case 3 : //Brightness Decrease
+                }
+                case 3 : { //Brightness Decrease
+                    float blend_y = (float)(m_state.bldy & 0x1F) / 16.0f;
+                    if(blend_y > 1.0f) {
+                        blend_y = 1.0f;
+                    }
+
                     red   = (float)red - blend_y * (float)red;
                     green = (float)green - blend_y * (float)green;
                     blue  = (float)blue - blend_y * (float)blue;
                     break;
+                }
             }
 
             red   = red > 31 ? 31 : red;
