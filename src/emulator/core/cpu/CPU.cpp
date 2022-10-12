@@ -33,7 +33,7 @@ void CPU::reset() {
     set_reg(13, 0x03007FA0, MODE_IRQ);
     set_reg(13, 0x03007FE0, MODE_SUPERVISOR);
     set_reg(14, 0x00000000);
-    set_reg(15, 0x00000000);
+    set_reg(15, 0x08000000);
 
     m_core.debugger.attachCPUState(&m_state);
 }

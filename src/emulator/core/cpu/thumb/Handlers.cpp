@@ -124,14 +124,14 @@ void CPU::thumbALUOperation(u16 instruction) {
         case 0x5 : result = op_1 + op_2 + m_state.cpsr.c; break;                //ADC
         case 0x6 : result = op_1 - op_2 - !m_state.cpsr.c; break;               //SBC
         case 0x7 : result = bits::ror_c(op_1, op_2 & 0xFF, shift_carry); break; //ROR
-        case 0x8 : result = op_1 & op_2; break;  //TST
-        case 0x9 : result = -op_2; op_1 = 0; break;        //NEG
-        case 0xA : result = op_1 - op_2; break;  //CMP
-        case 0xB : result = op_1 + op_2; break;  //CMN
-        case 0xC : result = op_1 | op_2; break;  //ORR
-        case 0xD : result = op_1 * op_2; break;  //MUL
-        case 0xE : result = op_1 & ~op_2; break; //BIC
-        case 0xF : result = ~op_2; break;        //MVN
+        case 0x8 : result = op_1 & op_2; break;     //TST
+        case 0x9 : result = -op_2; op_1 = 0; break; //NEG
+        case 0xA : result = op_1 - op_2; break;     //CMP
+        case 0xB : result = op_1 + op_2; break;     //CMN
+        case 0xC : result = op_1 | op_2; break;     //ORR
+        case 0xD : result = op_1 * op_2; break;     //MUL
+        case 0xE : result = op_1 & ~op_2; break;    //BIC
+        case 0xF : result = ~op_2; break;           //MVN
     }
 
     //Save result for all opcodes except TST, CMP, and CMN

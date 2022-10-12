@@ -18,7 +18,7 @@ template void GamePak::write<u32>(u32 address, u32 value);
 template<typename T>
 auto GamePak::read(u32 address) -> T {
     u32 sub_address = address & 0xFFFFFF;
-    u32 aligned = bits::align<T>(address) & 0xFFFFFF;
+    u32 aligned = bits::align<T>(address) & 0x1FFFFFF;
 
     switch(address >> 24) {
         case 0xD : //EEPROM

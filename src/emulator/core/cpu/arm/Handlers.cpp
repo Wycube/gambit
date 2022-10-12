@@ -156,10 +156,9 @@ void CPU::armDataProcessing(u32 instruction) {
             m_state.cpsr = get_spsr();
         }
 
-        //Set r15 here so if it is switched into thumb, it won't be word-aligned before
-        set_reg(rd, result);
-
         if(opcode < 0x8 || opcode > 0xB) {
+            //Set r15 here so if it is switched into thumb, it will be properly aligned
+            set_reg(rd, result);
             flushPipeline();
         }
     }
@@ -176,7 +175,7 @@ void CPU::armDataProcessing(u32 instruction) {
             u32 r_op_1 = op_1;
             u32 r_op_2 = op_2;
 
-            //Reserve opcodes (RSB, RSC)
+            //Reverse opcodes (RSB, RSC)
             if(opcode == 3 || opcode == 7) {
                 r_op_1 = op_2;
                 r_op_2 = op_1;
@@ -188,11 +187,6 @@ void CPU::armDataProcessing(u32 instruction) {
                 m_state.cpsr.c = (u64)op_1 + (u64)op_2 + (use_carry ? m_state.cpsr.c : 0) > 0xFFFFFFFF;
             }
 
-            //This checks if a and b are equal
-            //and not equal to c for additions, and if
-            //a and b are not equal and a is equal to c for 
-            //subtractions. The original version was this:
-            // subtract ? a != b && a != c : a == b && a != c
             const bool a = r_op_1 >> 31;
             const bool b = r_op_2 >> 31;
             const bool c = result >> 31;

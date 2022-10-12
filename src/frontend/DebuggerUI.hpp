@@ -32,7 +32,7 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.debugger), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.video_device)) {
         m_region_sizes[7] = m_gba.getGamePak().size();
-    
+
         // m_debugger.addBreakpoint(0x0304B65C);
         // m_debugger.addBreakpoint(0x080000C0);
         // m_debugger.addBreakpoint(0x08000238);
@@ -319,7 +319,6 @@ public:
         }
 
         if(follow_pc || ImGui::Button("Go to PC")) {
-            scroll_to_center = true;
             address_input = m_debugger.getCPURegister(15) - (use_thumb ? 2 : 4);
         }
 
@@ -362,7 +361,7 @@ public:
                     }
 
                     //Instruction in hexadecimal
-                    u32 bytes = thumb ? m_debugger.read32(address) & 0xFFFF : m_debugger.read32(address); //m_debugger.read16(address) : m_debugger.read32(address);
+                    u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address); //m_debugger.read16(address) : m_debugger.read32(address);
                     ImGui::Text("%s", fmt::format(instr_size == 2 ? "{2:02X} {3:02X}" : "{:02X} {:02X} {:02X} {:02X}", 
                         m_debugger.read8(address + 3), m_debugger.read8(address + 2), 
                         m_debugger.read8(address + 1), m_debugger.read8(address + 0)).c_str());

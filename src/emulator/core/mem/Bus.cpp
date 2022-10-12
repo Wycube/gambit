@@ -150,7 +150,7 @@ auto Bus::read(u32 address) -> T {
         case 0xC : //return m_pak.read<T>(sub_address); //Pak ROM Waitstate 2
         case 0xD :
         case 0xE :
-        case 0xF : return m_pak.read<T>(address); //Pak SRAM
+        case 0xF : return m_pak.read<T>(address);
         break;
     }
 
