@@ -38,7 +38,7 @@ void EmuThread::start() {
     m_running.store(true);
 
     m_thread = std::thread([this]() {
-        while(true) {
+        while(m_running.load()) {
             if(std::chrono::steady_clock::now() >= (m_start + std::chrono::seconds(1))) {
                 auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_start);
                 m_clock_speed.store((m_core.scheduler.getCurrentTimestamp() - m_clock_start) / ((float)duration.count() / 1000000.0f));
@@ -50,10 +50,6 @@ void EmuThread::start() {
             m_cv.wait(lock, [&]() { return m_run; });
             m_run = false;
             lock.unlock();
-            
-            if(!m_running.load()) {
-                break;
-            }
 
             u32 cycles_left = (16777216 / 64) + m_cycle_diff;
             // auto start = std::chrono::steady_clock::now();
@@ -290,6 +286,25 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
+    if(ImGui::Begin("Performance")) {
+        float values_1[50];
+        float values_2[50];
+        int i = 0;
+
+        for(float value : m_frame_times) {
+            values_1[i++] = value;
+        }
+
+        i = 0;
+        for(float value : m_video_device.getFrameTimes()) {
+            values_2[i++] = value;
+        }
+
+        ImGui::PlotLines("Host Frame Times", values_1, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+    }
+    ImGui::End();
+
     endFrame();
 }
 
@@ -307,6 +322,24 @@ void Frontend::beginFrame() {
 void Frontend::endFrame() {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    // m_video_device.counter--;
+    // if(m_video_device.counter > 0) {
+    //     LOG_INFO("Skipped Frame, Counter: {}", m_video_device.counter);
+    //     m_video_device.counter = 0;
+    // } else if(m_video_device.counter < 0) {
+    //     LOG_INFO("Duplicate Frame, Counter: {}", m_video_device.counter);
+    //     m_video_device.counter = 0;
+    // }
+
+    //Frame times
+    auto now = std::chrono::steady_clock::now();
+    auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(now - m_start);
+    m_start = now;
+
+    m_frame_times.push_back((float)frame_time.count() / 1000.0f);
+    if(m_frame_times.size() > 50) {
+        m_frame_times.pop_front();
+    }
 }
 
 void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {

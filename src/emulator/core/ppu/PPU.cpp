@@ -428,7 +428,7 @@ void PPU::getWindowLine() {
 auto PPU::getSpriteLines() -> std::vector<Object> {
     std::vector<Object> lines;
 
-    for(int i = 127; i >= 0; i--) {
+    for(int i = 0; i < 128; i++) {
         u8 mode = bits::get<2, 2>(m_state.oam[i * 8 + 1]);
         u8 flags = bits::get<0, 2>(m_state.oam[i * 8 + 1]);
 
@@ -478,7 +478,6 @@ void PPU::drawObjects() {
         int local_y = m_state.line - obj.y;
         const int priority = bits::get<2, 2>(m_state.oam[obj.index * 8 + 5]);
         const bool mosaic = bits::get_bit<4>(m_state.oam[obj.index * 8 + 1]);
-
         int obj_width = obj.double_size ? obj.width * 2 : obj.width;
 
         if(mosaic) {
@@ -495,10 +494,14 @@ void PPU::drawObjects() {
 
             u8 palette_index = obj.getObjectPixel(i, local_y, m_state);
 
-            if(priority <= (m_obj_info[screen_x] & 7) && (palette_index != 0 || m_obj_info[screen_x] == 6)) {
-                bool is_semi_transparent = bits::get<2, 2>(m_state.oam[obj.index * 8 + 1]) == 1;
+            if(priority < (m_obj_info[screen_x] & 7) || m_obj_col[screen_x] == 0){
+                bool is_semi_transparent = false;
 
-                m_obj_col[screen_x] = palette_index;
+                if(palette_index != 0) {
+                    m_obj_col[screen_x] = palette_index;
+                    is_semi_transparent = bits::get<2, 2>(m_state.oam[obj.index * 8 + 1]) == 1;
+                }
+
                 m_obj_info[screen_x] = priority | (is_semi_transparent  << 3) | (mosaic << 4);
             }
         }

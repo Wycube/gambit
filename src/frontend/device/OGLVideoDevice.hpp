@@ -3,6 +3,7 @@
 #include "emulator/device/VideoDevice.hpp"
 #include <glad/gl.h>
 #include <mutex>
+#include <deque>
 
 
 class OGLVideoDevice final : public emu::VideoDevice {
@@ -16,6 +17,9 @@ public:
     void presentFrame() override;
 
     auto getTextureID() -> GLuint;
+    auto getFrameTimes() -> const std::deque<float>& {
+        return m_frame_times;
+    }
 
 private:
 
@@ -26,4 +30,7 @@ private:
     GLuint m_texture_id;
     std::mutex m_update_mutex;
     bool new_frame;
+
+    std::deque<float> m_frame_times;
+    std::chrono::time_point<std::chrono::steady_clock> m_start;
 };

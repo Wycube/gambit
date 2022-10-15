@@ -34,6 +34,15 @@ void OGLVideoDevice::setPixel(int x, int y, u32 color) {
 void OGLVideoDevice::presentFrame() {
     std::lock_guard lock(m_update_mutex);
 
+    auto now = std::chrono::steady_clock::now();
+    auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(now - m_start);
+    m_start = now;
+
+    m_frame_times.push_back((float)frame_time.count() / 1000.0f);
+    if(m_frame_times.size() > 50) {
+        m_frame_times.pop_front();
+    }
+
     memcpy(m_present_framebuffer, m_internal_framebuffer, sizeof(m_internal_framebuffer));
     new_frame = true;
 }

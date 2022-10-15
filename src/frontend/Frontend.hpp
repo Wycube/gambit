@@ -9,6 +9,7 @@
 #include <thread>
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 
 
 class EmuThread final {
@@ -76,6 +77,9 @@ private:
     bool m_show_scheduler_debug;
     bool m_show_about;
     bool m_show_pak_info;
+
+    std::deque<float> m_frame_times;
+    std::chrono::time_point<std::chrono::steady_clock> m_start;
 
     GLFWwindow *m_window;
     int m_width, m_height;

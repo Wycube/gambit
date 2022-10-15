@@ -37,8 +37,8 @@ int main(int argc, char *argv[]) {
         bios_path = argv[2];
     }
 
-    std::fstream rom_file(argv[1], std::ios_base::in | std::ios_base::binary);
-    std::fstream bios_file(bios_path, std::ios_base::in | std::ios_base::binary);
+    std::ifstream rom_file(argv[1], std::ios_base::binary);
+    std::ifstream bios_file(bios_path, std::ios_base::binary);
 
     if(!rom_file.good()) {
         LOG_FATAL("ROM file not good!");
@@ -102,18 +102,11 @@ int main(int argc, char *argv[]) {
 
     
     {
-        std::vector<u8> rom;
-        rom.resize(rom_size);
-        std::vector<u8> bios;
-        bios.resize(bios_size);
+        std::vector<u8> rom(rom_size);
+        std::vector<u8> bios(bios_size);
         
-        for(size_t i = 0; i < rom_size; i++) {
-            rom[i] = static_cast<u8>(rom_file.get());
-        }
-
-        for(size_t i = 0; i < bios_size; i++) {
-            bios[i] = static_cast<u8>(bios_file.get());
-        }
+        rom_file.read(reinterpret_cast<char*>(rom.data()), rom_size);
+        bios_file.read(reinterpret_cast<char*>(bios.data()), bios_size);
 
         app.loadBIOS(bios);
         app.loadROM(std::move(rom));
