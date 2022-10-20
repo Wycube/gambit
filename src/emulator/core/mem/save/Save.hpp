@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/Types.hpp"
+#include <string>
 #include <vector>
 
 
@@ -23,9 +24,9 @@ public:
     virtual void reset() = 0;
     virtual auto read(u32 address) -> u8 = 0;
     virtual void write(u32 address, u8 value) = 0;
-    // void loadFromFile(const std::string &path);
-    // void saveToFile(const std::string &path);
-    auto getType() -> SaveType { return m_type; }
+    void loadFromFile(const std::string &filename);
+    void writeToFile(const std::string &filename);
+    auto getType() -> SaveType;
 
 protected:
 

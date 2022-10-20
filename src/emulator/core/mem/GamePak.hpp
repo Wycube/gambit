@@ -34,6 +34,7 @@ public:
     
     auto getHeader() -> const GamePakHeader&;
     auto getTitle() -> const std::string&;
+    auto getSave() -> std::shared_ptr<Save>;
     auto size() -> u32;
     void loadROM(std::vector<u8> &&rom);
 
@@ -42,7 +43,7 @@ private:
     std::vector<u8> m_rom;
     GamePakHeader m_header;
     std::string m_title;
-    std::unique_ptr<Save> m_save;
+    std::shared_ptr<Save> m_save;
 
     void parseHeader();
     auto findSaveType() -> bool;

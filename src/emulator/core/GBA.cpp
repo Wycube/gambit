@@ -1,4 +1,5 @@
 #include "GBA.hpp"
+#include "common/Log.hpp"
 
 
 namespace emu {
@@ -66,6 +67,24 @@ void GBA::loadROM(std::vector<u8> &&rom) {
 
 void GBA::loadBIOS(const std::vector<u8> &bios) {
     bus.loadBIOS(bios);
+}
+
+void GBA::loadSave(const std::string &filename) {
+    auto save = bus.getLoadedPak().getSave();
+    if(save->getType() != NONE) {
+        save->loadFromFile(filename);
+    } else {
+        LOG_INFO("No save file loaded because save type was NONE");
+    }
+}
+
+void GBA::writeSave(const std::string &filename) {
+    auto save = bus.getLoadedPak().getSave();
+    if(save->getType() != NONE) {
+        save->writeToFile(filename);
+    } else {
+        LOG_INFO("No save file written because save type was NONE");
+    }
 }
 
 } //namespace emu

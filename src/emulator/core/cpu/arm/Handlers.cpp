@@ -407,7 +407,7 @@ void CPU::armSingleTransfer(u32 instruction) {
 }
 
 void CPU::armUndefined(u32 instruction) {
-    LOG_WARNING("Undefined ARM Instruction at Address: {:08X}", m_state.pc - 8);
+    LOG_TRACE("Undefined ARM Instruction at Address: {:08X}", m_state.pc - 8);
 
     set_reg(14, get_reg(15) - 4, MODE_UNDEFINED);
     get_spsr(MODE_UNDEFINED) = m_state.cpsr;
@@ -516,8 +516,8 @@ void CPU::armBranch(u32 instruction) {
 
 void CPU::armSoftwareInterrupt(u32 instruction) {
     const u8 comment = bits::get<16, 8>(instruction);
-    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 8);
-    LOG_DEBUG("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", get_reg(0), get_reg(1), get_reg(2));
+    LOG_TRACE("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 8);
+    LOG_TRACE("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", get_reg(0), get_reg(1), get_reg(2));
 
     set_reg(14, get_reg(15) - 4, MODE_SUPERVISOR);
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;

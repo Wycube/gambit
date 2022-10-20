@@ -77,6 +77,10 @@ auto GamePak::getTitle() -> const std::string& {
     return m_title;
 }
 
+auto GamePak::getSave() -> std::shared_ptr<Save> {
+    return m_save;
+}
+
 auto GamePak::size() -> u32 {
     return m_rom.size();
 }
@@ -87,7 +91,7 @@ void GamePak::loadROM(std::vector<u8> &&rom) {
 
     //Get save type, somehow
     if(!findSaveType()) {
-        m_save = std::make_unique<None>();
+        m_save = std::make_shared<None>();
         LOG_INFO("No save type detected!");
     }
 }
@@ -122,8 +126,8 @@ auto GamePak::findSaveType() -> bool {
                 static_cast<char>(m_rom[i + 2]), static_cast<char>(m_rom[i + 3]), 
                 static_cast<char>(m_rom[i + 4]), static_cast<char>(m_rom[i + 5]), '\0'};
             if(strcmp(next, "EPROM") == 0) {
-                m_save = std::make_unique<EEPROM>(EEPROM_8K);
-                LOG_INFO("EEPROM 8k save type detected!");
+                m_save = std::make_shared<EEPROM>(EEPROM_8K);
+                LOG_INFO("EEPROM save type detected, assuming 8k");
 
                 return true;
             }
@@ -131,8 +135,8 @@ auto GamePak::findSaveType() -> bool {
             const char next[4] = {static_cast<char>(m_rom[i + 1]),
                 static_cast<char>(m_rom[i + 2]), static_cast<char>(m_rom[i + 3]), '\0'};
             if(strcmp(next, "RAM") == 0) {
-                m_save = std::make_unique<SRAM>();
-                LOG_INFO("SRAM save type detected!");
+                m_save = std::make_shared<SRAM>();
+                LOG_INFO("SRAM save type detected");
 
                 return true;
             }
@@ -145,24 +149,24 @@ auto GamePak::findSaveType() -> bool {
                     char size = static_cast<char>(m_rom[i + 5]);
 
                     if(size == '5') {
-                        m_save = std::make_unique<Flash>(FLASH_64K);
-                        LOG_INFO("Flash 64k save type detected!");
+                        m_save = std::make_shared<Flash>(FLASH_64K);
+                        LOG_INFO("Flash 64k save type detected");
                     
                         return true;
                     } else if(size == '1') {
-                        m_save = std::make_unique<Flash>(FLASH_128K);
-                        LOG_INFO("Flash 128k save type detected!");
+                        m_save = std::make_shared<Flash>(FLASH_128K);
+                        LOG_INFO("Flash 128k save type detected");
 
                         return true;
                     } else {
-                        m_save = std::make_unique<Flash>(FLASH_128K);
-                        LOG_INFO("Flash save type detected! Assuming 128k");
+                        m_save = std::make_shared<Flash>(FLASH_64K);
+                        LOG_INFO("Flash save type detected, assuming 64k");
 
                         return true;
                     }
                 } else {
-                    m_save = std::make_unique<Flash>(FLASH_128K);
-                    LOG_INFO("Flash save type detected! Assuming 128k");
+                    m_save = std::make_shared<Flash>(FLASH_64K);
+                    LOG_INFO("Flash save type detected, assuming 64k");
 
                     return true;
                 }

@@ -310,7 +310,6 @@ void PPU::hblankEnd(u64 current, u64 late) {
         m_core.dma.onVBlank();
 
         if(bits::get_bit<3>(m_state.dispstat)) {
-            LOG_DEBUG("VBLANK interrupt requested");
             m_core.bus.requestInterrupt(INT_LCD_VB);
         }
     }

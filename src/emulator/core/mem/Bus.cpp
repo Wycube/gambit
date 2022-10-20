@@ -143,14 +143,14 @@ auto Bus::read(u32 address) -> T {
         break;
         case 0x7 : return m_core.ppu.readOAM<T>(sub_address); //OAM - OBJ Attributes
         break;
-        case 0x8 : 
-        case 0x9 : //Pak ROM Waitstate 0
-        case 0xA : 
-        case 0xB : //Pak ROM Waitstate 1
-        case 0xC : //return m_pak.read<T>(sub_address); //Pak ROM Waitstate 2
+        case 0x8 :
+        case 0x9 :
+        case 0xA :
+        case 0xB :
+        case 0xC :
         case 0xD :
         case 0xE :
-        case 0xF : return m_pak.read<T>(address);
+        case 0xF : return m_pak.read<T>(address); //Cartridge
         break;
     }
 
@@ -198,14 +198,14 @@ void Bus::write(u32 address, T value) {
         break;
         case 0x7 : m_core.ppu.writeOAM<T>(sub_address, value); //OAM - OBJ Attributes
         break;
-        case 0x8 : 
-        case 0x9 : //Pak ROM Waitstate 0
-        case 0xA : 
-        case 0xB : //Pak ROM Waitstate 1
-        case 0xC : //m_pak.write<T>(sub_address, value); //Pak ROM Waitstate 2
-        case 0xD : //if constexpr (sizeof(T) == 2) m_eeprom.write(value);//LOG_DEBUG("Writing {:08X} to 0x0DXXXXXX address", value); return;
+        case 0x8 :
+        case 0x9 :
+        case 0xA :
+        case 0xB :
+        case 0xC :
+        case 0xD :
         case 0xE :
-        case 0xF : m_pak.write<T>(address, value); //SRAM
+        case 0xF : m_pak.write<T>(address, value); //Cartridge
         break;
     }
 

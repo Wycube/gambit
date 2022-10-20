@@ -433,8 +433,8 @@ void CPU::thumbConditionalBranch(u16 instruction) {
 
 void CPU::thumbSoftwareInterrupt(u16 instruction) {
     const u8 comment = bits::get<0, 8>(instruction);
-    LOG_DEBUG("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 4);
-    LOG_DEBUG("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", get_reg(0), get_reg(1), get_reg(2));
+    LOG_TRACE("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 4);
+    LOG_TRACE("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", get_reg(0), get_reg(1), get_reg(2));
 
     get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
     set_reg(14, get_reg(15) - 2, MODE_SUPERVISOR);
@@ -462,12 +462,11 @@ void CPU::thumbLongBranch(u16 instruction) {
         flushPipeline();
     } else {
         set_reg(14, get_reg(15) + bits::sign_extend<23, s32>(bits::get<0, 11>(instruction) << 12));
-        // LOG_INFO("Branch long at {:08X}", m_state.pc);
     }
 }
 
 void CPU::thumbUndefined(u16 instruction) {
-    LOG_DEBUG("Undefined THUMB Instruction at Address: {:08X}", m_state.pc - 4);
+    LOG_TRACE("Undefined THUMB Instruction at Address: {:08X}", m_state.pc - 4);
 }
 
 } //namespace emu

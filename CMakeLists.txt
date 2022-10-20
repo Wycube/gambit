@@ -4,7 +4,7 @@ endif()
 
 cmake_minimum_required(VERSION 3.10)
 
-project(gba-emu)
+project(gba-emu VERSION 0.1)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,10 +15,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin/${CMAKE_BUILD
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 
 option(BUILD_TESTS "Build tests" OFF)
-
-# Version information
-set(PROJECT_VERSION_MAJOR 0)
-set(PROJECT_VERSION_MINOR 1)
 
 find_package(Git)
 if(GIT_FOUND)
@@ -40,10 +36,11 @@ if(GIT_FOUND)
 	OUTPUT_VARIABLE GIT_BRANCH 
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
 else()
-	message(FATAL_ERROR "Git was not found")
+	message(FATAL_ERROR "Git was not found!")
 endif()
 
-include_directories(${PROJECT_SOURCE_DIR}/lib/lest-1.35.1/include) # lest (Unit Testing)
+# lest (Unit Testing)
+include_directories(${PROJECT_SOURCE_DIR}/lib/lest-1.35.1/include)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 # Add fmtlib

@@ -114,7 +114,7 @@ void Timer::updateTimer(u8 timer, u8 old_tmcnt) {
 }
 
 void Timer::startTimer(u8 timer) {
-    LOG_DEBUG("Timer {} started", timer);
+    LOG_TRACE("Timer {} started", timer);
 
     //Cascade, timer is incremented when the preceding one overflows
     if(bits::get_bit<2>(m_tmcnt[timer]) && timer != 0) {
@@ -127,7 +127,7 @@ void Timer::startTimer(u8 timer) {
 }
 
 void Timer::stopTimer(u8 timer) {
-    LOG_DEBUG("Timer {} stopped", timer);
+    LOG_TRACE("Timer {} stopped", timer);
 
     m_timer_counter[timer] = getTimerIntermediateValue(timer, true);
     m_core.scheduler.removeEvent(fmt::format("Timer {} Overflow", timer));

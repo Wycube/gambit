@@ -2,9 +2,6 @@
 #include "common/Version.hpp"
 #include "common/Types.hpp"
 #include "common/Log.hpp"
-#include "DebuggerUI.hpp"
-#include "device/OGLVideoDevice.hpp"
-#include "device/GLFWInputDevice.hpp"
 #include "Frontend.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -16,42 +13,94 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
-#include <thread>
 
 
 int main(int argc, char *argv[]) {
-    LOG_INFO("Version: {}", common::GIT_DESC);
-    LOG_INFO("Commit: {}", common::GIT_COMMIT);
-    LOG_INFO("Branch: {}", common::GIT_BRANCH);
+    bool has_rom_path = false, has_bios_path = false;
+    std::string rom_path, bios_path;
+    u8 log_filter = 0xFF & ~common::log::LEVEL_DEBUG & ~common::log::LEVEL_TRACE;
 
-    if(argc < 2) {
-        LOG_FATAL("No ROM file specified!");
+    for(int i = 1; i < argc; i++) {
+        const char *str = argv[i];
+
+        if(str[0] == '-') {
+            if(strlen(str) < 2) {
+                continue;
+            }
+
+            const char *substr = &argv[i][1];
+
+            if(strcmp(substr, "h") == 0 || strcmp(substr, "-help") == 0) {
+                fmt::print("Usage: emu [options] rom_path\n");
+                fmt::print("\n");
+                fmt::print("-h --help     Prints help text\n");
+                fmt::print("-v --version  Prints version information\n");
+                fmt::print("-b FILE       Specify path to a BIOS binary (defaults to bios.bin)\n");
+                fmt::print("-d            Enable debug level logging    (disabled by default)\n");
+                fmt::print("-t            Enable trace level logging    (disabled by default)\n");
+                fmt::print("-i            Disable info level logging    (enabled by default)\n");
+                fmt::print("-w            Disalbe warning level logging (enabled by default)\n");
+                fmt::print("-e            Disable error level logging   (enabled by default)\n");
+                
+                return 0;
+            } else if(strcmp(substr, "v") == 0 || strcmp(substr, "-version") == 0) {
+                fmt::print("Game Boy Advance Emulator,\n");
+                fmt::print("Copyright (c) 2021-2022 Wycube\n");
+                fmt::print("\n");
+                fmt::print("Version : {}\n", common::GIT_DESC);
+                fmt::print("Branch  : {}\n", common::GIT_BRANCH);
+                fmt::print("Commit  : {}\n", common::GIT_COMMIT);
+                
+                return 0;
+            } else if(strcmp(substr, "b") == 0) {
+                if(!has_bios_path && i + 1 < argc) {
+                    has_bios_path = true;
+                    bios_path = argv[++i];
+                }
+            } else if(strcmp(substr, "d") == 0) {
+                log_filter |= common::log::LEVEL_DEBUG;
+            } else if(strcmp(substr, "t") == 0) {
+                log_filter |= common::log::LEVEL_TRACE;
+            } else if(strcmp(substr, "i") == 0) {
+                log_filter &= ~common::log::LEVEL_INFO;
+            } else if(strcmp(substr, "w") == 0) {
+                log_filter &= ~common::log::LEVEL_WARNING;
+            } else if(strcmp(substr, "e") == 0) {
+                log_filter &= ~common::log::LEVEL_ERROR;
+            } else {
+                LOG_WARNING("Unknown option '{}'", substr);
+            }
+        } else if(!has_rom_path) {
+            rom_path = str;
+            has_rom_path = true;
+        }
     }
 
-    std::string bios_path;
+    common::log::set_log_filter(log_filter);
 
-    if(argc < 3) {
-        LOG_WARNING("No BIOS path specified! Using default: bios.bin");
+    if(!has_rom_path) {
+        LOG_FATAL("No ROM file provided!");
+    }
+
+    if(!has_bios_path) {
+        LOG_WARNING("No BIOS file specified! Using default: bios.bin");
         bios_path = "bios.bin";
-    } else {
-        bios_path = argv[2];
     }
 
-    std::ifstream rom_file(argv[1], std::ios_base::binary);
+    LOG_DEBUG("Version : {}", common::GIT_DESC);
+    LOG_DEBUG("Branch  : {}", common::GIT_BRANCH);
+    LOG_DEBUG("Commit  : {}", common::GIT_COMMIT);
+
+    std::ifstream rom_file(rom_path, std::ios_base::binary);
     std::ifstream bios_file(bios_path, std::ios_base::binary);
 
-    if(!rom_file.good()) {
-        LOG_FATAL("ROM file not good!");
+    if(!rom_file.is_open()) {
+        LOG_FATAL("Unable to open ROM file {}!", rom_path);
     }
 
-    if(!bios_file.good()) {
-        LOG_FATAL("BIOS file not good!");
+    if(!bios_file.is_open()) {
+        LOG_FATAL("Unable to open BIOS file {}!", bios_path);
     }
-
-    size_t rom_size = std::filesystem::file_size(argv[1]);
-    size_t bios_size = std::filesystem::file_size(bios_path);
-    LOG_INFO("ROM Size: {}", rom_size);
-    LOG_INFO("BIOS Size: {}", bios_size);
 
     //Initialize GLFW and create Window
     if(glfwInit() == GLFW_FALSE) {
@@ -68,7 +117,11 @@ int main(int argc, char *argv[]) {
         LOG_FATAL("Glad failed to initialize!");
     }
 
-    LOG_INFO("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+    LOG_DEBUG("Initialized OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+    LOG_DEBUG("Vender           : {}", glGetString(GL_VENDOR));
+    LOG_DEBUG("Renderer         : {}", glGetString(GL_RENDERER));
+    LOG_DEBUG("OpenGL Version   : {}", glGetString(GL_VERSION));
+    LOG_DEBUG("Shading Language : {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     //Initialize Dear ImGui
     IMGUI_CHECKVERSION();
@@ -102,20 +155,27 @@ int main(int argc, char *argv[]) {
 
     
     {
+        size_t rom_size = std::filesystem::file_size(rom_path);
+        size_t bios_size = std::filesystem::file_size(bios_path);
+        
         std::vector<u8> rom(rom_size);
         std::vector<u8> bios(bios_size);
         
         rom_file.read(reinterpret_cast<char*>(rom.data()), rom_size);
         bios_file.read(reinterpret_cast<char*>(bios.data()), bios_size);
 
+        LOG_INFO("ROM file {} ({} bytes) read", rom_path, rom_size);
+        LOG_INFO("BIOS file {} ({} bytes) read", bios_path, bios_size);
+
         app.loadBIOS(bios);
         app.loadROM(std::move(rom));
     }
 
-    //Close file streams
     rom_file.close();
     bios_file.close();
 
+    std::string save_path = rom_path.substr(0, rom_path.find_last_of(".")) + ".sav";
+    app.loadSave(save_path);
     app.init();
 
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
@@ -127,6 +187,7 @@ int main(int argc, char *argv[]) {
     }
 
     app.shutdown();
+    app.writeSave(save_path);
 
     ma_device_uninit(&device);
 

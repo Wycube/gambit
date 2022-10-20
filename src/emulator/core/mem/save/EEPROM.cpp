@@ -36,7 +36,7 @@ auto EEPROM::read(u32 address) -> u8 {
             break;
         case READ :
             //MSB first
-            data = (m_data[m_address * 8 + (7 - m_buffer_size / 8)] >> (7 - m_buffer_size % 8)) & 1;
+            data = (m_data[m_address * 8 + (m_buffer_size / 8)] >> (7 - m_buffer_size % 8)) & 1;
             m_buffer_size++;
 
             if(m_buffer_size == 64) {
@@ -89,7 +89,7 @@ void EEPROM::write(u32 address, u8 value) {
         case WRITE_GET_DATA :
             if(m_buffer_size == 64) {
                 for(int i = 0; i < 8; i++) {
-                    m_data[m_address * 8 + i] = (m_serial_buffer >> i * 8) & 0xFF;
+                    m_data[m_address * 8 + i] = (m_serial_buffer >> (7 - i) * 8) & 0xFF;
                 }
 
                 m_state = WRITE_END;
@@ -100,7 +100,6 @@ void EEPROM::write(u32 address, u8 value) {
         case READ_END :
         case WRITE_END :
             if(m_buffer_size == 1) {
-                //Apparently the end bit doesn't have to be 0
                 if(m_state == READ_END) {
                     m_state = READ_DUMMY;
                 } else {

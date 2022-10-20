@@ -36,6 +36,7 @@ void EmuThread::start() {
     m_clock_start = m_core.scheduler.getCurrentTimestamp();
     m_start = std::chrono::steady_clock::now();
     m_running.store(true);
+    m_cycle_diff = 0;
 
     m_thread = std::thread([this]() {
         while(m_running.load()) {
@@ -122,6 +123,14 @@ void Frontend::loadROM(std::vector<u8> &&rom) {
 
 void Frontend::loadBIOS(const std::vector<u8> &bios) {
     m_core.loadBIOS(bios);
+}
+
+void Frontend::loadSave(const std::string &filename) {
+    m_core.loadSave(filename);
+}
+
+void Frontend::writeSave(const std::string &filename) {
+    m_core.writeSave(filename);
 }
 
 void Frontend::drawInterface() {
@@ -286,24 +295,24 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
-    if(ImGui::Begin("Performance")) {
-        float values_1[50];
-        float values_2[50];
-        int i = 0;
+    // if(ImGui::Begin("Performance")) {
+    //     float values_1[50];
+    //     float values_2[50];
+    //     int i = 0;
 
-        for(float value : m_frame_times) {
-            values_1[i++] = value;
-        }
+    //     for(float value : m_frame_times) {
+    //         values_1[i++] = value;
+    //     }
 
-        i = 0;
-        for(float value : m_video_device.getFrameTimes()) {
-            values_2[i++] = value;
-        }
+    //     i = 0;
+    //     for(float value : m_video_device.getFrameTimes()) {
+    //         values_2[i++] = value;
+    //     }
 
-        ImGui::PlotLines("Host Frame Times", values_1, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
-        ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
-    }
-    ImGui::End();
+    //     ImGui::PlotLines("Host Frame Times", values_1, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+    //     ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+    // }
+    // ImGui::End();
 
     endFrame();
 }
@@ -317,6 +326,8 @@ void Frontend::beginFrame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    m_input_device.update();
 }
 
 void Frontend::endFrame() {

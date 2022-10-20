@@ -43,44 +43,25 @@ void CPU::step() {
 
     if(!m_state.cpsr.t) {
         u32 instruction = m_state.pipeline[0];
-
         m_state.pipeline[0] = m_state.pipeline[1];
         m_state.pipeline[1] = m_core.bus.read32(m_state.pc + 4);
         m_state.pc += 4;
 
-        // if(instruction == 0) {
-        //     LOG_DEBUG("Break at nop instruction in ARM");
-        //     m_debug.setRunning(false);
-        // }
-
-        //08020B0C
-
-        // if(m_state.pc < 0x10000) {
-        //     m_debug.forceBreak();
-        // }
-
         // ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
+        // LOG_TRACE("PC: {:08X} | Instruction: {:08X}", m_state.pc - 8, instruction);
 
-        // LOG_INFO("PC: {:08X} | Instruction: {:08X}", m_state.pc - 8, instruction);
         if(passed(instruction >> 28)) {
             execute_arm(instruction);
         }
     } else {
         u16 instruction = m_state.pipeline[0];
-
         m_state.pipeline[0] = m_state.pipeline[1];
         m_state.pipeline[1] = m_core.bus.read16(m_state.pc + 2);
         m_state.pc += 2;
 
-        // if(instruction == 0) {
-        //     LOG_DEBUG("Break at nop instruction in THUMB");
-        //     m_debug.setRunning(false);
-        // }
-
-
         // ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
-
-        // LOG_INFO("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
+        // LOG_TRACE("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
+        
         execute_thumb(instruction);
     }
 }
@@ -310,7 +291,7 @@ void CPU::service_interrupt() {
         bool request = bits::get_bit(IF, i);
 
         if(enabled && request) {
-            LOG_DEBUG("Interrupt serviced from source {}({}) at pc = 0x{:08X}", interrupt_names[i], i, m_state.pc);
+            LOG_TRACE("Interrupt serviced from source {}({}) at pc = 0x{:08X}", interrupt_names[i], i, m_state.pc);
             get_spsr(MODE_IRQ) = m_state.cpsr;
             m_state.cpsr.mode = MODE_IRQ;
             set_reg(14, m_state.cpsr.t ? get_reg(15) + 2 : get_reg(15));

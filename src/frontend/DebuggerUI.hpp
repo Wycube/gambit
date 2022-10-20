@@ -32,54 +32,24 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.debugger), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.video_device)) {
         m_region_sizes[7] = m_gba.getGamePak().size();
-
-        // m_debugger.addBreakpoint(0x0304B65C);
-        // m_debugger.addBreakpoint(0x080000C0);
-        // m_debugger.addBreakpoint(0x08000238);
-        // m_debugger.addBreakpoint(0x0800076E);
-        // m_debugger.addBreakpoint(0x080047CE);
-        // m_debugger.addBreakpoint(0x08004802);
-        // m_debugger.addBreakpoint(0x08000E60);
-
-        // m_debugger.addBreakpoint(0x03002864);
-        // m_debugger.addBreakpoint(0x080007d4);
-        // m_debugger.addBreakpoint(0x08000868);
-
-        // m_debugger.addBreakpoint(0x0800D090);
-        // m_debugger.addBreakpoint(0x08011BE4);
-        // m_debugger.addBreakpoint(0x08011BE0);
-        // m_debugger.addBreakpoint(0x08011C0E);
-        // m_debugger.addBreakpoint(0x080B4F66);
-        // m_debugger.addBreakpoint(0x080B29A0);
-        // m_debugger.addBreakpoint(0x080B3946);
-        // m_debugger.addBreakpoint(0x080B30C2);
-        // m_debugger.addBreakpoint(0x080B2B08);
-        // m_debugger.addBreakpoint(0x080B4BFE);
-        // m_debugger.addBreakpoint(0x080B4BEE);
-        // m_debugger.addBreakpoint(0x080B4BDE);
-        // m_debugger.addBreakpoint(0x080B2A7A);
-        // m_debugger.addBreakpoint(0x080B5172);
-        // m_debugger.addBreakpoint(0x080B2A52);
-        // m_debugger.addBreakpoint(0x080B2A36);
-        // m_debugger.addBreakpoint(0x080B27D6);
-        // m_debugger.addBreakpoint(0x08011AB6);
-        // m_debugger.addBreakpoint(0x080003CA);
-        // m_debugger.addBreakpoint(0x080003C0);
-        // m_debugger.addBreakpoint(0x080003B2);
-        // m_debugger.addBreakpoint(0x08003168);
-        // m_debugger.addBreakpoint(0x080032FC);
-        // m_debugger.addBreakpoint(0x08003328);
-        // m_debugger.addBreakpoint(0x08011DCA);
-
-        // m_debugger.addBreakpoint(0x08011D5A);
-        // m_debugger.addBreakpoint(0x0800CF2E); //Write to 0x0203B0B4
-        // m_debugger.addBreakpoint(0x0800B46C);
-        // m_debugger.addBreakpoint(0x080B0942);
-        // m_debugger.addBreakpoint(0x080B0498); //Read Flash 128k in chip identification mode 0x0E000001
     }
 
     void drawScreen() {
-        ImGui::Image((void*)(intptr_t)m_video_device.getTextureID(), ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y));
+        //TODO: Only do this on resize
+        ImVec2 available = ImGui::GetContentRegionAvail();
+        float gba_aspect_ratio = 240.0f / 160.0f;
+        float new_width, new_height;
+
+        if(available.x / available.y > gba_aspect_ratio) {
+            new_width = available.y * gba_aspect_ratio;
+            new_height = available.y;
+        } else {
+            new_width = available.x;
+            new_height = available.x / gba_aspect_ratio;
+        }
+
+        ImGui::SetCursorPos(ImVec2((available.x - new_width) * 0.5f, (available.y - new_height) * 0.5f));
+        ImGui::Image((void*)(intptr_t)m_video_device.getTextureID(), ImVec2(new_width, new_height));
     }
 
     void drawPPUState() {

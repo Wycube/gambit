@@ -52,6 +52,8 @@ public:
     void shutdown();
     void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);
+    void loadSave(const std::string &filename);
+    void writeSave(const std::string &filename);
 
     void drawInterface();
 

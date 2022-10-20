@@ -66,20 +66,20 @@ void DMA::write8(u32 address, u8 value) {
 
     if(bits::get_bit<15>(control) && !old_enable) {
         if(bits::get<12, 2>(control) == 3) {
-            // LOG_WARNING("DMA {} start timing {} not supported yet", dma_n, bits::get<12, 2>(control));
+            LOG_WARNING("DMA {} start timing {} not supported yet", dma_n, bits::get<12, 2>(control));
             return;
         }
 
-        LOG_DEBUG("DMA {} enabled", dma_n);
-        LOG_DEBUG("DMA start timing {}", bits::get<12, 2>(control));
-        LOG_DEBUG("DMA destination control {}", bits::get<5, 2>(control));
-        LOG_DEBUG("DMA source control {}", bits::get<7, 2>(control));
-        LOG_DEBUG("DMA source address      : {:08X}", m_channel[dma_n].source);
-        LOG_DEBUG("DMA destination address : {:08X}", m_channel[dma_n].destination);
-        LOG_DEBUG("DMA transfer length     : {}", m_channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n].length);
-        LOG_DEBUG("DMA transfer size       : {}", bits::get_bit<10>(control) ? 32 : 16);
-        LOG_DEBUG("DMA repeat              : {}", bits::get_bit<9>(control));
-        LOG_DEBUG("DMA irq on finish       : {}", bits::get_bit<14>(control));
+        LOG_TRACE("DMA {} enabled", dma_n);
+        LOG_TRACE("DMA start timing {}", bits::get<12, 2>(control));
+        LOG_TRACE("DMA destination control {}", bits::get<5, 2>(control));
+        LOG_TRACE("DMA source control {}", bits::get<7, 2>(control));
+        LOG_TRACE("DMA source address      : {:08X}", m_channel[dma_n].source);
+        LOG_TRACE("DMA destination address : {:08X}", m_channel[dma_n].destination);
+        LOG_TRACE("DMA transfer length     : {}", m_channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n].length);
+        LOG_TRACE("DMA transfer size       : {}", bits::get_bit<10>(control) ? 32 : 16);
+        LOG_TRACE("DMA repeat              : {}", bits::get_bit<9>(control));
+        LOG_TRACE("DMA irq on finish       : {}", bits::get_bit<14>(control));
     
         //Reload internal registers
         m_channel[dma_n]._source = m_channel[dma_n].source & ~(bits::get_bit<10>(m_channel[dma_n].control) ? 3 : 1);
@@ -90,8 +90,6 @@ void DMA::write8(u32 address, u8 value) {
             startTransfer(dma_n);
         }
     }
-
-    //LOG_DEBUG("Write to DMA {} address: 0x040000{:02X}", dma_n, address);
 }
 
 void DMA::onHBlank() {
@@ -146,7 +144,7 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     u32 destination = m_channel[dma_n]._destination & destination_address_mask[dma_n];
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
     int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & length_mask[dma_n];
-    LOG_DEBUG("WOAH, DMA-ing from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
+    LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
 
     for(int i = 0; i < length; i++) {
         if constexpr(sizeof(T) == 2) {
