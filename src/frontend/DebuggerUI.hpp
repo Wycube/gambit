@@ -32,6 +32,8 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.debugger), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.video_device)) {
         m_region_sizes[7] = m_gba.getGamePak().size();
+
+        // m_debugger.addBreakpoint(0x03003CBE);
     }
 
     void drawScreen() {
@@ -422,7 +424,7 @@ public:
     void drawSchedulerViewer() {
         ImGui::Text("Cycle: %llu", m_debugger.getCurrentCycle());
         for(u32 i = 0; i < m_debugger.numEvents(); i++) {
-            ImGui::Text("%i : %s -> %llu cycles", i, m_debugger.getEventTag(i).c_str(), m_debugger.getEventCycles(i));
+            ImGui::Text("%i : %u -> %llu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
         }
     }
 

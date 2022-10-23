@@ -228,6 +228,11 @@ auto Bus::readIO(u32 address) -> u8 {
         return 2;
     }
 
+    //Channel 1 and 2 registers
+    if(address >= 0x60 && address <= 0x6D) {
+        return m_core.apu.read(address);
+    }
+
     //SIOCNT stub (for AGS Aging Cart Tester)
     if(address == 0x128) {
         return 0;
@@ -250,6 +255,14 @@ void Bus::writeIO(u32 address, u8 value) {
     if(address <= 0x56) {
         m_core.ppu.writeIO(address, value);
         return;
+    }
+    //Channel 1 and 2 registers
+    if(address >= 0x60 && address <= 0x6D) {
+        m_core.apu.write(address, value);
+    }
+    //FIFO A and FIFO B
+    if(address >= 0xA0 && address <= 0xA7) {
+        m_core.apu.write(address, value);
     }
     if(address >= 0xB0 && address < 0xE0) {
         m_core.dma.write8(address, value);

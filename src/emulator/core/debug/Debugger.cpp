@@ -101,8 +101,8 @@ auto Debugger::numEvents() -> u32 {
     return m_scheduler_events->size();
 }
 
-auto Debugger::getEventTag(u32 index) -> std::string {
-    return m_scheduler_events->at(index).tag;
+auto Debugger::getEventHandle(u32 index) -> u32 {
+    return m_scheduler_events->at(index).handle;
 }
 
 auto Debugger::getEventCycles(u32 index) -> u64 {

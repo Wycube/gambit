@@ -17,6 +17,10 @@ void Timer::reset() {
     std::memset(m_timer_counter, 0, sizeof(m_timer_counter));
     std::memset(m_timer_reload, 0, sizeof(m_timer_reload));
     std::memset(m_tmcnt, 0, sizeof(m_tmcnt));
+
+    for(int i = 0; i < 4; i++) {
+        m_timer_events[i] = m_core.scheduler.generateHandle();
+    }
 }
 
 auto Timer::read8(u32 address) -> u8 {
@@ -123,14 +127,16 @@ void Timer::startTimer(u8 timer) {
 
     u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
     m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
-    m_core.scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow);
+    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u32 a, u32 b) {
+        timerOverflowEvent(timer, a, b);
+    }, cycles_till_overflow);
 }
 
 void Timer::stopTimer(u8 timer) {
     LOG_TRACE("Timer {} stopped", timer);
 
     m_timer_counter[timer] = getTimerIntermediateValue(timer, true);
-    m_core.scheduler.removeEvent(fmt::format("Timer {} Overflow", timer));
+    m_core.scheduler.removeEvent(m_timer_events[timer]);
 }
 
 void Timer::timerOverflowEvent(u8 timer, u32 current, u32 cycles_late) {
@@ -138,11 +144,17 @@ void Timer::timerOverflowEvent(u8 timer, u32 current, u32 cycles_late) {
 
     u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
     m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
-    m_core.scheduler.addEvent(fmt::format("Timer {} Overflow", timer), [this, timer](u32 a, u32 b) { timerOverflowEvent(timer, a, b); }, cycles_till_overflow - cycles_late);
+    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u32 a, u32 b) {
+        timerOverflowEvent(timer, a, b);
+    }, cycles_till_overflow - cycles_late);
 }
 
 void Timer::timerOverflow(u8 timer) {
     m_timer_counter[timer] = m_timer_reload[timer];
+
+    if(m_core.apu.isTimerSelected(timer)) {
+        m_core.apu.onTimerOverflow(timer);
+    }
  
     if(timer < 3 && bits::get_bit<2>(m_tmcnt[timer + 1])) {
         if(++m_timer_counter[timer + 1] == 0) {

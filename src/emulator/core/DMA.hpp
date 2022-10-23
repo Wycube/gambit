@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Scheduler.hpp"
 #include "common/Types.hpp"
 
 
@@ -20,6 +21,7 @@ public:
 
     void onHBlank();
     void onVBlank();
+    void onTimerOverflow(int fifo);
 
 private:
 
@@ -33,11 +35,14 @@ private:
         //Internal Registers
         u32 _source, _destination;
         u16 _length;
+
+        EventHandle event;
     } m_channel[4];
 
     void startTransfer(int dma_n);
     template<typename T>
     void transfer(int dma_n, u32 current, u32 cycles_late);
+    void transfer2(int dma_n, u32 current, u32 cycles_late);
 };
 
 } //namespace emu

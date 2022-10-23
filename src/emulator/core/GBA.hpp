@@ -6,10 +6,12 @@
 #include "emulator/core/Timer.hpp"
 #include "emulator/core/DMA.hpp"
 #include "emulator/core/ppu/PPU.hpp"
+#include "emulator/core/apu/APU.hpp"
 #include "emulator/core/mem/Bus.hpp"
 #include "emulator/core/cpu/CPU.hpp"
 #include "emulator/device/VideoDevice.hpp"
 #include "emulator/device/InputDevice.hpp"
+#include "emulator/device/AudioDevice.hpp"
 
 
 namespace emu {
@@ -17,7 +19,7 @@ namespace emu {
 class GBA final {
 public:
 
-    GBA(VideoDevice &video_device, InputDevice &input_device);
+    GBA(VideoDevice &video_device, InputDevice &input_device, AudioDevice &audio_device);
 
     void reset();
 
@@ -31,12 +33,14 @@ public:
 
     VideoDevice &video_device;
     InputDevice &input_device;
+    AudioDevice &audio_device;
     Scheduler scheduler;
     dbg::Debugger debugger;
     Keypad keypad;
     Timer timer;
     DMA dma;
     PPU ppu;
+    APU apu;
     Bus bus;
     CPU cpu;
 };

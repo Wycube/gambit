@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Scheduler.hpp"
 #include "common/Types.hpp"
 
 
@@ -25,6 +26,7 @@ private:
     u16 m_tmcnt[4];
 
     GBA &m_core;
+    EventHandle m_timer_events[4];
 
     auto isTimerRunning(u8 timer) -> bool;
     auto getTimerIntermediateValue(u8 timer, bool running) -> u16;

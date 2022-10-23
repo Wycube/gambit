@@ -88,7 +88,7 @@ auto EmuThread::getClockSpeed() const -> u64 {
     return m_clock_speed.load();
 }
 
-Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_device, m_input_device), m_debug_ui(m_core),
+Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_device, m_input_device, m_audio_device), m_debug_ui(m_core),
     m_emu_thread(m_core) {
     glfwGetWindowSize(window, &m_width, &m_height);
     m_window = window;
@@ -295,24 +295,33 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
-    // if(ImGui::Begin("Performance")) {
-    //     float values_1[50];
-    //     float values_2[50];
-    //     int i = 0;
+    if(ImGui::Begin("Performance")) {
+        float values_1[50];
+        float values_2[50];
 
-    //     for(float value : m_frame_times) {
-    //         values_1[i++] = value;
-    //     }
+        for(size_t i = 0; i < m_frame_times.size(); i++) {
+            values_1[i] = m_frame_times[i];
+        }
 
-    //     i = 0;
-    //     for(float value : m_video_device.getFrameTimes()) {
-    //         values_2[i++] = value;
-    //     }
+        for(size_t i = 0; i < m_video_device.getFrameTimes().size(); i++) {
+            values_2[i] = m_video_device.getFrameTimes()[i];
+        }
 
-    //     ImGui::PlotLines("Host Frame Times", values_1, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
-    //     ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
-    // }
-    // ImGui::End();
+        ImGui::PlotLines("Host Frame Times", values_1, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+    }
+    ImGui::End();
+
+    if(ImGui::Begin("Audio Buffer Health")) {
+        float values_1[512];
+
+        for(size_t i = 0; i < m_sample_buffer_health.size(); i++) {
+            values_1[i] = m_sample_buffer_health[i];
+        }
+
+        ImGui::PlotLines("Audio Buffer Size", values_1, 512, 0, nullptr, -1.0f, 1.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+    }
+    ImGui::End();
 
     endFrame();
 }
@@ -320,6 +329,39 @@ void Frontend::drawInterface() {
 void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
     Frontend *frontend = reinterpret_cast<Frontend*>(device->pUserData);
     frontend->m_emu_thread.runNext();
+
+    MAAudioDevice &audio_device = frontend->m_audio_device;
+
+    float *f_output = reinterpret_cast<float*>(output);
+
+    // frontend->m_sample_buffer_health.push_back(audio_device.m_samples.size());
+    // if(frontend->m_sample_buffer_health.size() > 512) {
+    //     frontend->m_sample_buffer_health.pop_front();
+    // }
+
+    if(audio_device.m_samples.size() < 512) {
+        LOG_ERROR("Not enough samples for audio callback");
+        return;
+    }
+
+    //Resample 512 samples to 750
+    float samples[512];
+
+    for(int i = 0; i < 512; i++) {
+        samples[i] = audio_device.m_samples.peek();
+        audio_device.m_samples.pop();
+        frontend->m_sample_buffer_health.push_back(samples[i]);
+        if(frontend->m_sample_buffer_health.size() > 512) {
+            frontend->m_sample_buffer_health.pop_front();
+        }
+    }
+
+
+    for(u32 i = 0; i < frame_count; i++) {
+        float t = (float)i / (float)frame_count;
+        f_output[i * 2] = samples[(size_t)(t * 512)];
+        f_output[i * 2 + 1] = samples[(size_t)(t * 512)];
+    }
 }
 
 void Frontend::beginFrame() {
@@ -333,14 +375,6 @@ void Frontend::beginFrame() {
 void Frontend::endFrame() {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    // m_video_device.counter--;
-    // if(m_video_device.counter > 0) {
-    //     LOG_INFO("Skipped Frame, Counter: {}", m_video_device.counter);
-    //     m_video_device.counter = 0;
-    // } else if(m_video_device.counter < 0) {
-    //     LOG_INFO("Duplicate Frame, Counter: {}", m_video_device.counter);
-    //     m_video_device.counter = 0;
-    // }
 
     //Frame times
     auto now = std::chrono::steady_clock::now();

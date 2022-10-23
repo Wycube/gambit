@@ -3,6 +3,7 @@
 #include "emulator/core/GBA.hpp"
 #include "device/GLFWInputDevice.hpp"
 #include "device/OGLVideoDevice.hpp"
+#include "device/MAAudioDevice.hpp"
 #include "DebuggerUI.hpp"
 #include "Types.hpp"
 #include <miniaudio.h>
@@ -69,6 +70,7 @@ private:
     CallbackUserData m_user_data;
     OGLVideoDevice m_video_device;
     GLFWInputDevice m_input_device;
+    MAAudioDevice m_audio_device;
     emu::GBA m_core;
     EmuThread m_emu_thread;
 
@@ -81,6 +83,7 @@ private:
     bool m_show_pak_info;
 
     std::deque<float> m_frame_times;
+    std::deque<float> m_sample_buffer_health;
     std::chrono::time_point<std::chrono::steady_clock> m_start;
 
     GLFWwindow *m_window;

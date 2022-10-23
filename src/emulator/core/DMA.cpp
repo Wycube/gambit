@@ -22,11 +22,15 @@ void DMA::reset() {
         m_channel[i].destination = 0;
         m_channel[i].length = 0;
         m_channel[i].control = 0;
+        m_channel[i].event = m_core.scheduler.generateHandle();
     }
 }
 
 auto DMA::running() -> bool {
-    return m_channel[0].active || m_channel[1].active || m_channel[2].active || m_channel[3].active;
+    return m_channel[0].active
+        || (m_channel[1].active && bits::get<12, 2>(m_channel[1].control) != 3) 
+        || (m_channel[2].active && bits::get<12, 2>(m_channel[2].control) != 3)
+        || m_channel[3].active;
 }
 
 auto DMA::read8(u32 address) -> u8 {
@@ -65,11 +69,6 @@ void DMA::write8(u32 address, u8 value) {
     u32 control = m_channel[dma_n].control;
 
     if(bits::get_bit<15>(control) && !old_enable) {
-        if(bits::get<12, 2>(control) == 3) {
-            LOG_WARNING("DMA {} start timing {} not supported yet", dma_n, bits::get<12, 2>(control));
-            return;
-        }
-
         LOG_TRACE("DMA {} enabled", dma_n);
         LOG_TRACE("DMA start timing {}", bits::get<12, 2>(control));
         LOG_TRACE("DMA destination control {}", bits::get<5, 2>(control));
@@ -108,24 +107,6 @@ void DMA::onVBlank() {
     }
 }
 
-void DMA::startTransfer(int dma_n) {
-    //Assume start timing 0 (immediately) for now
-    u32 length = m_channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n].length;
-    u32 transfer_time = 6 + (length - 1) * 2; //2N + (n - 1)S + xI + 2 cycles before the transfer starts
-    bool transfer_size = bits::get_bit<10>(m_channel[dma_n].control);
-    m_channel[dma_n].active = true;
-
-    m_core.scheduler.addEvent("DMA Start", [this, dma_n](u32, u32) { m_channel[dma_n].active = true; }, 2);
-
-    m_core.scheduler.addEvent("DMA Transfer", [this, dma_n, transfer_size](u32 a, u32 b) {
-        if(transfer_size) {
-            transfer<u32>(dma_n, a, b);
-        } else {
-            transfer<u16>(dma_n, a, b);
-        }
-    }, transfer_time);
-}
-
 void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
     assert(adjust_type < 4);
     
@@ -137,6 +118,59 @@ void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
     }
 }
 
+void DMA::onTimerOverflow(int fifo) {
+    static constexpr u32 FIFO_ADDRESS[2] = {0x040000A0, 0x040000A4};
+
+    if(bits::get<12, 2>(m_channel[1].control) == 3
+        && m_channel[1].destination == FIFO_ADDRESS[fifo]
+        && bits::get_bit<15>(m_channel[1].control)) {
+
+        m_channel[1].control |= 0x8000;
+
+        m_core.scheduler.addEvent(m_channel[1].event, [this](u64, u32) { 
+            m_channel[1].active = true;
+        
+            m_core.scheduler.addEvent(m_channel[1].event, [this](u64 a, u32 b) {
+                transfer2(1, a, b);
+            }, 10);
+        }, 2);
+    }
+
+    if(bits::get<12, 2>(m_channel[2].control) == 3
+        && m_channel[2].destination == FIFO_ADDRESS[fifo]
+        && bits::get_bit<15>(m_channel[2].control)) {
+        
+        m_channel[2].control |= 0x8000;
+
+        m_core.scheduler.addEvent(m_channel[2].event, [this](u64, u32) { 
+            m_channel[2].active = true;
+        
+            m_core.scheduler.addEvent(m_channel[2].event, [this](u64 a, u32 b) {
+                transfer2(2, a, b);
+            }, 10);
+        }, 2);
+    }
+}
+
+void DMA::startTransfer(int dma_n) {
+    //Assume start timing 0 (immediately) for now
+    u32 length = m_channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n].length;
+    u32 transfer_time = 6 + (length - 1) * 2; //2N + (n - 1)S + xI (+ 2 cycles before the transfer starts)
+    bool transfer_size = bits::get_bit<10>(m_channel[dma_n].control);
+
+    m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size, transfer_time](u32, u32) { 
+        m_channel[dma_n].active = true; 
+    
+        m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size](u32 a, u32 b) {
+            if(transfer_size) {
+                transfer<u32>(dma_n, a, b);
+            } else {
+                transfer<u16>(dma_n, a, b);
+            }
+        }, transfer_time - 2);
+    }, 2);
+}
+
 template<typename T>
 void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
@@ -145,6 +179,12 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
     int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & length_mask[dma_n];
     LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
+
+    if((dma_n == 1 || dma_n == 2) && bits::get<12, 2>(m_channel[dma_n].control) == 3) {
+        length = 4;
+        bits::set<5, 2>(control, 2);
+        LOG_INFO("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
+    }
 
     for(int i = 0; i < length; i++) {
         if constexpr(sizeof(T) == 2) {
@@ -173,6 +213,26 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
         m_channel[dma_n].control &= ~0x8000;
     }
 
+
+    if(bits::get_bit<14>(control)) {
+        m_core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << dma_n));
+    }
+}
+
+void DMA::transfer2(int dma_n, u32 current, u32 cycles_late) {
+    u32 source = m_channel[dma_n]._source & source_address_mask[dma_n];
+    u32 destination = m_channel[dma_n]._destination & destination_address_mask[dma_n];
+    u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
+
+    for(int i = 0; i < 4; i++) {
+        m_core.bus.debugWrite32(destination, m_core.bus.debugRead32(source));
+        adjustAddress(source, bits::get<7, 2>(control), 4);
+    }
+
+    m_channel[dma_n]._source = source;
+    m_channel[dma_n]._destination = destination;
+
+    m_channel[dma_n].active = false;
 
     if(bits::get_bit<14>(control)) {
         m_core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << dma_n));

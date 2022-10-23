@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Types.hpp"
+#include "emulator/core/Scheduler.hpp"
 #include <vector>
 
 
@@ -41,6 +42,7 @@ private:
     u8 m_obj_info[240];
 
     GBA &m_core;
+    EventHandle m_update_event;
 
     void hblankStart(u64 current, u64 late);
     void hblankEnd(u64 current, u64 late);

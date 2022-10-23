@@ -10,19 +10,24 @@ Scheduler::Scheduler() {
 
 void Scheduler::reset() {
     m_current_timestamp = 0;
+    m_handle_counter = 1;
     m_events.clear();
 }
 
-void Scheduler::addEvent(const std::string &tag, EventFunc callback, u64 cycles_from_now) {
-    m_events.push_back(Event{tag, callback, m_current_timestamp + cycles_from_now});
+auto Scheduler::generateHandle() -> EventHandle {
+    return m_handle_counter++;
+}
+
+void Scheduler::addEvent(const EventHandle handle, EventFunc callback, u64 cycles_from_now) {
+    m_events.push_back(Event{handle, callback, m_current_timestamp + cycles_from_now});
     std::sort(m_events.begin(), m_events.end(), [](const Event &a, const Event &b) {
         return a.scheduled_timestamp > b.scheduled_timestamp;
     });
 }
 
-void Scheduler::removeEvent(const std::string &tag) {
+void Scheduler::removeEvent(const EventHandle handle) {
     for(auto iter = m_events.begin(); iter != m_events.end(); iter++) {
-        if(iter->tag == tag) {
+        if(iter->handle == handle) {
             m_events.erase(iter);
             break;
         }

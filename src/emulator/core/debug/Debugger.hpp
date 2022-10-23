@@ -35,7 +35,7 @@ public:
 
     void attachScheduler(const std::vector<Event> *scheduler_events, const u64 *scheduler_timestamp);
     auto numEvents() -> u32;
-    auto getEventTag(u32 index) -> std::string;
+    auto getEventHandle(u32 index) -> u32;
     auto getEventCycles(u32 index) -> u64;
     auto getCurrentCycle() -> u64;
 
