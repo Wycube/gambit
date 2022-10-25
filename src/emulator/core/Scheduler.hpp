@@ -40,11 +40,10 @@ private:
 
     //Using a 64-bit unsigned integer, means that the scheduler's global
     //timestamp should not overflow for ~35,000 years at 100% speed.
-    //Since I don't think fast forwarding will affect that time very much
-    //it is good enough for me.
+    //Good enough for me.
     std::vector<Event> m_events;
     u64 m_current_timestamp;
-    u32 m_handle_counter;
+    u32 m_next_handle;
 };
 
 } //namespace emu

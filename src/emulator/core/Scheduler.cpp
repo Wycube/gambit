@@ -10,12 +10,12 @@ Scheduler::Scheduler() {
 
 void Scheduler::reset() {
     m_current_timestamp = 0;
-    m_handle_counter = 1;
+    m_next_handle = 1;
     m_events.clear();
 }
 
 auto Scheduler::generateHandle() -> EventHandle {
-    return m_handle_counter++;
+    return m_next_handle++;
 }
 
 void Scheduler::addEvent(const EventHandle handle, EventFunc callback, u64 cycles_from_now) {

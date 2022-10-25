@@ -120,16 +120,19 @@ void Timer::updateTimer(u8 timer, u8 old_tmcnt) {
 void Timer::startTimer(u8 timer) {
     LOG_TRACE("Timer {} started", timer);
 
-    //Cascade, timer is incremented when the preceding one overflows
+    //Cascade, timer is incremented when the preceding one overflows (so it doesn't actually run)
     if(bits::get_bit<2>(m_tmcnt[timer]) && timer != 0) {
         return;
     }
 
+    //2-cycle delay before timer starts
     u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-    m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
-    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u32 a, u32 b) {
-        timerOverflowEvent(timer, a, b);
-    }, cycles_till_overflow);
+    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer, cycles_till_overflow](u64 a, u32 b) {
+        m_timer_start[timer] = a;
+        m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 a, u32 b) {
+            timerOverflowEvent(timer, a, b);
+        }, cycles_till_overflow);
+    }, 2);
 }
 
 void Timer::stopTimer(u8 timer) {
@@ -139,12 +142,12 @@ void Timer::stopTimer(u8 timer) {
     m_core.scheduler.removeEvent(m_timer_events[timer]);
 }
 
-void Timer::timerOverflowEvent(u8 timer, u32 current, u32 cycles_late) {
+void Timer::timerOverflowEvent(u8 timer, u64 current, u32 cycles_late) {
     timerOverflow(timer);
 
     u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-    m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
-    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u32 a, u32 b) {
+    m_timer_start[timer] = current;
+    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 a, u32 b) {
         timerOverflowEvent(timer, a, b);
     }, cycles_till_overflow - cycles_late);
 }

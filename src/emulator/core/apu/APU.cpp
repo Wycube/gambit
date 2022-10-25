@@ -6,13 +6,6 @@
 
 namespace emu {
 
-static constexpr s8 WAVE_DUTY[4][8] = {
-    {1, -1, -1, -1, -1, -1, -1, -1},
-    {1,  1, -1, -1, -1, -1, -1, -1},
-    {1,  1,  1,  1, -1, -1, -1, -1},
-    {1,  1,  1,  1,  1,  1, -1, -1}
-};
-
 APU::APU(GBA &core) : m_core(core), m_pulse1(m_core.scheduler), m_pulse2(m_core.scheduler) {
     reset();
 }

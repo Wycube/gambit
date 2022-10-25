@@ -23,7 +23,8 @@ public:
             m_size++;
         }
 
-        m_data[m_head++ % _capacity] = value;
+        m_data[m_head] = value;
+        m_head = (m_head + 1) % _capacity;
     }
 
     void pop() {
@@ -37,9 +38,36 @@ public:
         m_size--;
     }
 
-    auto peek() -> T {
+    auto peek(size_t index) -> T {
+        std::lock_guard lock(m_access_mutex);
+        return m_data[(m_tail + index) % _capacity];
+    }
+
+    auto front() -> T {
         std::lock_guard lock(m_access_mutex);
         return m_data[m_tail];
+    }
+
+    auto back() -> T {
+        std::lock_guard lock(m_access_mutex);
+        return m_data[m_head == 0 ? _capacity - 1 : m_head - 1];
+    }
+
+    void pop_array(T *dst, size_t size) {
+        std::lock_guard lock(m_access_mutex);
+        assert(size <= m_size);
+
+        size_t to_end = _capacity - m_tail;
+        if(to_end > size) {
+            memcpy(dst, &m_data[m_tail], size * sizeof(T));
+        } else {
+            size_t second_size = size - to_end;
+            memcpy(dst, &m_data[m_tail], to_end * sizeof(T));
+            memcpy(dst + to_end, m_data, second_size * sizeof(T));
+        }
+
+        m_tail = (m_tail + size) % _capacity;
+        m_size -= size;
     }
 
     auto size() -> size_t {

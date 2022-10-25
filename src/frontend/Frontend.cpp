@@ -99,6 +99,12 @@ Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_
     m_show_about = false;
     m_show_pak_info = false;
     m_user_data = {this, &m_core};
+
+    m_frame_times_start = 0;
+    m_audio_buffer_size_start = 0;
+    memset(m_audio_samples, 0, sizeof(m_audio_samples));
+    memset(m_audio_buffer_size, 0, sizeof(m_audio_buffer_size));
+    memset(m_frame_times, 0, sizeof(m_frame_times));
 }
 
 void Frontend::init() {
@@ -296,30 +302,37 @@ void Frontend::drawInterface() {
     }
 
     if(ImGui::Begin("Performance")) {
-        float values_1[50];
+        float values_1[100];
         float values_2[50];
 
-        for(size_t i = 0; i < m_frame_times.size(); i++) {
-            values_1[i] = m_frame_times[i];
+        size_t _i = m_frame_times_start;
+        for(size_t i = 0; i < 100; i++) {
+            values_1[i] = m_frame_times[_i];
+            _i = (_i + 1) % 100;
         }
 
         for(size_t i = 0; i < m_video_device.getFrameTimes().size(); i++) {
             values_2[i] = m_video_device.getFrameTimes()[i];
         }
 
-        ImGui::PlotLines("Host Frame Times", values_1, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        ImGui::PlotLines("Host Frame Times", values_1, 100, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
         ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
     }
     ImGui::End();
 
-    if(ImGui::Begin("Audio Buffer Health")) {
-        float values_1[512];
+    if(ImGui::Begin("Audio Buffer Stats")) {
+        float sizes[100];
 
-        for(size_t i = 0; i < m_sample_buffer_health.size(); i++) {
-            values_1[i] = m_sample_buffer_health[i];
+        m_audio_buffer_mutex.lock();
+        size_t _i = m_audio_buffer_size_start;
+        for(size_t i = 0; i < 100; i++) {
+            sizes[i] = m_audio_buffer_size[_i];
+            _i = (_i + 1) % 100;
         }
+        m_audio_buffer_mutex.unlock();
 
-        ImGui::PlotLines("Audio Buffer Size", values_1, 512, 0, nullptr, -1.0f, 1.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        ImGui::PlotLines("Audio Buffer Size", sizes, 100, 0, nullptr, 0.0f, 2048.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        ImGui::PlotLines("Output Audio Samples", m_audio_samples, 512, 0, nullptr, -2.0f, 2.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
     }
     ImGui::End();
 
@@ -334,10 +347,10 @@ void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma
 
     float *f_output = reinterpret_cast<float*>(output);
 
-    // frontend->m_sample_buffer_health.push_back(audio_device.m_samples.size());
-    // if(frontend->m_sample_buffer_health.size() > 512) {
-    //     frontend->m_sample_buffer_health.pop_front();
-    // }
+    frontend->m_audio_buffer_mutex.lock();
+    frontend->m_audio_buffer_size[frontend->m_audio_buffer_size_start] = audio_device.m_samples.size();
+    frontend->m_audio_buffer_size_start = (frontend->m_audio_buffer_size_start + 1) % 100;
+    frontend->m_audio_buffer_mutex.unlock();
 
     if(audio_device.m_samples.size() < 512) {
         LOG_ERROR("Not enough samples for audio callback");
@@ -346,21 +359,13 @@ void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma
 
     //Resample 512 samples to 750
     float samples[512];
+    audio_device.m_samples.pop_array(samples, 512);
+    memcpy(frontend->m_audio_samples, samples, 512 * sizeof(float));
 
-    for(int i = 0; i < 512; i++) {
-        samples[i] = audio_device.m_samples.peek();
-        audio_device.m_samples.pop();
-        frontend->m_sample_buffer_health.push_back(samples[i]);
-        if(frontend->m_sample_buffer_health.size() > 512) {
-            frontend->m_sample_buffer_health.pop_front();
-        }
-    }
-
-
-    for(u32 i = 0; i < frame_count; i++) {
-        float t = (float)i / (float)frame_count;
-        f_output[i * 2] = samples[(size_t)(t * 512)];
-        f_output[i * 2 + 1] = samples[(size_t)(t * 512)];
+    for(size_t i = 0; i < frame_count; i++) {
+        float sample = samples[(size_t)((i / (float)frame_count) * 512)];
+        f_output[i * 2 + 0] = sample;
+        f_output[i * 2 + 1] = sample;
     }
 }
 
@@ -381,10 +386,13 @@ void Frontend::endFrame() {
     auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(now - m_start);
     m_start = now;
 
-    m_frame_times.push_back((float)frame_time.count() / 1000.0f);
-    if(m_frame_times.size() > 50) {
-        m_frame_times.pop_front();
-    }
+    // m_frame_times.push_back((float)frame_time.count() / 1000.0f);
+    // if(m_frame_times.size() > 50) {
+    //     m_frame_times.pop_front();
+    // }
+
+    m_frame_times[m_frame_times_start] = (float)frame_time.count() / 1000.0f;
+    m_frame_times_start = (m_frame_times_start + 1) % 100;
 }
 
 void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {

@@ -3,11 +3,11 @@
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
 
-
 //Internal Memory (27 bit address) or Any Memory (28 bit address)
-static constexpr u32 source_address_mask[4] = {0x07FFFFFF, 0x0FFFFFFF, 0x0FFFFFFF, 0x0FFFFFFF};
-static constexpr u32 destination_address_mask[4] = {0x07FFFFFF, 0x07FFFFFF, 0x07FFFFFF, 0x0FFFFFFF};
-static constexpr u16 length_mask[4] = {0x3FFF, 0x3FFF, 0x3FFF, 0xFFFF};
+static constexpr u32 SOURCE_ADDRESS_MASK[4] = {0x07FFFFFF, 0x0FFFFFFF, 0x0FFFFFFF, 0x0FFFFFFF};
+static constexpr u32 DESTINATION_ADDRESS_MASK[4] = {0x07FFFFFF, 0x07FFFFFF, 0x07FFFFFF, 0x0FFFFFFF};
+static constexpr u16 LENGTH_MASK[4] = {0x3FFF, 0x3FFF, 0x3FFF, 0xFFFF};
+
 
 namespace emu {
 
@@ -119,10 +119,10 @@ void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
 }
 
 void DMA::onTimerOverflow(int fifo) {
-    static constexpr u32 FIFO_ADDRESS[2] = {0x040000A0, 0x040000A4};
+    static constexpr u32 FIFO_ADDRESSES[2] = {0x040000A0, 0x040000A4};
 
     if(bits::get<12, 2>(m_channel[1].control) == 3
-        && m_channel[1].destination == FIFO_ADDRESS[fifo]
+        && m_channel[1].destination == FIFO_ADDRESSES[fifo]
         && bits::get_bit<15>(m_channel[1].control)) {
 
         m_channel[1].control |= 0x8000;
@@ -137,7 +137,7 @@ void DMA::onTimerOverflow(int fifo) {
     }
 
     if(bits::get<12, 2>(m_channel[2].control) == 3
-        && m_channel[2].destination == FIFO_ADDRESS[fifo]
+        && m_channel[2].destination == FIFO_ADDRESSES[fifo]
         && bits::get_bit<15>(m_channel[2].control)) {
         
         m_channel[2].control |= 0x8000;
@@ -174,10 +174,10 @@ void DMA::startTransfer(int dma_n) {
 template<typename T>
 void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
-    u32 source = m_channel[dma_n]._source & source_address_mask[dma_n];
-    u32 destination = m_channel[dma_n]._destination & destination_address_mask[dma_n];
+    u32 source = m_channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n];
+    u32 destination = m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n];
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
-    int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & length_mask[dma_n];
+    int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & LENGTH_MASK[dma_n];
     LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
 
     if((dma_n == 1 || dma_n == 2) && bits::get<12, 2>(m_channel[dma_n].control) == 3) {
@@ -200,7 +200,6 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
 
     m_channel[dma_n]._source = source;
     m_channel[dma_n]._destination = destination;
-
     m_channel[dma_n].active = false;
 
     //TODO: Repeat Bit, more than this at least
@@ -220,8 +219,8 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
 }
 
 void DMA::transfer2(int dma_n, u32 current, u32 cycles_late) {
-    u32 source = m_channel[dma_n]._source & source_address_mask[dma_n];
-    u32 destination = m_channel[dma_n]._destination & destination_address_mask[dma_n];
+    u32 source = m_channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n];
+    u32 destination = m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n];
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
 
     for(int i = 0; i < 4; i++) {
@@ -231,7 +230,6 @@ void DMA::transfer2(int dma_n, u32 current, u32 cycles_late) {
 
     m_channel[dma_n]._source = source;
     m_channel[dma_n]._destination = destination;
-
     m_channel[dma_n].active = false;
 
     if(bits::get_bit<14>(control)) {

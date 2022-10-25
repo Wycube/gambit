@@ -2,19 +2,19 @@
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
 
-
-namespace emu {
-
 //12.5% |-_______-_______|
-//25%   |--______--______|
-//50%   |----____----____|
-//75%   |------__------__|
+//25.0% |--______--______|
+//50.0% |----____----____|
+//75.0% |------__------__|
 static constexpr s8 WAVE_DUTY[4][8] = {
     {1, -1, -1, -1, -1, -1, -1, -1},
     {1,  1, -1, -1, -1, -1, -1, -1},
     {1,  1,  1,  1, -1, -1, -1, -1},
     {1,  1,  1,  1,  1,  1, -1, -1}
 };
+
+
+namespace emu {
 
 PulseChannel::PulseChannel(Scheduler &scheduler) : m_scheduler(scheduler) {
     reset();

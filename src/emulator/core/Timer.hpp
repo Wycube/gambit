@@ -33,7 +33,7 @@ private:
     void updateTimer(u8 timer, u8 old_tmcnt);
     void startTimer(u8 timer);
     void stopTimer(u8 timer);
-    void timerOverflowEvent(u8 timer, u32 current, u32 cycles_late);
+    void timerOverflowEvent(u8 timer, u64 current, u32 cycles_late);
     void timerOverflow(u8 timer);
 };
 

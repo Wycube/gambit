@@ -82,8 +82,13 @@ private:
     bool m_show_about;
     bool m_show_pak_info;
 
-    std::deque<float> m_frame_times;
-    std::deque<float> m_sample_buffer_health;
+
+    float m_frame_times[100];
+    size_t m_frame_times_start;
+    float m_audio_buffer_size[100];
+    size_t m_audio_buffer_size_start;
+    std::mutex m_audio_buffer_mutex;
+    float m_audio_samples[512];
     std::chrono::time_point<std::chrono::steady_clock> m_start;
 
     GLFWwindow *m_window;

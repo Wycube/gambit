@@ -83,7 +83,9 @@ constexpr auto sign_extend(T value) -> R {
     static_assert(start_size > 0);
     static_assert(sizeof(T) <= sizeof(R));
 
-    return static_cast<R>(value) | ((value >> (start_size - 1)) & 0x1 ? ~((static_cast<R>(1) << (start_size - 1)) - 1) : 0);
+    R mask = (static_cast<R>(1) << start_size) - 1;
+
+    return (static_cast<R>(value) & mask) | ((value >> (start_size - 1)) & 1) * ~((static_cast<R>(1) << (start_size - 1)) - 1);
 }
 
 template<typename A, typename T>
