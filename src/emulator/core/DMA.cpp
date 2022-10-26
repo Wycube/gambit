@@ -158,10 +158,10 @@ void DMA::startTransfer(int dma_n) {
     u32 transfer_time = 6 + (length - 1) * 2; //2N + (n - 1)S + xI (+ 2 cycles before the transfer starts)
     bool transfer_size = bits::get_bit<10>(m_channel[dma_n].control);
 
-    m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size, transfer_time](u32, u32) { 
+    m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size, transfer_time](u64, u32) { 
         m_channel[dma_n].active = true; 
     
-        m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size](u32 a, u32 b) {
+        m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size](u64 a, u32 b) {
             if(transfer_size) {
                 transfer<u32>(dma_n, a, b);
             } else {
@@ -172,19 +172,13 @@ void DMA::startTransfer(int dma_n) {
 }
 
 template<typename T>
-void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
+void DMA::transfer(int dma_n, u64 current, u32 cycles_late) {
     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
-    u32 source = m_channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n];
-    u32 destination = m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n];
+    u32 source = (m_channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n]) & ~(sizeof(T) == 4 ? 3 : 1);
+    u32 destination = (m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n]) & ~(sizeof(T) == 4 ? 3 : 1);
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
     int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & LENGTH_MASK[dma_n];
     LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
-
-    if((dma_n == 1 || dma_n == 2) && bits::get<12, 2>(m_channel[dma_n].control) == 3) {
-        length = 4;
-        bits::set<5, 2>(control, 2);
-        LOG_INFO("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
-    }
 
     for(int i = 0; i < length; i++) {
         if constexpr(sizeof(T) == 2) {
@@ -202,7 +196,6 @@ void DMA::transfer(int dma_n, u32 current, u32 cycles_late) {
     m_channel[dma_n]._destination = destination;
     m_channel[dma_n].active = false;
 
-    //TODO: Repeat Bit, more than this at least
     if(bits::get_bit<9>(control)) {
         if(bits::get<5, 2>(control) == 3) {
             m_channel[dma_n]._destination = m_channel[dma_n].destination & ~(sizeof(T) == 4 ? 3 : 1);

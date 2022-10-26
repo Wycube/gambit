@@ -41,7 +41,7 @@ private:
 
     void startTransfer(int dma_n);
     template<typename T>
-    void transfer(int dma_n, u32 current, u32 cycles_late);
+    void transfer(int dma_n, u64 current, u32 cycles_late);
     void transfer2(int dma_n, u32 current, u32 cycles_late);
 };
 

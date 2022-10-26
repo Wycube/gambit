@@ -30,18 +30,15 @@ void PulseChannel::reset() {
 
 auto PulseChannel::read(u32 address) -> u8 {
     switch(address) {
-        case 0x60 : return m_sndcnt_l & 0xFF;
-        case 0x61 : return m_sndcnt_l >> 8;
+        case 0x60 : return m_sndcnt_l;
 
         case 0x62 :
-        case 0x68 : return m_sndcnt_h & 0xFF;
+        case 0x68 : return m_sndcnt_h & 0xC0;
         case 0x63 :
         case 0x69 : return m_sndcnt_h >> 8;
 
-        case 0x64 :
-        case 0x6C : return m_sndcnt_x & 0xFF;
         case 0x65 :
-        case 0x6D : return m_sndcnt_x >> 8;
+        case 0x6D : return (m_sndcnt_x >> 8) & 0x40;
     }
 
     return 0;
@@ -49,8 +46,7 @@ auto PulseChannel::read(u32 address) -> u8 {
 
 void PulseChannel::write(u32 address, u8 value) {
         switch(address) {
-        case 0x60 : m_sndcnt_l = (m_sndcnt_l & 0xFF00) | value; break;
-        case 0x61 : m_sndcnt_l = (m_sndcnt_l & 0x00FF) | (value << 8); break;
+        case 0x60 : m_sndcnt_l = value & 0x7F; break;
 
         case 0x62 :
         case 0x68 : m_sndcnt_h = (m_sndcnt_h & 0xFF00) | value; break;

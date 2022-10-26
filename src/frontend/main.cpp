@@ -135,24 +135,6 @@ int main(int argc, char *argv[]) {
     ImGui_ImplOpenGL3_Init("#version 130");
 
     Frontend app(window);
-
-    //Miniaudio Testing
-    ma_device_config config = ma_device_config_init(ma_device_type_playback);
-    config.playback.format = ma_format_f32;
-    config.playback.channels = 2;
-    config.sampleRate = 48000;
-    config.dataCallback = app.audio_sync;
-    config.pUserData = &app;
-    config.periodSizeInFrames = 48000 / 64;
-
-    ma_device device;
-    if(ma_device_init(nullptr, &config, &device) != MA_SUCCESS) {
-        LOG_FATAL("Could not initalize Miniaudio device!");
-    }
-    if(ma_device_start(&device) != MA_SUCCESS) {
-        LOG_FATAL("Could not start Miniaudio device!");
-    }
-
     
     {
         size_t rom_size = std::filesystem::file_size(rom_path);
@@ -188,8 +170,6 @@ int main(int argc, char *argv[]) {
 
     app.shutdown();
     app.writeSave(save_path);
-
-    ma_device_uninit(&device);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

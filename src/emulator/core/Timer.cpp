@@ -52,9 +52,10 @@ void Timer::write8(u32 address, u8 value) {
     switch(address) {
         case 0x100 : bits::set<0, 8>(m_timer_reload[0], value); break;
         case 0x101 : bits::set<8, 8>(m_timer_reload[0], value); break;
-        case 0x102 : 
+        case 0x102 :
             old_tmcnt = m_tmcnt[0];
-            bits::set<0, 8>(m_tmcnt[0], value);
+            //On Timer 0 bit 2 is always 0
+            bits::set<0, 8>(m_tmcnt[0], value & ~4);
             updateTimer(0, old_tmcnt);
             break;
         case 0x103 : bits::set<8, 8>(m_tmcnt[0], value); break;
@@ -126,12 +127,12 @@ void Timer::startTimer(u8 timer) {
     }
 
     //2-cycle delay before timer starts
-    u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer, cycles_till_overflow](u64 a, u32 b) {
+    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 a, u32 b) {
+        u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
         m_timer_start[timer] = a;
         m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 a, u32 b) {
             timerOverflowEvent(timer, a, b);
-        }, cycles_till_overflow);
+        }, cycles_till_overflow - b);
     }, 2);
 }
 

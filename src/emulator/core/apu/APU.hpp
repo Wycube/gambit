@@ -1,6 +1,8 @@
 #pragma once
 
 #include "channels/PulseChannel.hpp"
+#include "channels/WaveChannel.hpp"
+#include "channels/NoiseChannel.hpp"
 #include "common/Types.hpp"
 #include <chrono>
 #include <queue>
@@ -30,8 +32,12 @@ private:
 
     PulseChannel m_pulse1;
     PulseChannel m_pulse2;
+    WaveChannel m_wave;
+    NoiseChannel m_noise;
 
+    u16 m_sndcnt_l; //NR50, NR51
     u16 m_sndcnt_h;
+    u8 m_sndcnt_x;  //NR52
 
     std::queue<s8> m_fifo_a;
     std::queue<s8> m_fifo_b;

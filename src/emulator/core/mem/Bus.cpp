@@ -219,6 +219,10 @@ void Bus::write(u32 address, T value) {
 }
 
 auto Bus::readIO(u32 address) -> u8 {
+    if(address >= sizeof(m_mem.io)) {
+        return 0;
+    }
+
     if(address <= 0x56) {
         return m_core.ppu.readIO(address);
     }
@@ -252,6 +256,10 @@ auto Bus::readIO(u32 address) -> u8 {
 }
 
 void Bus::writeIO(u32 address, u8 value) {
+    if(address >= sizeof(m_mem.io)) {
+        return;
+    }
+
     if(address <= 0x56) {
         m_core.ppu.writeIO(address, value);
         return;

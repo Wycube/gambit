@@ -23,7 +23,7 @@ public:
 
 private:
 
-    u16 m_sndcnt_l; //NR10
+    u8 m_sndcnt_l;  //NR10
     u16 m_sndcnt_h; //NR11, NR12 / NR23, NR24
     u16 m_sndcnt_x; //NR13, NR14 / NR23, NR24 
     bool m_enabled;

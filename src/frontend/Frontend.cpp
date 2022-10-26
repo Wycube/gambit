@@ -117,10 +117,29 @@ void Frontend::init() {
 
     //Spawn emulator thread
     m_emu_thread.start();
+
+    //Miniaudio Testing
+    ma_device_config config = ma_device_config_init(ma_device_type_playback);
+    config.playback.format = ma_format_f32;
+    config.playback.channels = 2;
+    config.sampleRate = 48000;
+    config.dataCallback = audio_sync;
+    config.pUserData = this;
+    config.periodSizeInFrames = 48000 / 64;
+
+    if(ma_device_init(nullptr, &config, &device) != MA_SUCCESS) {
+        LOG_FATAL("Could not initalize Miniaudio device!");
+    }
+
+    if(ma_device_start(&device) != MA_SUCCESS) {
+        LOG_FATAL("Could not start Miniaudio device!");
+    }
 }
 
 void Frontend::shutdown() {
     m_emu_thread.stop();
+
+    ma_device_uninit(&device);
 }
 
 void Frontend::loadROM(std::vector<u8> &&rom) {
@@ -148,14 +167,18 @@ void Frontend::drawInterface() {
     if(ImGui::BeginMenu("Emulation")) {
         if(ImGui::MenuItem("Start")) {
             m_emu_thread.start();
+            ma_device_start(&device);
         }
         if(ImGui::MenuItem("Stop")) {
             m_emu_thread.stop();
+            ma_device_stop(&device);
         }
         if(ImGui::MenuItem("Reset")) {
             m_emu_thread.stop();
+            ma_device_stop(&device);
             m_core.reset();
             m_emu_thread.start();
+            ma_device_start(&device);
         }
 
         if(!m_emu_thread.running() && ImGui::MenuItem("Next Frame", "N")) {
@@ -175,6 +198,7 @@ void Frontend::drawInterface() {
 
     if(m_emu_thread.running() && !last_key && glfwGetKey(m_window, GLFW_KEY_P) == GLFW_PRESS) {
         m_emu_thread.stop();
+        ma_device_stop(&device);
     }
 
     last_key_2 = glfwGetKey(m_window, GLFW_KEY_P) == GLFW_PRESS;
@@ -218,7 +242,7 @@ void Frontend::drawInterface() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ImGui::GetStyle().WindowPadding.x, 0));
     if(ImGui::BeginViewportSideBar("##StatusBar", ImGui::GetMainViewport(), ImGuiDir_Down, ImGui::GetFrameHeight(), ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
-            ImGui::Text("FPS: %4.1f", ImGui::GetIO().Framerate);
+            ImGui::Text("FPS: %4.1f", m_average_fps); //ImGui::GetIO().Framerate);
             ImGui::Dummy(ImVec2(5, 0));
             ImGui::Text("Clock Speed: %lluhz", m_emu_thread.getClockSpeed());
             ImGui::Dummy(ImVec2(5, 0));
@@ -304,19 +328,25 @@ void Frontend::drawInterface() {
     if(ImGui::Begin("Performance")) {
         float values_1[100];
         float values_2[50];
+        float average = 0;
 
-        size_t _i = m_frame_times_start;
+        memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
+        memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+
         for(size_t i = 0; i < 100; i++) {
-            values_1[i] = m_frame_times[_i];
-            _i = (_i + 1) % 100;
+            average += values_1[i];
         }
+        average /= 100.0f;
+        m_average_fps = 1000.0f / average;
 
         for(size_t i = 0; i < m_video_device.getFrameTimes().size(); i++) {
             values_2[i] = m_video_device.getFrameTimes()[i];
         }
 
-        ImGui::PlotLines("Host Frame Times", values_1, 100, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
-        ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 36.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+        ImGui::PlotLines("Host Frame Times", values_1, 100, 0, nullptr, 0.0f, 33.3f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 33.3f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+    
+
     }
     ImGui::End();
 
@@ -337,6 +367,16 @@ void Frontend::drawInterface() {
     ImGui::End();
 
     endFrame();
+}
+
+auto simple_lowpass(float *input, float *output, size_t size, float last) {
+    output[0] = input[0] + last;
+    
+    for(size_t i = 1; i < size; i++) {
+        output[i] = input[i] + input[i-1];
+    }
+
+    return input[size-1];
 }
 
 void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {

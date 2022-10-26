@@ -73,6 +73,7 @@ private:
     MAAudioDevice m_audio_device;
     emu::GBA m_core;
     EmuThread m_emu_thread;
+    ma_device device;
 
     DebuggerUI m_debug_ui;
     bool m_show_cpu_debug;
@@ -90,6 +91,7 @@ private:
     std::mutex m_audio_buffer_mutex;
     float m_audio_samples[512];
     std::chrono::time_point<std::chrono::steady_clock> m_start;
+    float m_average_fps;
 
     GLFWwindow *m_window;
     int m_width, m_height;

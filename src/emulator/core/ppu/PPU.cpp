@@ -90,10 +90,10 @@ auto PPU::readIO(u32 address) -> u8 {
 
 void PPU::writeIO(u32 address, u8 value) {
     switch(address) {
-        case 0x00 : m_state.dispcnt = (m_state.dispcnt & ~0xFF) | value; break;
-        case 0x01 : m_state.dispcnt = (m_state.dispcnt & 0xFF) | (value << 8); break;
-        case 0x04 : m_state.dispstat = (m_state.dispstat & 0xFF07) | (value & ~0x7); break;
-        case 0x05 : m_state.dispstat = (m_state.dispstat & 0xFF) | (value << 8); break;
+        case 0x00 : m_state.dispcnt = (m_state.dispcnt & 0xFF00) | value; break;
+        case 0x01 : m_state.dispcnt = (m_state.dispcnt & 0x00FF) | (value << 8); break;
+        case 0x04 : m_state.dispstat = (m_state.dispstat & 0xFF07) | (value & ~7); break;
+        case 0x05 : m_state.dispstat = (m_state.dispstat & 0x00FF) | (value << 8); break;
         case 0x08 :
         case 0x09 : m_state.bg[0].write(address, value); break;
         case 0x0A :
