@@ -132,7 +132,7 @@ auto Bus::read(u32 address) -> T {
         break;
         case 0x4 : 
             for(int i = 0; i < sizeof(T); i++) {
-                value |= (readIO((sub_address + i) % sizeof(m_mem.io)) << i * 8);
+                value |= (readIO(sub_address + i) << i * 8);
             }
 
             return value;
@@ -189,7 +189,7 @@ void Bus::write(u32 address, T value) {
         break;
         case 0x4 : 
             for(int i = 0; i < sizeof(T); i++) {
-                writeIO((sub_address + i) % sizeof(m_mem.io), (value >> i * 8) & 0xFF);
+                writeIO(sub_address + i, (value >> i * 8) & 0xFF);
             }
         break;
         case 0x5 : m_core.ppu.writePalette<T>(sub_address, value); //Palette RAM
@@ -228,8 +228,8 @@ auto Bus::readIO(u32 address) -> u8 {
         return 2;
     }
 
-    //Channel 1 and 2 registers
-    if(address >= 0x60 && address <= 0x6D) {
+    //APU registers
+    if(address >= 0x60 && address <= 0xA7) {
         return m_core.apu.read(address);
     }
 
@@ -256,12 +256,8 @@ void Bus::writeIO(u32 address, u8 value) {
         m_core.ppu.writeIO(address, value);
         return;
     }
-    //Channel 1 and 2 registers
-    if(address >= 0x60 && address <= 0x6D) {
-        m_core.apu.write(address, value);
-    }
-    //FIFO A and FIFO B
-    if(address >= 0xA0 && address <= 0xA7) {
+    //APU registers
+    if(address >= 0x60 && address <= 0xA7) {
         m_core.apu.write(address, value);
     }
     if(address >= 0xB0 && address < 0xE0) {
