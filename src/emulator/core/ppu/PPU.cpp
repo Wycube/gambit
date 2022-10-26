@@ -38,15 +38,25 @@ PPU::PPU(GBA &core) : m_core(core) {
 
 void PPU::reset() {
     m_state.dispcnt = 0x80;
-    m_state.dispstat = 8;
-    m_state.line = 125;
+    m_state.dispstat = 0;
+    m_state.line = 126;
+
+    m_state.bldcnt = 0;
+    m_state.bldalpha = 0;
+    m_state.bldy = 0;
+
+    m_state.bg[0].reset();
+    m_state.bg[1].reset();
+    m_state.bg[2].reset();
+    m_state.bg[3].reset();
+    m_state.win.reset();
 
     std::memset(m_state.vram, 0, sizeof(m_state.vram));
     std::memset(m_state.palette, 0, sizeof(m_state.palette));
     std::memset(m_state.oam, 0, sizeof(m_state.oam));
     
     m_update_event = m_core.scheduler.generateHandle();
-    m_core.scheduler.addEvent(m_update_event, [this](u32 a, u32 b) { hblankStart(a, b); }, 960);
+    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) { hblankStart(a, b); }, 960);
 }
 
 auto PPU::readIO(u32 address) -> u8 {
@@ -286,7 +296,7 @@ void PPU::hblankStart(u64 current, u64 late) {
         m_core.bus.requestInterrupt(INT_LCD_HB);
     }
 
-    m_core.scheduler.addEvent(m_update_event, [this](u32 a, u32 b) { hblankEnd(a, b); }, 272 - late);
+    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) { hblankEnd(a, b); }, 272 - late);
 }
 
 void PPU::hblankEnd(u64 current, u64 late) {
@@ -332,7 +342,7 @@ void PPU::hblankEnd(u64 current, u64 late) {
         m_state.dispstat &= ~2;
     }
 
-    m_core.scheduler.addEvent(m_update_event, [this](u32 a, u32 b) { hblankStart(a, b); }, 960 - late);
+    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) { hblankStart(a, b); }, 960 - late);
 }
 
 void PPU::clearBuffers() {

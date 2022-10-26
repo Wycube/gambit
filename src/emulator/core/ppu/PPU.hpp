@@ -53,10 +53,6 @@ private:
     void drawObjects();
     void drawBackground();
     void compositeLine();
-
-    //auto getObjectPosition()
-    //auto getObjectPositionAffine()
-    //auto getObjectPixel()
 };
 
 } //namespace emu

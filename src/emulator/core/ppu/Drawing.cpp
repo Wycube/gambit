@@ -6,6 +6,26 @@
 
 namespace emu {
 
+void Background::reset() {
+    priority = 0;
+    char_base_block = 0;
+    mosaic = 0;
+    color_mode = 0;
+    scr_base_block = 0;
+    disp_overflow = 0;
+    screen_size = 0;
+    unused = 0;
+    h_offset = 0;
+    v_offset = 0;
+    
+    reference_x = 0;
+    reference_y = 0;
+    param_a = 0x100;
+    param_b = 0;
+    param_c = 0;
+    param_d = 0x100;
+}
+
 void Background::write(u32 address, u8 value) {
     if(address & 1) {
         scr_base_block = value & 0x1F;
@@ -228,6 +248,15 @@ void Object::getAffineCoords(int &local_x, int &local_y, const PPUState &state) 
 
     local_x = new_x;
     local_y = new_y;
+}
+
+void Window::reset() {
+    winh[0] = 0;
+    winh[1] = 0;
+    winv[0] = 0;
+    winv[1] = 0;
+    winin = 0;
+    winout = 0;
 }
 
 //TODO: Window has some weird behavior to implement

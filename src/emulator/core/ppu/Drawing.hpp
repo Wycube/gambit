@@ -26,7 +26,9 @@ struct Background {
 
     //Rotation/Scaling Registers
     s32 reference_x, reference_y;
-    s16 param_a = 0x10, param_b, param_c = 0x10, param_d;
+    s16 param_a, param_b, param_c, param_d;
+
+    void reset();
 
     void write(u32 address, u8 value);
     auto read(u32 address, bool regular) -> u8;
@@ -61,6 +63,8 @@ struct Window {
     u16 winh[2];
     u16 winv[2];
     u16 winin, winout;
+
+    void reset();
 
     auto insideWindow(int x, int y, int window) -> bool;
 };
