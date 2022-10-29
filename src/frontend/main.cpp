@@ -9,7 +9,6 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <glad/gl.h>
-#include <miniaudio.h>
 #include <filesystem>
 #include <fstream>
 #include <vector>
