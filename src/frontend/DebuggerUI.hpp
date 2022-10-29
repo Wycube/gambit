@@ -26,7 +26,6 @@ inline auto get_mode_str(u8 mode_bits) -> std::string {
 }
 
 
-
 class DebuggerUI {
 public:
 
@@ -86,7 +85,7 @@ public:
             }
 
             ImGui::SameLine();
-            ImGui::Text("%i : 0x%08X", i, bkpts[i]);
+            ImGui::Text("%lu : 0x%08X", i, bkpts[i]);
         }
 
         if(running) {
@@ -422,7 +421,7 @@ public:
     void drawSchedulerViewer() {
         ImGui::Text("Cycle: %lu", m_debugger.getCurrentCycle());
         for(u32 i = 0; i < m_debugger.numEvents(); i++) {
-            ImGui::Text("%i : %u -> %lu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
+            ImGui::Text("%u : %u -> %lu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
         }
     }
 
