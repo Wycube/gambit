@@ -51,7 +51,7 @@ struct Object {
     auto getObjectPixel(int local_x, int local_y, const PPUState &state) const -> u8;
     void getAffineCoords(int &local_x, int &local_y, const PPUState &state) const;
 
-    int width, height;
+    u16 width, height;
     int index;
     int x, y;
     bool affine;
