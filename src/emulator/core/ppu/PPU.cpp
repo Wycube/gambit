@@ -281,13 +281,12 @@ void PPU::hblankStart(u64 current, u64 late) {
             clearBuffers();
             getWindowLine();
             drawBackground();
-            drawObjects();
+            drawObjects(); 
             compositeLine();
         } else {
             //Forced Blank
-            for(int i = 0; i < 240; i++) {
-                m_core.video_device.setPixel(i, m_state.line, 0xFFFFFFFF);
-            }
+            static u32 blank[240] = {0};
+            m_core.video_device.setLine(m_state.line, blank);
         }
     }
 
@@ -570,6 +569,7 @@ void PPU::compositeLine() {
     const u16 zero_color = (m_state.palette[1] << 8) | m_state.palette[0];
     const bool bitmap = bits::get<0, 3>(m_state.dispcnt) >= 3;
     u8 priorities[6];
+    u32 output[240];
 
     for(int i = 0; i < 240; i++) {
         for(int i = 0; i < 6; i++) {
@@ -677,8 +677,11 @@ void PPU::compositeLine() {
             blue  = blue > 31 ? 31 : blue;
         }
 
-        m_core.video_device.setPixel(i, m_state.line, (red * 8 << 24) | (green * 8 << 16) | (blue * 8 << 8) | 0xFF);
+    
+        output[i] = (red * 8 << 24) | (green * 8 << 16) | (blue * 8 << 8) | 0xFF;
     }
+
+    m_core.video_device.setLine(m_state.line, output);
 }
 
 } //namespace emu

@@ -17,5 +17,5 @@ public:
 
     static void audioCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count);
 
-    ThreadSafeQueue<float, 1024> m_samples;
+    common::ThreadSafeQueue<float, 1024> m_samples;
 };

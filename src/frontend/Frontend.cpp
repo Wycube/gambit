@@ -47,17 +47,19 @@ void EmuThread::start() {
                 m_start = std::chrono::steady_clock::now();
             }
 
+            // auto start = std::chrono::steady_clock::now();
             std::unique_lock lock(m_mutex);
             m_cv.wait(lock, [&]() { return m_run; });
             m_run = false;
             lock.unlock();
+            // LOG_INFO("Waited for {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
 
             u32 cycles_left = (16777216 / 64) + m_cycle_diff;
-            // auto start = std::chrono::steady_clock::now();
+            // start = std::chrono::steady_clock::now();
             u32 actual = m_core.run(cycles_left);
             // LOG_INFO("Ran {} cycles in {}ms", cycles_left, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
             m_cycle_diff = (s32)cycles_left - actual;
-            // m_core.run(16777216 / 64);
+            // m_core.run(16777216 / 64);         
         }
     });
 }
@@ -327,26 +329,16 @@ void Frontend::drawInterface() {
 
     if(ImGui::Begin("Performance")) {
         float values_1[100];
-        float values_2[50];
+        float values_2[100];
         float average = 0;
 
         memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
         memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
 
-        for(size_t i = 0; i < 100; i++) {
-            average += values_1[i];
-        }
-        average /= 100.0f;
-        m_average_fps = 1000.0f / average;
-
-        for(size_t i = 0; i < m_video_device.getFrameTimes().size(); i++) {
-            values_2[i] = m_video_device.getFrameTimes()[i];
-        }
+        m_video_device.getFrameTimes().copy(values_2);
 
         ImGui::PlotLines("Host Frame Times", values_1, 100, 0, nullptr, 0.0f, 33.3f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
-        ImGui::PlotLines("Guest Frame Times", values_2, 50, 0, nullptr, 0.0f, 33.3f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
-    
-
+        ImGui::PlotLines("Guest Frame Times", values_2, 100, 0, nullptr, 0.0f, 33.3f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
     }
     ImGui::End();
 
@@ -367,16 +359,6 @@ void Frontend::drawInterface() {
     ImGui::End();
 
     endFrame();
-}
-
-auto simple_lowpass(float *input, float *output, size_t size, float last) {
-    output[0] = input[0] + last;
-    
-    for(size_t i = 1; i < size; i++) {
-        output[i] = input[i] + input[i-1];
-    }
-
-    return input[size-1];
 }
 
 void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
@@ -426,13 +408,16 @@ void Frontend::endFrame() {
     auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(now - m_start);
     m_start = now;
 
-    // m_frame_times.push_back((float)frame_time.count() / 1000.0f);
-    // if(m_frame_times.size() > 50) {
-    //     m_frame_times.pop_front();
-    // }
-
     m_frame_times[m_frame_times_start] = (float)frame_time.count() / 1000.0f;
     m_frame_times_start = (m_frame_times_start + 1) % 100;
+
+    //Calculate framerate as a moving average of the last 100 frames
+    float average = 0;
+    for(size_t i = 0; i < 100; i++) {
+        average += m_frame_times[i];
+    }
+    average /= 100.0f;
+    m_average_fps = 1000.0f / average;
 }
 
 void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {

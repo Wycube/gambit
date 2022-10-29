@@ -117,10 +117,12 @@ auto Bus::read(u32 address) -> T {
 
     switch(address >> 24) {
         case 0x0 : //BIOS
-            memory_region = m_mem.bios;
-            region_size = sizeof(m_mem.bios);
+            if(m_core.debugger.getCPURegister(15) < 0x4000) {
+                memory_region = m_mem.bios;
+                region_size = sizeof(m_mem.bios);
+            }
         break;
-        case 0x1 : //Not Used
+        // case 0x1 : //Not Used
         break;
         case 0x2 : //On-Board WRAM
             memory_region = m_mem.ewram;

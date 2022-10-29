@@ -1,6 +1,7 @@
 #pragma once
 
 #include "emulator/device/VideoDevice.hpp"
+#include "common/RingBuffer.hpp"
 #include <glad/gl.h>
 #include <mutex>
 #include <deque>
@@ -14,10 +15,11 @@ public:
 
     void clear(u32 color) override;
     void setPixel(int x, int y, u32 color) override;
+    void setLine(int y, u32 *colors) override;
     void presentFrame() override;
 
     auto getTextureID() -> GLuint;
-    auto getFrameTimes() -> const std::deque<float>& {
+    auto getFrameTimes() -> const common::ThreadSafeQueue<float, 100>& {
         return m_frame_times;
     }
 
@@ -31,6 +33,6 @@ private:
     std::mutex m_update_mutex;
     bool new_frame;
 
-    std::deque<float> m_frame_times;
+    common::ThreadSafeQueue<float, 100> m_frame_times;
     std::chrono::time_point<std::chrono::steady_clock> m_start;
 };

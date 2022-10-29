@@ -116,7 +116,7 @@ void APU::update(u64 current, u32 late) {
     m_pulse1.step();
     m_pulse2.step();
 
-    float sample = (m_pulse1.amplitude() + m_pulse2.amplitude()) / 30.0f;// + m_fifo_sample_a + m_fifo_sample_b;
+    float sample = (m_pulse1.amplitude() + m_pulse2.amplitude()) / 30.0f + m_fifo_sample_a + m_fifo_sample_b;
     m_core.audio_device.addSample(sample);
 
     m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) {
