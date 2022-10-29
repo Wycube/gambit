@@ -2,9 +2,9 @@ name: Build and Upload
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 env:
   BUILD_TYPE: Release
@@ -20,7 +20,9 @@ jobs:
         submodules: true
         
     - name: Install Dependencies
-      run: sudo apt update & sudo apt install mesa-utils & sudo apt install libxrandr-dev & sudo apt install libxinerama-dev & sudo apt install libxcursor-dev & sudo apt install libxi-dev
+      run: |
+        sudo apt update 
+        sudo apt install mesa-utils libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
@@ -34,6 +36,5 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: ${{matrix.platform}}
-        # Windows uses the .exe extension and uses an extra directory named after the build type, MacOS and Linux do not
         path:
           ${{github.workspace}}/build/bin/${{env.BUILD_TYPE}}/**/main*
