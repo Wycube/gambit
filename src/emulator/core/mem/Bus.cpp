@@ -133,7 +133,7 @@ auto Bus::read(u32 address) -> T {
             region_size = sizeof(m_mem.iwram);
         break;
         case 0x4 : 
-            for(int i = 0; i < sizeof(T); i++) {
+            for(size_t i = 0; i < sizeof(T); i++) {
                 value |= (readIO(sub_address + i) << i * 8);
             }
 
@@ -160,7 +160,7 @@ auto Bus::read(u32 address) -> T {
         return 0;
     }
 
-    for(int i = 0; i < sizeof(T); i++) {
+    for(size_t i = 0; i < sizeof(T); i++) {
         value |= (memory_region[(sub_address + i) % region_size] << i * 8);
     }
 
@@ -190,7 +190,7 @@ void Bus::write(u32 address, T value) {
             region_size = sizeof(m_mem.iwram);
         break;
         case 0x4 : 
-            for(int i = 0; i < sizeof(T); i++) {
+            for(size_t i = 0; i < sizeof(T); i++) {
                 writeIO(sub_address + i, (value >> i * 8) & 0xFF);
             }
         break;
@@ -215,7 +215,7 @@ void Bus::write(u32 address, T value) {
         return;
     }
 
-    for(int i = 0; i < sizeof(T); i++) {
+    for(size_t i = 0; i < sizeof(T); i++) {
         memory_region[(sub_address + i) % region_size] = (value >> i * 8) & 0xFF;
     }
 }

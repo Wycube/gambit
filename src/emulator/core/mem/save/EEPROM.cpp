@@ -88,7 +88,7 @@ void EEPROM::write(u32 address, u8 value) {
             break;
         case WRITE_GET_DATA :
             if(m_buffer_size == 64) {
-                for(int i = 0; i < 8; i++) {
+                for(size_t i = 0; i < 8; i++) {
                     m_data[m_address * 8 + i] = (m_serial_buffer >> (7 - i) * 8) & 0xFF;
                 }
 

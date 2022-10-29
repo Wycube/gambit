@@ -136,7 +136,7 @@ void Debugger::addBreakpoint(u32 address) {
 }
 
 void Debugger::removeBreakpoint(u32 address) {
-    for(int i = 0; i < m_breakpoints.size(); i++) {
+    for(size_t i = 0; i < m_breakpoints.size(); i++) {
         if(m_breakpoints[i] == address) {
             m_breakpoints.erase(m_breakpoints.begin() + i);
             break;

@@ -334,7 +334,7 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
     if(l) {
         u32 address = get_reg(13);
 
-        for(int i = 0; i < 8; i++) {
+        for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
                 set_reg(i, m_core.bus.read32(address));
                 address += 4;
@@ -351,7 +351,7 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
     } else {
         u32 address = get_reg(13) - 4 * (bits::popcount<u16>(registers) + r);
 
-        for(int i = 0; i < 8; i++) {
+        for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
                 m_core.bus.write32(address, get_reg(i));
                 address += 4;
@@ -375,7 +375,7 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
     u32 writeback = address + 4 * bits::popcount<u16>(registers);
 
     if(l) {
-        for(int i = 0; i < 8; i++) {
+        for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
                 set_reg(i, m_core.bus.read32(address));
                 address += 4;
@@ -395,7 +395,7 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
     } else {
         bool lowest_set = false;
 
-        for(int i = 0; i < 8; i++) {
+        for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && lowest_set) {

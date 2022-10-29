@@ -437,7 +437,7 @@ void CPU::armBlockTransfer(u32 instruction) {
     }
 
     if(l) {
-        for(int i = 0; i < 15; i++) {
+        for(size_t i = 0; i < 15; i++) {
             if(bits::get_bit(registers, i)) {
                 set_reg(i, m_core.bus.read32(address), mode);
                 address += 4;
@@ -466,7 +466,7 @@ void CPU::armBlockTransfer(u32 instruction) {
     } else {
         bool lowest_set = false;
 
-        for(int i = 0; i < 15; i++) {
+        for(size_t i = 0; i < 15; i++) {
             if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && w && lowest_set) {

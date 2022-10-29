@@ -18,7 +18,7 @@ void Timer::reset() {
     std::memset(m_timer_reload, 0, sizeof(m_timer_reload));
     std::memset(m_tmcnt, 0, sizeof(m_tmcnt));
 
-    for(int i = 0; i < 4; i++) {
+    for(size_t i = 0; i < 4; i++) {
         m_timer_events[i] = m_core.scheduler.generateHandle();
     }
 }

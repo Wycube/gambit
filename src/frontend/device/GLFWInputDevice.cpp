@@ -50,7 +50,7 @@ void GLFWInputDevice::update() {
         //TODO: Call input callback if necessary
     } else {
         //Check for connections
-        for(int i = 0; i < GLFW_JOYSTICK_LAST; i++) {
+        for(size_t i = 0; i < GLFW_JOYSTICK_LAST; i++) {
             if(glfwJoystickPresent(i) == GLFW_TRUE && glfwJoystickIsGamepad(i)) {
                 LOG_INFO("New controller connection in slot {}: {} {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
                 m_current_joystick = i;
@@ -64,7 +64,7 @@ auto GLFWInputDevice::getKeys() -> u16 {
     std::lock_guard lock(m_key_mutex);
 
     u16 keys = 0;
-    for(int i = 0; i < 10; i++) {
+    for(size_t i = 0; i < 10; i++) {
         keys |= !m_pressed[i] << i;
     }
 

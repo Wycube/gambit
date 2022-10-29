@@ -351,7 +351,7 @@ auto armDisassembleBlockTransfer(u32 instruction, u32 address) -> std::string {
     std::string disassembly = fmt::format("{}{}{}", l ? "ldm" : "stm", CONDITION_EXTENSIONS[condition], ADDRESS_MODES[pu]);
 
     //Generate a list of the registers based on the set bits
-    for(int i = 0; i < 16; i++) {
+    for(size_t i = 0; i < 16; i++) {
         bool set = bits::get_bit(registers, i);
 
         if(set) {

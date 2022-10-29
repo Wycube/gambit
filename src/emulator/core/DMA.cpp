@@ -16,7 +16,7 @@ DMA::DMA(GBA &core) : m_core(core) {
 }
 
 void DMA::reset() {
-    for(int i = 0; i < 4; i++) {
+    for(size_t i = 0; i < 4; i++) {
         m_channel[i].active = false;
         m_channel[i].source = 0;
         m_channel[i].destination = 0;
@@ -92,7 +92,7 @@ void DMA::write8(u32 address, u8 value) {
 }
 
 void DMA::onHBlank() {
-    for(int i = 0; i < 4; i++) {
+    for(size_t i = 0; i < 4; i++) {
         if(!m_channel[i].active && bits::get_bit<15>(m_channel[i].control) && bits::get<12, 2>(m_channel[i].control) == 2) {
             startTransfer(i);
         }
@@ -100,7 +100,7 @@ void DMA::onHBlank() {
 }
 
 void DMA::onVBlank() {
-    for(int i = 0; i < 4; i++) {
+    for(size_t i = 0; i < 4; i++) {
         if(!m_channel[i].active && bits::get_bit<15>(m_channel[i].control) && bits::get<12, 2>(m_channel[i].control) == 1) {
             startTransfer(i);
         }
@@ -180,7 +180,7 @@ void DMA::transfer(int dma_n, u64 current, u32 cycles_late) {
     int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & LENGTH_MASK[dma_n];
     LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
 
-    for(int i = 0; i < length; i++) {
+    for(size_t i = 0; i < length; i++) {
         if constexpr(sizeof(T) == 2) {
             m_core.bus.debugWrite16(destination, m_core.bus.debugRead16(source));
             adjustAddress(source, bits::get<7, 2>(control), 2);
@@ -216,7 +216,7 @@ void DMA::transfer2(int dma_n, u32 current, u32 cycles_late) {
     u32 destination = m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n];
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
 
-    for(int i = 0; i < 4; i++) {
+    for(size_t i = 0; i < 4; i++) {
         m_core.bus.debugWrite32(destination, m_core.bus.debugRead32(source));
         adjustAddress(source, bits::get<7, 2>(control), 4);
     }
