@@ -1,8 +1,13 @@
 #pragma once
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmicrosoft-enum-value"
-#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#if defined(__clang__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wmicrosoft-enum-value"
+    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#elif defined(__GNUG__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
 
 #include "common/Types.hpp"
 #include <fmt/format.h>
@@ -45,4 +50,8 @@ void log_debug(const std::string &message, LogLevel level, const char *file, con
 
 } //namespace common
 
-#pragma clang diagnostic pop
+#if defined(__clang__)
+    #pragma clang diagnostic pop
+#elif defined(__GNUG__)
+    #pragma GCC diagnostic pop
+#endif

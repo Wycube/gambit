@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mutex>
+#include <cstring>
 
 
 namespace common {
