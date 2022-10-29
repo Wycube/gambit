@@ -36,7 +36,7 @@ inline auto alphabetic(char c) -> bool {
 inline auto to_upper(const std::string &text) -> std::string {
     std::string capitalized = text;
     
-    for(int i = 0; i < capitalized.size(); i++) {
+    for(size_t i = 0; i < capitalized.size(); i++) {
         char c = capitalized[i];
         
         if('a' <= c && c <= 'z') {
@@ -50,7 +50,7 @@ inline auto to_upper(const std::string &text) -> std::string {
 inline auto to_lower(const std::string &text) -> std::string {
     std::string lower_case = text;
     
-    for(int i = 0; i < lower_case.size(); i++) {
+    for(size_t i = 0; i < lower_case.size(); i++) {
         char c = lower_case[i];
 
         if('A' <= c && c <= 'Z') {

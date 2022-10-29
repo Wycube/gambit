@@ -15,7 +15,7 @@ CPU::CPU(GBA &core) : m_core(core) {
 
 void CPU::reset() {
     //Setup register banks
-    for(int i = 0; i < 16; i++) {
+    for(size_t i = 0; i < 16; i++) {
         m_state.banks[0][i] = &get_reg_ref(i, MODE_SYSTEM);
         m_state.banks[1][i] = &get_reg_ref(i, MODE_FIQ);
         m_state.banks[2][i] = &get_reg_ref(i, MODE_IRQ);
@@ -286,7 +286,7 @@ void CPU::service_interrupt() {
     }
 
     //Check for any interrupts that are enabled and requested
-    for(int i = 0; i < 14; i++) {
+    for(size_t i = 0; i < 14; i++) {
         bool enabled = bits::get_bit(IE, i);
         bool request = bits::get_bit(IF, i);
 

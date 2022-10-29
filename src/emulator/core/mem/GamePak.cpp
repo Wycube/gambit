@@ -40,7 +40,7 @@ auto GamePak::read(u32 address) -> T {
 
     T value = 0;
 
-    for(int i = 0; i < sizeof(T); i++) {
+    for(size_t i = 0; i < sizeof(T); i++) {
         value |= (m_rom[aligned + i] << i * 8);
     }
 
@@ -117,7 +117,7 @@ void GamePak::parseHeader() {
 }
 
 auto GamePak::findSaveType() -> bool {
-    for(int i = 0; i < m_rom.size(); i++) {
+    for(size_t i = 0; i < m_rom.size(); i++) {
         char byte = static_cast<char>(m_rom[i]);
 
         if(byte == 'E' && (i + 5) < m_rom.size()) {

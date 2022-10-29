@@ -25,7 +25,7 @@ OGLVideoDevice::~OGLVideoDevice() {
 void OGLVideoDevice::clear(u32 color) {
     std::lock_guard lock(m_update_mutex);
 
-    for(int i = 0; i < sizeof(m_internal_framebuffer) / 4; i++) {
+    for(size_t i = 0; i < sizeof(m_internal_framebuffer) / 4; i++) {
         m_internal_framebuffer[i] = color;
         m_present_framebuffer[i] = color;
     }

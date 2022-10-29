@@ -179,7 +179,7 @@ template<typename T>
 auto PPU::readPalette(u32 address) -> T {
     T value = 0;
 
-    for(int i = 0; i < sizeof(T); i++) {
+    for(size_t i = 0; i < sizeof(T); i++) {
         value |= (m_state.palette[(address + i) % sizeof(m_state.palette)] << i * 8);
     }
 
@@ -193,11 +193,11 @@ auto PPU::readVRAM(u32 address) -> T {
 
     //VRAM mirrors the last 32k twice to make up the 128k mirror
     if(address >= 96_KiB) {
-        for(int i = 0; i < sizeof(T); i++) {
+        for(size_t i = 0; i < sizeof(T); i++) {
             value |= (m_state.vram[address - 32_KiB + i] << i * 8);
         }
     } else {
-        for(int i = 0; i < sizeof(T); i++) {
+        for(size_t i = 0; i < sizeof(T); i++) {
             value |= (m_state.vram[address + i] << i * 8);
         }
     }
@@ -209,7 +209,7 @@ template<typename T>
 auto PPU::readOAM(u32 address) -> T {
     T value = 0;
 
-    for(int i = 0; i < sizeof(T); i++) {
+    for(size_t i = 0; i < sizeof(T); i++) {
         value |= (m_state.oam[(address + i) % sizeof(m_state.oam)] << i * 8);
     }
 
@@ -223,7 +223,7 @@ void PPU::writePalette(u32 address, T value) {
         m_state.palette[(address & ~1) % sizeof(m_state.palette)] = value;
         m_state.palette[(address | 1) % sizeof(m_state.palette)] = value;
     } else {
-        for(int i = 0; i < sizeof(T); i++) {
+        for(size_t i = 0; i < sizeof(T); i++) {
             m_state.palette[(address + i) % sizeof(m_state.palette)] = (value >> i * 8) & 0xFF;
         }
     }
@@ -251,11 +251,11 @@ void PPU::writeVRAM(u32 address, T value) {
         }
     } else {
         if(address >= 96_KiB) {
-            for(int i = 0; i < sizeof(T); i++) {
+            for(size_t i = 0; i < sizeof(T); i++) {
                 m_state.vram[address - 32_KiB + i] = (value >> i * 8) & 0xFF;
             }
         } else {
-            for(int i = 0; i < sizeof(T); i++) {
+            for(size_t i = 0; i < sizeof(T); i++) {
                 m_state.vram[address + i] = (value >> i * 8) & 0xFF;
             }
         }
@@ -266,7 +266,7 @@ template<typename T>
 void PPU::writeOAM(u32 address, T value) {
     //Disallow byte writes
     if constexpr(sizeof(T) != 1) {
-        for(int i = 0; i < sizeof(T); i++) {
+        for(size_t i = 0; i < sizeof(T); i++) {
             m_state.oam[(address + i) % sizeof(m_state.oam)] = (value >> i * 8) & 0xFF;
         }
     }
@@ -360,7 +360,7 @@ void PPU::getWindowLine() {
 
     //TODO: Move to Window class
     if(bits::get_bit<15>(m_state.dispcnt)) {
-        for(int i = 0; i < 128; i++) {
+        for(size_t i = 0; i < 128; i++) {
             u8 mode = bits::get<2, 2>(m_state.oam[i * 8 + 1]);
             u8 flags = bits::get<0, 2>(m_state.oam[i * 8 + 1]);
             
@@ -397,7 +397,7 @@ void PPU::getWindowLine() {
         }
     }
 
-    for(int i = 0; i < 240; i++) {
+    for(size_t i = 0; i < 240; i++) {
         //Bit 0-3 are bg 0-3 display, and bit 4 is obj display
         m_win_line[i] = bits::get<13, 3>(m_state.dispcnt) != 0 ? bits::get<0, 6>(m_state.win.winout) : 0x3F;
 
@@ -419,7 +419,7 @@ void PPU::getWindowLine() {
         int local_y = m_state.line - obj.y;
         int obj_width = obj.double_size ? obj.width * 2 : obj.width;
 
-        for(int i = 0; i < obj_width; i++) {
+        for(size_t i = 0; i < obj_width; i++) {
             int screen_x = obj.getScreenX(i);
 
             if(screen_x >= 240) {
@@ -438,7 +438,7 @@ void PPU::getWindowLine() {
 auto PPU::getSpriteLines() -> std::vector<Object> {
     std::vector<Object> lines;
 
-    for(int i = 0; i < 128; i++) {
+    for(size_t i = 0; i < 128; i++) {
         u8 mode = bits::get<2, 2>(m_state.oam[i * 8 + 1]);
         u8 flags = bits::get<0, 2>(m_state.oam[i * 8 + 1]);
 
@@ -495,7 +495,7 @@ void PPU::drawObjects() {
             local_y = (m_state.line / mosaic_h * mosaic_h) - obj.y;
         }
 
-        for(int i = 0; i < obj_width; i++) {
+        for(size_t i = 0; i < obj_width; i++) {
             int screen_x = obj.getScreenX(i);
 
             if(screen_x >= 240) {
@@ -521,7 +521,7 @@ void PPU::drawObjects() {
 void PPU::drawBackground() {
     switch(bits::get<0, 3>(m_state.dispcnt)) {
         case 0 : //BG 0-3 Text
-            for(int i = 0; i < 240; i++) {
+            for(size_t i = 0; i < 240; i++) {
                 if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram, m_state);
                 if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram, m_state);
                 if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getTextPixel(i, m_state.line, m_state.vram, m_state);
@@ -529,35 +529,35 @@ void PPU::drawBackground() {
             }
             break;
         case 1 : //BG 0-1 Text BG 2 Affine
-            for(int i = 0; i < 240; i++) {
+            for(size_t i = 0; i < 240; i++) {
                 if(bits::get_bit<8>(m_state.dispcnt))  m_bg_col[0][i] = m_state.bg[0].getTextPixel(i, m_state.line, m_state.vram, m_state);
                 if(bits::get_bit<9>(m_state.dispcnt))  m_bg_col[1][i] = m_state.bg[1].getTextPixel(i, m_state.line, m_state.vram, m_state);
                 if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
             }
             break;
         case 2 : //BG 2-3 Affine
-            for(int i = 0; i < 240; i++) {
+            for(size_t i = 0; i < 240; i++) {
                 if(bits::get_bit<10>(m_state.dispcnt)) m_bg_col[2][i] = m_state.bg[2].getAffinePixel(i, m_state.line, m_state.vram);
                 if(bits::get_bit<11>(m_state.dispcnt)) m_bg_col[3][i] = m_state.bg[3].getAffinePixel(i, m_state.line, m_state.vram);
             }
             break;
         case 3 : //BG 2 Bitmap 1x 240x160 Frame 15-bit color
             if(bits::get_bit<10>(m_state.dispcnt)) {
-                for(int i = 0; i < 240; i++) {
+                for(size_t i = 0; i < 240; i++) {
                     m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode3(i, m_state.line, m_state.vram);
                 }
             }
             break;
         case 4 : //BG 2 Bitmap 2x 240x160 Frames Paletted
             if(bits::get_bit<10>(m_state.dispcnt)) {
-                for(int i = 0; i < 240; i++) {
+                for(size_t i = 0; i < 240; i++) {
                     m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode4(i, m_state.line, m_state.vram, m_state.palette, bits::get<4, 1>(m_state.dispcnt));
                 }
             }
             break;
         case 5 : //BG 2 Bitmap 2x 160x128 Frames 15-bit color
             if(bits::get_bit<10>(m_state.dispcnt)) {
-                for(int i = 0; i < 240; i++) {
+                for(size_t i = 0; i < 240; i++) {
                     m_bmp_col[i] = m_state.bg[2].getBitmapPixelMode5(i, m_state.line, m_state.vram, bits::get<4, 1>(m_state.dispcnt));
                 }
             }
@@ -571,8 +571,8 @@ void PPU::compositeLine() {
     u8 priorities[6];
     u32 output[240];
 
-    for(int i = 0; i < 240; i++) {
-        for(int i = 0; i < 6; i++) {
+    for(size_t i = 0; i < 240; i++) {
+        for(size_t i = 0; i < 6; i++) {
             priorities[i] = i << 3;
         }
 
@@ -595,7 +595,7 @@ void PPU::compositeLine() {
             return (a & 7) < (b & 7);
         });
 
-        u16 target_1;
+        u16 target_1 = 0;
 
         //Find first target (Topmost pixel)
         switch(priorities[0] >> 3) {
@@ -627,7 +627,7 @@ void PPU::compositeLine() {
                         if(blend_a2 > 1.0f) {
                             blend_a2 = 1.0f;
                         }
-                        u16 target_2;
+                        u16 target_2 = 0;
 
                         //Find second target (Next topmost pixel)
                         switch(priorities[1] >> 3) {

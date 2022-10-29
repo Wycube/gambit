@@ -203,7 +203,7 @@ auto thumbDisassemblePushPopRegisters(u16 instruction, u32 address, u16 prev) ->
     std::string register_list;
     
     //Generate a list of the registers based on the set bits
-    for(int i = 0; i < 8; i++) {
+    for(size_t i = 0; i < 8; i++) {
         if(bits::get_bit(registers, i)) {
             //If there are 1s, or in this case a register in the list before this one, add a comma
             register_list += fmt::format("{}r{}", bits::get(0, i, registers) != 0 ? ", " : "", i);
@@ -221,7 +221,7 @@ auto thumbDisassembleLoadStoreMultiple(u16 instruction, u32 address, u16 prev) -
     std::string register_list;
 
     //Generate a list of the registers based on the set bits
-    for(int i = 0; i < 8; i++) {
+    for(size_t i = 0; i < 8; i++) {
         if(bits::get_bit(registers, i)) {
             //If there are 1s, or in this case a register in the list before this one, add a comma
             register_list += fmt::format("{}r{}", bits::get(0, i, registers) != 0 ? ", " : "", i);

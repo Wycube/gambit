@@ -79,7 +79,7 @@ public:
         }
         ImGui::Separator();
 
-        for(int i = bkpts.size() - 1; i >= 0; i--) {
+        for(size_t i = bkpts.size() - 1; i >= 0; i--) {
             if(ImGui::Button("Delete")) {
                 m_debugger.removeBreakpoint(bkpts[i]);
                 continue;
@@ -142,7 +142,7 @@ public:
         ImGui::Text("CPSR");
         ImGui::Text("%08X", cpsr);
         ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(cpsr)).c_str());
-        for(int i = 0; i < sizeof(flag_name); i++) {
+        for(size_t i = 0; i < sizeof(flag_name); i++) {
             ImGui::Text("%c:", flag_name[i]);
             ImGui::SameLine();
 
@@ -157,7 +157,7 @@ public:
         ImGui::Text("SPSR");
         ImGui::Text("%08X", spsr);
         ImGui::Text("Mode: %s", get_mode_str(bits::get<0, 5>(spsr)).c_str());
-        for(int i = 0; i < sizeof(flag_name); i++) {
+        for(size_t i = 0; i < sizeof(flag_name); i++) {
             ImGui::Text("%c:", flag_name[i]);
             ImGui::SameLine();
 
@@ -382,7 +382,7 @@ public:
             ImGuiListClipper clipper(std::round((float)region_size / 16.0f));
 
             while(clipper.Step()) {
-                for(size_t i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
 
@@ -391,7 +391,7 @@ public:
 
                     ImGui::TableNextColumn();
 
-                    for(int j = 0; j < 16; j++) {
+                    for(size_t j = 0; j < 16; j++) {
                         if(line_address + j >= region_size) {
                             break;
                         }
@@ -402,7 +402,7 @@ public:
 
                     ImGui::TableNextColumn();
                     std::string ascii;
-                    for(int j = 0; j < 16; j++) {
+                    for(size_t j = 0; j < 16; j++) {
                         if(line_address + j >= region_size) {
                             break;
                         }
