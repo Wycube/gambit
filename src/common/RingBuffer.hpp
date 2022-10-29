@@ -58,8 +58,8 @@ public:
     void copy(T *dst) const {
         std::lock_guard lock(m_access_mutex);
 
-        memcpy(dst, &m_data[m_tail], (_capacity - m_tail) * sizeof(T));
-        memcpy(dst + (_capacity - m_tail), m_data, m_tail * sizeof(T));
+        std::memcpy(dst, &m_data[m_tail], (_capacity - m_tail) * sizeof(T));
+        std::memcpy(dst + (_capacity - m_tail), m_data, m_tail * sizeof(T));
     }
 
     void pop_array(T *dst, size_t size) {
@@ -68,11 +68,11 @@ public:
 
         size_t to_end = _capacity - m_tail;
         if(to_end > size) {
-            memcpy(dst, &m_data[m_tail], size * sizeof(T));
+            std::memcpy(dst, &m_data[m_tail], size * sizeof(T));
         } else {
             size_t second_size = size - to_end;
-            memcpy(dst, &m_data[m_tail], to_end * sizeof(T));
-            memcpy(dst + to_end, m_data, second_size * sizeof(T));
+            std::memcpy(dst, &m_data[m_tail], to_end * sizeof(T));
+            std::memcpy(dst + to_end, m_data, second_size * sizeof(T));
         }
 
         m_tail = (m_tail + size) % _capacity;
