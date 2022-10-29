@@ -6,7 +6,7 @@
     #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #elif defined(__GNUG__)
     #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+    #pragma GCC diagnostic ignored "-Wzero-variadic-macro-arguments"
 #endif
 
 #include "common/Types.hpp"

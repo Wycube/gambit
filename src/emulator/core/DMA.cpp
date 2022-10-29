@@ -177,10 +177,10 @@ void DMA::transfer(int dma_n, u64 current, u32 cycles_late) {
     u32 source = (m_channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n]) & ~(sizeof(T) == 4 ? 3 : 1);
     u32 destination = (m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n]) & ~(sizeof(T) == 4 ? 3 : 1);
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
-    int length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & LENGTH_MASK[dma_n];
+    u32 length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & LENGTH_MASK[dma_n];
     LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
 
-    for(size_t i = 0; i < length; i++) {
+    for(u32 i = 0; i < length; i++) {
         if constexpr(sizeof(T) == 2) {
             m_core.bus.debugWrite16(destination, m_core.bus.debugRead16(source));
             adjustAddress(source, bits::get<7, 2>(control), 2);
