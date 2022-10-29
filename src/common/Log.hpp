@@ -4,9 +4,6 @@
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wmicrosoft-enum-value"
     #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#elif defined(__GNUG__)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wzero-variadic-macro-arguments"
 #endif
 
 #include "common/Types.hpp"
@@ -52,6 +49,4 @@ void log_debug(const std::string &message, LogLevel level, const char *file, con
 
 #if defined(__clang__)
     #pragma clang diagnostic pop
-#elif defined(__GNUG__)
-    #pragma GCC diagnostic pop
 #endif

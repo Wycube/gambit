@@ -85,7 +85,7 @@ public:
             }
 
             ImGui::SameLine();
-            ImGui::Text("%lu : 0x%08X", i, bkpts[i]);
+            ImGui::Text("%zu : 0x%08X", i, bkpts[i]);
         }
 
         if(running) {
@@ -303,7 +303,7 @@ public:
          
             //THUMB or ARM
             bool thumb = use_thumb; //(m_debugger.getCPUCPSR() >> 5) & 1;
-            u8 instr_size = thumb ? 2 : 4;
+            const u8 instr_size = thumb ? 2 : 4;
 
             ImGuiListClipper clipper(101);
             
@@ -330,10 +330,16 @@ public:
                     }
 
                     //Instruction in hexadecimal
-                    u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address); //m_debugger.read16(address) : m_debugger.read32(address);
-                    ImGui::Text("%s", fmt::format(instr_size == 2 ? "{2:02X} {3:02X}" : "{:02X} {:02X} {:02X} {:02X}", 
-                        m_debugger.read8(address + 3), m_debugger.read8(address + 2), 
-                        m_debugger.read8(address + 1), m_debugger.read8(address + 0)).c_str());
+                    u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
+                    if(instr_size == 2) {
+                        ImGui::Text("%s", fmt::format("{2:02X} {3:02X}", 
+                            m_debugger.read8(address + 3), m_debugger.read8(address + 2), 
+                            m_debugger.read8(address + 1), m_debugger.read8(address + 0)).c_str());
+                    } else {
+                        ImGui::Text("%s", fmt::format("{:02X} {:02X} {:02X} {:02X}", 
+                            m_debugger.read8(address + 3), m_debugger.read8(address + 2), 
+                            m_debugger.read8(address + 1), m_debugger.read8(address + 0)).c_str());
+                    }
 
                     //Actual disassembly
                     ImGui::TableNextColumn();
@@ -419,9 +425,9 @@ public:
     }
 
     void drawSchedulerViewer() {
-        ImGui::Text("Cycle: %lu", m_debugger.getCurrentCycle());
+        ImGui::Text("Cycle: %zu", m_debugger.getCurrentCycle());
         for(u32 i = 0; i < m_debugger.numEvents(); i++) {
-            ImGui::Text("%u : %u -> %lu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
+            ImGui::Text("%u : %u -> %zu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
         }
     }
 
