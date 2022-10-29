@@ -417,7 +417,7 @@ void PPU::getWindowLine() {
     //Object window
     for(const auto &obj : win_objs) {
         int local_y = m_state.line - obj.y;
-        int obj_width = obj.double_size ? obj.width * 2 : obj.width;
+        u32 obj_width = obj.double_size ? obj.width * 2 : obj.width;
 
         for(size_t i = 0; i < obj_width; i++) {
             int screen_x = obj.getScreenX(i);
