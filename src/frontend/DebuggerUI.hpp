@@ -420,9 +420,9 @@ public:
     }
 
     void drawSchedulerViewer() {
-        ImGui::Text("Cycle: %llu", m_debugger.getCurrentCycle());
+        ImGui::Text("Cycle: %lu", m_debugger.getCurrentCycle());
         for(u32 i = 0; i < m_debugger.numEvents(); i++) {
-            ImGui::Text("%i : %u -> %llu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
+            ImGui::Text("%i : %u -> %lu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
         }
     }
 

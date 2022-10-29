@@ -246,7 +246,7 @@ void Frontend::drawInterface() {
         if(ImGui::BeginMenuBar()) {
             ImGui::Text("FPS: %4.1f", m_average_fps); //ImGui::GetIO().Framerate);
             ImGui::Dummy(ImVec2(5, 0));
-            ImGui::Text("Clock Speed: %lluhz", m_emu_thread.getClockSpeed());
+            ImGui::Text("Clock Speed: %luhz", m_emu_thread.getClockSpeed());
             ImGui::Dummy(ImVec2(5, 0));
             ImGui::Text("%.1f%%", (float)m_emu_thread.getClockSpeed() / 16777216.0f * 100.0f);
 
