@@ -11,7 +11,7 @@ SRAM::SRAM() {
 }
 
 void SRAM::reset() {
-    memset(m_data.data(), 0xFF, m_data.size());
+    std::memset(m_data.data(), 0xFF, m_data.size());
 }
 
 auto SRAM::read(u32 address) -> u8 {

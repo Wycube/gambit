@@ -9,7 +9,7 @@ void WaveChannel::reset() {
     m_snd3cnt_l = 0;
     m_snd3cnt_h = 0;
     m_snd3cnt_x = 0;
-    memset(m_wave_ram, 0, sizeof(m_wave_ram));
+    std::memset(m_wave_ram, 0, sizeof(m_wave_ram));
 }
 
 auto WaveChannel::read(u32 address) -> u8 {

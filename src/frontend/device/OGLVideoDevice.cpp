@@ -40,7 +40,7 @@ void OGLVideoDevice::setPixel(int x, int y, u32 color) {
 void OGLVideoDevice::setLine(int y, u32 *colors) {
     std::lock_guard lock(m_update_mutex);
     
-    memcpy(&m_internal_framebuffer[y * 240], colors, 240 * sizeof(u32));
+    std::memcpy(&m_internal_framebuffer[y * 240], colors, 240 * sizeof(u32));
 }
 
 void OGLVideoDevice::presentFrame() {
@@ -52,7 +52,7 @@ void OGLVideoDevice::presentFrame() {
 
     m_frame_times.push(frame_time.count() / 1000.0f);
 
-    memcpy(m_present_framebuffer, m_internal_framebuffer, sizeof(m_internal_framebuffer));
+    std::memcpy(m_present_framebuffer, m_internal_framebuffer, sizeof(m_internal_framebuffer));
     new_frame = true;
 }
 

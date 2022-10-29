@@ -10,9 +10,9 @@ Bus::Bus(GBA &core) : m_core(core) {
 }
 
 void Bus::reset() {
-    memset(&m_mem.ewram, 0, sizeof(m_mem.ewram));
-    memset(&m_mem.iwram, 0, sizeof(m_mem.iwram));
-    memset(&m_mem.io, 0, sizeof(m_mem.io));
+    std::memset(&m_mem.ewram, 0, sizeof(m_mem.ewram));
+    std::memset(&m_mem.iwram, 0, sizeof(m_mem.iwram));
+    std::memset(&m_mem.io, 0, sizeof(m_mem.io));
 }
 
 void Bus::cycle(u32 cycles) {
@@ -78,7 +78,7 @@ void Bus::loadBIOS(const std::vector<u8> &bios) {
         LOG_FATAL("Failed to load bios: Too Large ({} bytes)!", bios.size());
     }
 
-    memcpy(m_mem.bios, bios.data(), sizeof(m_mem.bios));
+    std::memcpy(m_mem.bios, bios.data(), sizeof(m_mem.bios));
 }
 
 auto Bus::debugRead8(u32 address) -> u8 {

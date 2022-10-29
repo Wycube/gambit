@@ -26,7 +26,7 @@ void Flash::reset() {
     m_erase_next = false;
     
     //Clear all bytes to 255
-    memset(m_data.data(), 0xFF, m_data.size());
+    std::memset(m_data.data(), 0xFF, m_data.size());
 }
 
 auto Flash::read(u32 address) -> u8 {
@@ -63,9 +63,9 @@ void Flash::write(u32 address, u8 value) {
             if(m_erase_next && (address & 0xFFF) == 0) {
                 if(value == ERASE_SECTOR) {
                     if(m_bank_2) {
-                        memset(m_data.data() + address + 0x10000, 0xFF, 0x1000);
+                        std::memset(m_data.data() + address + 0x10000, 0xFF, 0x1000);
                     } else {
-                        memset(m_data.data() + address, 0xFF, 0x1000);
+                        std::memset(m_data.data() + address, 0xFF, 0x1000);
                     }
                     m_erase_next = false;
                     m_state = READY;
@@ -78,7 +78,7 @@ void Flash::write(u32 address, u8 value) {
 
                 if(m_erase_next) {
                     if(value == ERASE_CHIP) {
-                        memset(m_data.data(), 0xFF, m_data.size());
+                        std::memset(m_data.data(), 0xFF, m_data.size());
                         m_erase_next = false;
                         m_state = READY;
                     }

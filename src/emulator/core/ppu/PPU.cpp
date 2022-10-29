@@ -345,13 +345,13 @@ void PPU::hblankEnd(u64 current, u64 late) {
 }
 
 void PPU::clearBuffers() {
-    memset(m_bmp_col, 0, sizeof(m_bmp_col));
-    memset(m_bg_col[0], 0, sizeof(m_bg_col[0]));
-    memset(m_bg_col[1], 0, sizeof(m_bg_col[1]));
-    memset(m_bg_col[2], 0, sizeof(m_bg_col[2]));
-    memset(m_bg_col[3], 0, sizeof(m_bg_col[3]));
-    memset(m_obj_col, 0, sizeof(m_obj_col));
-    memset(m_obj_info, 6, sizeof(m_obj_info));
+    std::memset(m_bmp_col, 0, sizeof(m_bmp_col));
+    std::memset(m_bg_col[0], 0, sizeof(m_bg_col[0]));
+    std::memset(m_bg_col[1], 0, sizeof(m_bg_col[1]));
+    std::memset(m_bg_col[2], 0, sizeof(m_bg_col[2]));
+    std::memset(m_bg_col[3], 0, sizeof(m_bg_col[3]));
+    std::memset(m_obj_col, 0, sizeof(m_obj_col));
+    std::memset(m_obj_info, 6, sizeof(m_obj_info));
 }
 
 void PPU::getWindowLine() {

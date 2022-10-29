@@ -13,7 +13,7 @@ public:
     ThreadSafeQueue() {
         m_head = 0;
         m_tail = 0;
-        memset(m_data, 0, sizeof(m_data));
+        std::memset(m_data, 0, sizeof(m_data));
     }
 
     void push(T value) {

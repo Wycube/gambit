@@ -104,9 +104,9 @@ Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_
 
     m_frame_times_start = 0;
     m_audio_buffer_size_start = 0;
-    memset(m_audio_samples, 0, sizeof(m_audio_samples));
-    memset(m_audio_buffer_size, 0, sizeof(m_audio_buffer_size));
-    memset(m_frame_times, 0, sizeof(m_frame_times));
+    std::memset(m_audio_samples, 0, sizeof(m_audio_samples));
+    std::memset(m_audio_buffer_size, 0, sizeof(m_audio_buffer_size));
+    std::memset(m_frame_times, 0, sizeof(m_frame_times));
 }
 
 void Frontend::init() {
@@ -332,8 +332,8 @@ void Frontend::drawInterface() {
         float values_2[100];
         float average = 0;
 
-        memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
-        memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+        std::memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
+        std::memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
 
         m_video_device.getFrameTimes().copy(values_2);
 
@@ -382,7 +382,7 @@ void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma
     //Resample 512 samples to 750
     float samples[512];
     audio_device.m_samples.pop_array(samples, 512);
-    memcpy(frontend->m_audio_samples, samples, 512 * sizeof(float));
+    std::memcpy(frontend->m_audio_samples, samples, 512 * sizeof(float));
 
     for(size_t i = 0; i < frame_count; i++) {
         float sample = samples[(size_t)((i / (float)frame_count) * 512)];
