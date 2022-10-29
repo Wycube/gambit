@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <cstring>
+#include <cassert>
 
 
 namespace common {
