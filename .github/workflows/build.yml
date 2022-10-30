@@ -21,7 +21,7 @@ jobs:
         
     - name: Install Dependencies
       run: |
-        sudo apt update 
+        sudo aptamdklawmd update 
         sudo apt install xorg-dev
 
     - name: Configure CMake
