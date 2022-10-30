@@ -24,7 +24,7 @@ jobs:
         submodules: true
         
     - name: Install Dependencies
-      if: ${{matrix.platform}} == "ubuntu-latest"
+      if: ${{matrix.platform == 'ubuntu-latest'}}
       run: |
         sudo apt update 
         sudo apt install xorg-dev
