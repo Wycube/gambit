@@ -23,6 +23,7 @@ void DMA::reset() {
         m_channel[i].length = 0;
         m_channel[i].control = 0;
         m_channel[i].event = m_core.scheduler.generateHandle();
+        LOG_DEBUG("DMA {} has event handle: {}", i, m_channel[i].event);
     }
 }
 
@@ -51,18 +52,18 @@ void DMA::write8(u32 address, u8 value) {
     bool old_enable = bits::get_bit<15>(m_channel[dma_n].control);
 
     switch(index) {
-        case 0x0 :  bits::set<0, 8>(m_channel[dma_n].source, value); break;
-        case 0x1 :  bits::set<8, 8>(m_channel[dma_n].source, value); break;
-        case 0x2 :  bits::set<16, 8>(m_channel[dma_n].source, value); break;
-        case 0x3 :  bits::set<24, 8>(m_channel[dma_n].source, value); break;
-        case 0x4 :  bits::set<0, 8>(m_channel[dma_n].destination, value); break;
-        case 0x5 :  bits::set<8, 8>(m_channel[dma_n].destination, value); break;
-        case 0x6 :  bits::set<16, 8>(m_channel[dma_n].destination, value); break;
-        case 0x7 :  bits::set<24, 8>(m_channel[dma_n].destination, value); break;
-        case 0x8 :  bits::set<0, 8>(m_channel[dma_n].length, value); break;
-        case 0x9 :  bits::set<8, 8>(m_channel[dma_n].length, value); break;
-        case 0xA :  bits::set<0, 8>(m_channel[dma_n].control, value & 0xE0); break;
-        case 0xB :  bits::set<8, 8>(m_channel[dma_n].control, value & (dma_n == 3 ? 0xFF : 0xF7)); break;
+        case 0x0 : bits::set<0, 8>(m_channel[dma_n].source, value); break;
+        case 0x1 : bits::set<8, 8>(m_channel[dma_n].source, value); break;
+        case 0x2 : bits::set<16, 8>(m_channel[dma_n].source, value); break;
+        case 0x3 : bits::set<24, 8>(m_channel[dma_n].source, value); m_channel[dma_n].source &= SOURCE_ADDRESS_MASK[dma_n]; break;
+        case 0x4 : bits::set<0, 8>(m_channel[dma_n].destination, value); break;
+        case 0x5 : bits::set<8, 8>(m_channel[dma_n].destination, value); break;
+        case 0x6 : bits::set<16, 8>(m_channel[dma_n].destination, value); break;
+        case 0x7 : bits::set<24, 8>(m_channel[dma_n].destination, value); m_channel[dma_n].destination &= DESTINATION_ADDRESS_MASK[dma_n]; break;
+        case 0x8 : bits::set<0, 8>(m_channel[dma_n].length, value); break;
+        case 0x9 : bits::set<8, 8>(m_channel[dma_n].length, value); break;
+        case 0xA : bits::set<0, 8>(m_channel[dma_n].control, value & 0xE0); break;
+        case 0xB : bits::set<8, 8>(m_channel[dma_n].control, value & (dma_n == 3 ? 0xFF : 0xF7)); break;
     }
 
     //Schedule any started DMAs
@@ -83,7 +84,7 @@ void DMA::write8(u32 address, u8 value) {
         //Reload internal registers
         m_channel[dma_n]._source = m_channel[dma_n].source & ~(bits::get_bit<10>(m_channel[dma_n].control) ? 3 : 1);
         m_channel[dma_n]._destination = m_channel[dma_n].destination & ~(bits::get_bit<10>(m_channel[dma_n].control) ? 3 : 1);
-        m_channel[dma_n]._length = m_channel[dma_n].length;
+        m_channel[dma_n]._length = m_channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n].length & LENGTH_MASK[dma_n];
 
         if(bits::get<12, 2>(m_channel[dma_n].control) == 0) {
             startTransfer(dma_n);
@@ -107,15 +108,14 @@ void DMA::onVBlank() {
     }
 }
 
-void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
-    assert(adjust_type < 4);
-    
-    switch(adjust_type) {
-        case 0 : address += amount; break; //Increment
-        case 1 : address -= amount; break; //Decrement
-        //2 is fixed, so nothing changes
-        case 3 : address += amount; break; //Increment/Reload
+void DMA::onVideoCapture() {
+    if(!m_channel[3].active && bits::get_bit<15>(m_channel[3].control) && bits::get<12, 2>(m_channel[3].control) == 3) {
+        startTransfer(3);
     }
+}
+
+void DMA::disableVideoCapture() {
+    m_channel[3].control &= ~0x8000;
 }
 
 void DMA::onTimerOverflow(int fifo) {
@@ -127,12 +127,12 @@ void DMA::onTimerOverflow(int fifo) {
 
         m_channel[1].control |= 0x8000;
 
-        m_core.scheduler.addEvent(m_channel[1].event, [this](u64, u32) { 
+        m_core.scheduler.addEvent(m_channel[1].event, [this](u64 late) { 
             m_channel[1].active = true;
         
-            m_core.scheduler.addEvent(m_channel[1].event, [this](u64 a, u32 b) {
-                transfer2(1, a, b);
-            }, 10);
+            m_core.scheduler.addEvent(m_channel[1].event, [this](u64) {
+                transfer2(1);
+            }, 10 - late);
         }, 2);
     }
 
@@ -142,12 +142,12 @@ void DMA::onTimerOverflow(int fifo) {
         
         m_channel[2].control |= 0x8000;
 
-        m_core.scheduler.addEvent(m_channel[2].event, [this](u64, u32) { 
+        m_core.scheduler.addEvent(m_channel[2].event, [this](u64 late) { 
             m_channel[2].active = true;
         
-            m_core.scheduler.addEvent(m_channel[2].event, [this](u64 a, u32 b) {
-                transfer2(2, a, b);
-            }, 10);
+            m_core.scheduler.addEvent(m_channel[2].event, [this](u64) {
+                transfer2(2);
+            }, 10 - late);
         }, 2);
     }
 }
@@ -158,24 +158,35 @@ void DMA::startTransfer(int dma_n) {
     u32 transfer_time = 6 + (length - 1) * 2; //2N + (n - 1)S + xI (+ 2 cycles before the transfer starts)
     bool transfer_size = bits::get_bit<10>(m_channel[dma_n].control);
 
-    m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size, transfer_time](u64, u32) { 
+    m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size, transfer_time](u64 late) {
         m_channel[dma_n].active = true; 
     
-        m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size](u64 a, u32 b) {
+        m_core.scheduler.addEvent(m_channel[dma_n].event, [this, dma_n, transfer_size](u64) {
             if(transfer_size) {
-                transfer<u32>(dma_n, a, b);
+                transfer<u32>(dma_n);
             } else {
-                transfer<u16>(dma_n, a, b);
+                transfer<u16>(dma_n);
             }
-        }, transfer_time - 2);
+        }, transfer_time - 2 - late);
     }, 2);
 }
 
+void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
+    assert(adjust_type < 4);
+    
+    switch(adjust_type) {
+        case 0 : address += amount; break; //Increment
+        case 1 : address -= amount; break; //Decrement
+        //2 is fixed, so nothing changes
+        case 3 : address += amount; break; //Increment/Reload
+    }
+}
+
 template<typename T>
-void DMA::transfer(int dma_n, u64 current, u32 cycles_late) {
+void DMA::transfer(int dma_n) {
     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
-    u32 source = (m_channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n]) & ~(sizeof(T) == 4 ? 3 : 1);
-    u32 destination = (m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n]) & ~(sizeof(T) == 4 ? 3 : 1);
+    u32 source = m_channel[dma_n]._source;
+    u32 destination = m_channel[dma_n]._destination;
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;
     u32 length = m_channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : m_channel[dma_n]._length & LENGTH_MASK[dma_n];
     LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
@@ -211,7 +222,7 @@ void DMA::transfer(int dma_n, u64 current, u32 cycles_late) {
     }
 }
 
-void DMA::transfer2(int dma_n, u32 current, u32 cycles_late) {
+void DMA::transfer2(int dma_n) {
     u32 source = m_channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n];
     u32 destination = m_channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n];
     u32 control = source >= 0x08000000 ? m_channel[dma_n].control & ~0x180 : m_channel[dma_n].control;

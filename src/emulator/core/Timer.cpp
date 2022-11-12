@@ -20,6 +20,7 @@ void Timer::reset() {
 
     for(size_t i = 0; i < 4; i++) {
         m_timer_events[i] = m_core.scheduler.generateHandle();
+        LOG_DEBUG("Timer {} has event handle: {}", i, m_timer_events[i]);
     }
 }
 
@@ -127,12 +128,12 @@ void Timer::startTimer(u8 timer) {
     }
 
     //2-cycle delay before timer starts
-    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 a, u32 b) {
-        u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-        m_timer_start[timer] = a;
-        m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 a, u32 b) {
-            timerOverflowEvent(timer, a, b);
-        }, cycles_till_overflow - b);
+    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 late) {
+        u64 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
+        m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
+        m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 late) {
+            timerOverflowEvent(timer, late);
+        }, cycles_till_overflow - late);
     }, 2);
 }
 
@@ -143,14 +144,14 @@ void Timer::stopTimer(u8 timer) {
     m_core.scheduler.removeEvent(m_timer_events[timer]);
 }
 
-void Timer::timerOverflowEvent(u8 timer, u64 current, u32 cycles_late) {
+void Timer::timerOverflowEvent(u8 timer, u64 late) {
     timerOverflow(timer);
 
-    u32 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-    m_timer_start[timer] = current;
-    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 a, u32 b) {
-        timerOverflowEvent(timer, a, b);
-    }, cycles_till_overflow - cycles_late);
+    u64 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
+    m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
+    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 late) {
+        timerOverflowEvent(timer, late);
+    }, cycles_till_overflow - late);
 }
 
 void Timer::timerOverflow(u8 timer) {

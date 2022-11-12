@@ -65,9 +65,8 @@ constexpr void set(u8 start, u8 size, T &value, U other) {
 template<typename T>
 constexpr auto popcount(T value) -> u8 {
     static_assert(std::is_integral_v<T>);
-    
-    u8 count = 0;
 
+    u8 count = 0;
     for(; value != 0; value &= value - 1) {
         count++;
     }

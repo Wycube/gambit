@@ -3,6 +3,7 @@
 #include "common/Types.hpp"
 #include "common/Log.hpp"
 #include "Frontend.hpp"
+#include "res/hack_regular.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -129,9 +130,16 @@ int main(int argc, char *argv[]) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui::StyleColorsDark();
-
+    
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
+    
+    ImFontConfig config = ImFontConfig();
+    config.OversampleH = 2;
+    config.PixelSnapH = true;
+    config.RasterizerMultiply = 1.2;
+    io.Fonts->AddFontFromMemoryCompressedTTF(hack_regular_compressed_data, hack_regular_compressed_size, 15, &config);
+    io.Fonts->Build();
 
     Frontend app(window);
     

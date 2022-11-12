@@ -7,7 +7,7 @@
 
 namespace emu {
 
-using EventFunc = std::function<void (u64, u64)>;
+using EventFunc = std::function<void (u64)>;
 using EventHandle = u32;
 
 struct Event {

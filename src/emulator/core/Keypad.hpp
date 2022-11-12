@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/Types.hpp"
+#include <mutex>
 
 
 namespace emu {
@@ -30,13 +31,13 @@ public:
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
 
-    void checkForInterrupt();
-
 private:
 
     GBA &m_core;
-    u16 m_keyinput;
     u16 m_keycnt;
+    std::mutex m_keycnt_mutex;
+
+    void checkForInterrupt();
 };
 
 } //namespace emu

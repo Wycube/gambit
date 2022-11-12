@@ -31,6 +31,9 @@ public:
 
     DebuggerUI(emu::GBA &gba) : m_debugger(gba.debugger), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.video_device)) {
         m_region_sizes[7] = m_gba.getGamePak().size();
+        
+        //Metroid: Fusion
+        // m_debugger.addBreakpoint(0x0800D558); //Jump to address 0, sometimes
     }
 
     void drawScreen() {

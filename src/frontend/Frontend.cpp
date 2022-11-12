@@ -1,6 +1,7 @@
 #include "Frontend.hpp"
 #include "common/Version.hpp"
 #include "common/Log.hpp"
+#include "ui/Common.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <backends/imgui_impl_glfw.h>
@@ -94,12 +95,14 @@ Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_
     m_emu_thread(m_core) {
     glfwGetWindowSize(window, &m_width, &m_height);
     m_window = window;
+    m_show_status_bar = true;
     m_show_cpu_debug = false;
     m_show_disasm_debug = false;
     m_show_bkpt_debug = false;
     m_show_scheduler_debug = false;
-    m_show_about = false;
+    // m_show_about = false;
     m_show_pak_info = false;
+    m_show_settings = true;
     m_user_data = {this, &m_core};
 
     m_frame_times_start = 0;
@@ -166,18 +169,27 @@ void Frontend::drawInterface() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
     ImGui::BeginMainMenuBar();
 
+    if(ImGui::BeginMenu("File")) {
+        ImGui::EndMenu();
+    }
+
+    if(ImGui::BeginMenu("Edit")) {
+        ImGui::MenuItem("Settings", nullptr, &m_show_settings);
+        ImGui::EndMenu();
+    }
+
     if(ImGui::BeginMenu("Emulation")) {
         if(ImGui::MenuItem("Start")) {
             m_emu_thread.start();
             ma_device_start(&device);
         }
         if(ImGui::MenuItem("Stop")) {
-            m_emu_thread.stop();
             ma_device_stop(&device);
+            m_emu_thread.stop();
         }
         if(ImGui::MenuItem("Reset")) {
-            m_emu_thread.stop();
             ma_device_stop(&device);
+            m_emu_thread.stop();
             m_core.reset();
             m_emu_thread.start();
             ma_device_start(&device);
@@ -190,51 +202,43 @@ void Frontend::drawInterface() {
         ImGui::EndMenu();
     }
 
-    static bool last_key, last_key_2;
-
-    if(!m_emu_thread.running() && !last_key && glfwGetKey(m_window, GLFW_KEY_N) == GLFW_PRESS) {
-        m_core.run(280896);
-    }
-
-    last_key = glfwGetKey(m_window, GLFW_KEY_N) == GLFW_PRESS;
-
-    if(m_emu_thread.running() && !last_key && glfwGetKey(m_window, GLFW_KEY_P) == GLFW_PRESS) {
-        m_emu_thread.stop();
-        ma_device_stop(&device);
-    }
-
-    last_key_2 = glfwGetKey(m_window, GLFW_KEY_P) == GLFW_PRESS;
-
-    if(ImGui::BeginMenu("Debug")) {
-        if(ImGui::MenuItem("CPU")) {
-            m_show_cpu_debug = true;
-        }
-        if(ImGui::MenuItem("Disassembly")) {
-            m_show_disasm_debug = true;
-        }
-        if(ImGui::MenuItem("Breakpoints")) {
-            m_show_bkpt_debug = true;
-        }
-    //     if(ImGui::MenuItem("Memory Viewer")) {
-    //         show_mem_debug = true;
-    //     }
-    //     if(ImGui::MenuItem("Framebuffer")) {
-    //         show_vram_debug = true;
-    //     }
-        if(ImGui::MenuItem("Scheduler")) {
-            m_show_scheduler_debug = true;
-        }
-        if(ImGui::MenuItem("Pak Info")) {
-            m_show_pak_info = true;
+    if(ImGui::BeginMenu("View")) {
+        if(ImGui::MenuItem("Status Bar", nullptr, m_show_status_bar)) {
+            m_show_status_bar = !m_show_status_bar;
         }
 
+        if(ImGui::BeginMenu("Debug")) {
+            ImGui::MenuItem("Metrics", nullptr, m_metrics_window.getActive());
+            
+            if(ImGui::MenuItem("CPU")) {
+                m_show_cpu_debug = true;
+            }
+            if(ImGui::MenuItem("Disassembly")) {
+                m_show_disasm_debug = true;
+            }
+            if(ImGui::MenuItem("Breakpoints")) {
+                m_show_bkpt_debug = true;
+            }
+            // if(ImGui::MenuItem("Memory Viewer")) {
+            //     show_mem_debug = true;
+            // }
+            // if(ImGui::MenuItem("Framebuffer")) {
+            //     show_vram_debug = true;
+            // }
+            if(ImGui::MenuItem("Scheduler")) {
+                m_show_scheduler_debug = true;
+            }
+            if(ImGui::MenuItem("Pak Info")) {
+                m_show_pak_info = true;
+            }
+
+            ImGui::EndMenu();
+        }
         ImGui::EndMenu();
     }
 
     if(ImGui::BeginMenu("Help")) {
-        if(ImGui::MenuItem("About")) {
-            m_show_about = true;
-        }
+        ImGui::MenuItem("About", nullptr, m_about_window.getActive());
 
         ImGui::EndMenu();
     }
@@ -242,9 +246,11 @@ void Frontend::drawInterface() {
 
     //Status Bar
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ImGui::GetStyle().WindowPadding.x, 0));
-    if(ImGui::BeginViewportSideBar("##StatusBar", ImGui::GetMainViewport(), ImGuiDir_Down, ImGui::GetFrameHeight(), ImGuiWindowFlags_MenuBar)) {
+    if(m_show_status_bar && ImGui::BeginViewportSideBar("##StatusBar", ImGui::GetMainViewport(), ImGuiDir_Down, ImGui::GetFrameHeight(), ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
-            ImGui::Text("FPS: %4.1f", m_average_fps); //ImGui::GetIO().Framerate);
+            ImGui::Text("FPS: %4.1f", m_average_fps);
+            ImGui::Dummy(ImVec2(5, 0));
+            ImGui::Text("FPS: %4.1f", m_gba_fps);
             ImGui::Dummy(ImVec2(5, 0));
             ImGui::Text("Clock Speed: %zuhz", m_emu_thread.getClockSpeed());
             ImGui::Dummy(ImVec2(5, 0));
@@ -256,7 +262,7 @@ void Frontend::drawInterface() {
     ImGui::End();
     ImGui::PopStyleVar();
 
-    ImGui::SetNextWindowSize(ImVec2(m_width, m_height - ImGui::GetFrameHeight() * 2));
+    ImGui::SetNextWindowSize(ImVec2(m_width, m_height - ImGui::GetFrameHeight() * (m_show_status_bar ? 2 : 1)));
     ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetFrameHeight()));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if(ImGui::Begin("##GBA Screen", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoDecoration)) {
@@ -314,49 +320,100 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
-    if(m_show_about) {
-        if(ImGui::Begin("About", &m_show_about)) {
-            ImGui::Text("Game Boy Advance Emulator,");
-            ImGui::Text("Copyright (c) 2021 Wycube");
-            ImGui::Separator();
-            ImGui::Text("Version: %s", common::GIT_DESC);
-            ImGui::Text("Commit: %s", common::GIT_COMMIT);
-            ImGui::Text("Branch: %s", common::GIT_BRANCH);
-        }
 
-        ImGui::End();
-    }
+    // ---------- Settings (Under Construction) ----------
 
-    if(ImGui::Begin("Performance")) {
-        float values_1[100];
-        float values_2[100];
-        float average = 0;
 
-        std::memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
-        std::memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+    // if(m_show_settings) {
+    //     if(ImGui::Begin("Settings", &m_show_settings)) {
+    //         //Tabs
+    //         ImGui::BeginGroup();
 
-        m_video_device.getFrameTimes().copy(values_2);
+    //         static int current_item;
+    //         static const char *categories[5] = {"General", "UI", "Emulation", "Graphics", "Audio"};
 
-        ImGui::PlotLines("Host Frame Times", values_1, 100, 0, nullptr, 0.0f, 33.3f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
-        ImGui::PlotLines("Guest Frame Times", values_2, 100, 0, nullptr, 0.0f, 33.3f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
-    }
-    ImGui::End();
+    //         ImGui::SetNextItemWidth(ImGui::CalcTextSize("Emulation ").x);
+    //         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    //         ImGui::ListBox("##Categories", &current_item, categories, 5);
+    //         ImGui::PopStyleColor();
+    //         ImGui::Dummy(ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+    //         ImGui::EndGroup();
 
-    if(ImGui::Begin("Audio Buffer Stats")) {
-        float sizes[100];
+    //         ImGui::SameLine();
+    //         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-        m_audio_buffer_mutex.lock();
-        size_t _i = m_audio_buffer_size_start;
-        for(size_t i = 0; i < 100; i++) {
-            sizes[i] = m_audio_buffer_size[_i];
-            _i = (_i + 1) % 100;
-        }
-        m_audio_buffer_mutex.unlock();
+    //         ImGui::SameLine();
+    //         ImGui::BeginGroup();
+    //         ui::BeginGroupPanel(categories[current_item]);
 
-        ImGui::PlotLines("Audio Buffer Size", sizes, 100, 0, nullptr, 0.0f, 2048.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
-        ImGui::PlotLines("Output Audio Samples", m_audio_samples, 512, 0, nullptr, -2.0f, 2.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
-    }
-    ImGui::End();
+    //         ImGui::Text("Something");
+    //         ImGui::SameLine();
+    //         static int awdmalkmdwlka;
+    //         ImGui::SetNextItemWidth(ImGui::CalcTextSize("Software Renderer ").x);
+    //         ImGui::Combo("##SomethingCombo", &awdmalkmdwlka, "Default\0Another One\0High Resolution\0Software Renderer\0");
+
+    //         ui::EndGroupPanel();
+    //         ImGui::EndGroup();
+    //     }
+    //     ImGui::End();
+    // }
+
+
+    // ---------- End of Settings ----------
+
+
+    // if(m_show_about) {
+    //     if(ImGui::Begin("About", &m_show_about)) {
+    //         ImGui::Text("Game Boy Advance Emulator,");
+    //         ImGui::Text("Copyright (c) 2021-2022 Wycube");
+    //         ImGui::Separator();
+    //         ImGui::Text("Version: %s", common::GIT_DESC);
+    //         ImGui::Text("Commit: %s", common::GIT_COMMIT);
+    //         ImGui::Text("Branch: %s", common::GIT_BRANCH);
+    //     }
+
+    //     ImGui::End();
+    // }
+    m_about_window.update();
+
+    // if(ImGui::Begin("Performance")) {
+    //     float values_1[100];
+    //     float values_2[100];
+
+    //     std::memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
+    //     std::memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+
+    //     m_video_device.getFrameTimes().copy(values_2);
+
+    //     ImGui::PlotLines("##Host_Frames", values_1, 100, 0, "Host Frame Times", 33.3f, 0.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+    //     ImGui::PlotLines("##Guest_Frames", values_2, 100, 0, "Guest Frame Times", 33.3f, 0.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+    // }
+    // ImGui::End();
+
+    float values_1[100];
+    float values_2[100];
+    std::memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
+    std::memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+    m_video_device.getFrameTimes().copy(values_2);
+
+    m_metrics_window.setHostTimes(values_1);
+    m_metrics_window.setEmulatorTimes(values_2);
+    m_metrics_window.update();
+
+    // if(ImGui::Begin("Audio Buffer Stats")) {
+    //     float sizes[100];
+
+    //     m_audio_buffer_mutex.lock();
+    //     std::memcpy(sizes, &m_audio_buffer_size[m_audio_buffer_size_start], (100 - m_audio_buffer_size_start) * sizeof(float));
+    //     std::memcpy(&sizes[100 - m_audio_buffer_size_start], m_audio_buffer_size, m_audio_buffer_size_start * sizeof(float));
+    //     m_audio_buffer_mutex.unlock();
+
+    //     ImGui::PlotLines("##Audio Buffer Size", sizes, 100, 0, "Audio Buffer Size", 0.0f, 2048.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+    //     m_audio_buffer_mutex.lock();
+    //     ImGui::PlotLines("##Output Audio Samples", m_audio_samples, 512, 0, "Output Audio Samples", -2.0f, 2.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+    //     m_audio_buffer_mutex.unlock();
+    // }
+    // ImGui::End();
 
     endFrame();
 }
@@ -381,8 +438,10 @@ void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma
 
     //Resample 512 samples to 750
     float samples[512];
-    audio_device.m_samples.pop_array(samples, 512);
+    audio_device.m_samples.pop_multiple(samples, 512);
+    frontend->m_audio_buffer_mutex.lock();
     std::memcpy(frontend->m_audio_samples, samples, 512 * sizeof(float));
+    frontend->m_audio_buffer_mutex.unlock();
 
     for(size_t i = 0; i < frame_count; i++) {
         float sample = samples[(size_t)((i / (float)frame_count) * 512)];
@@ -418,6 +477,14 @@ void Frontend::endFrame() {
     }
     average /= 100.0f;
     m_average_fps = 1000.0f / average;
+
+    //Calculate framerate as a moving average of the last 100 frames
+    average = 0;
+    for(size_t i = 0; i < m_video_device.getFrameTimes().size(); i++) {
+        average += m_video_device.getFrameTimes().peek(i);
+    }
+    average /= (float)m_video_device.getFrameTimes().size();
+    m_gba_fps = 1000.0f / average;
 }
 
 void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {

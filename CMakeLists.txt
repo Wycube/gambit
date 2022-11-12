@@ -49,6 +49,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/lib/fmt)
 
 # Add GLFW
 set(GLFW_LIBRARY_TYPE "STATIC")
+set(GLFW_BUILD_EXAMPLES OFF)
+set(GLFW_BUILD_TESTS OFF)
 set(GLFW_BUILD_DOCS OFF)
 set(GLFW_INSTALL OFF)
 include_directories(${PROJECT_SOURCE_DIR}/lib/glfw/include)

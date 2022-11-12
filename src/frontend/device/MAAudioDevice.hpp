@@ -1,7 +1,9 @@
 #pragma once
 
 #include "emulator/device/AudioDevice.hpp"
-#include "common/RingBuffer.hpp"
+#include "common/Buffer.hpp"
+#define MA_NO_ENCODING
+#define MA_NO_DECODING
 #include <miniaudio.h>
 
 
@@ -17,5 +19,5 @@ public:
 
     static void audioCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count);
 
-    common::ThreadSafeQueue<float, 1024> m_samples;
+    common::ThreadSafeRingBuffer<float, 1024> m_samples;
 };

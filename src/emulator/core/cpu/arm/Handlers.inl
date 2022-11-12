@@ -1,5 +1,4 @@
 void armUnimplemented(u32 instruction);
-
 void armBranchExchange(u32 instruction);
 void armPSRTransfer(u32 instruction);
 auto addressMode1(u32 instruction, bool &carry) -> u32;

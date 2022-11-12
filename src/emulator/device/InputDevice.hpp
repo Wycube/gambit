@@ -16,7 +16,6 @@ public:
 protected:
 
     std::function<void()> m_callback;
-    bool m_pressed[10];
 };
 
 class NullInputDevice final : public InputDevice {

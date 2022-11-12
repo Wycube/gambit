@@ -36,24 +36,21 @@ void Scheduler::removeEvent(const EventHandle handle) {
 
 void Scheduler::step(u32 cycles) {
     m_current_timestamp += cycles;
-    bool events_to_run = true;
 
-    while(events_to_run) {
+    while(true) {
         if(m_events.size() > 0 && m_events.back().scheduled_timestamp <= m_current_timestamp) {
-            m_events.back().callback(m_current_timestamp, m_current_timestamp - m_events.back().scheduled_timestamp);
+            m_events.back().callback(m_current_timestamp - m_events.back().scheduled_timestamp);
             m_events.pop_back();
         } else {
-            events_to_run = false;
+            break;
         }
     }
 }
 
 void Scheduler::runToNext() {
-    if(m_events.empty()) {
-        return;
+    if(!m_events.empty()) {
+        step(m_events.back().scheduled_timestamp - m_current_timestamp);
     }
-
-    step(m_events.back().scheduled_timestamp - m_current_timestamp);
 }
 
 auto Scheduler::nextEventTime() -> u64 {

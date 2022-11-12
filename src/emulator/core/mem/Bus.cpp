@@ -61,8 +61,7 @@ void Bus::write32(u32 address, u32 value) {
 
 void Bus::requestInterrupt(InterruptSource source) {
     //Set the flag in IF at address 0x04000202
-    m_mem.io[0x202] |= source;
-    m_mem.io[0x203] |= source >> 8;
+    m_if.store(m_if.load() | source);
 }
 
 auto Bus::getLoadedPak() -> GamePak& {
@@ -74,11 +73,14 @@ void Bus::loadROM(std::vector<u8> &&rom) {
 }
 
 void Bus::loadBIOS(const std::vector<u8> &bios) {
-    if(bios.size() > sizeof(m_mem.bios)) {
-        LOG_FATAL("Failed to load bios: Too Large ({} bytes)!", bios.size());
+    if(bios.size() != sizeof(m_mem.bios)) {
+        LOG_FATAL("Failed to load BIOS: Invalid Size ({} bytes)!", bios.size());
     }
 
     std::memcpy(m_mem.bios, bios.data(), sizeof(m_mem.bios));
+
+    //After startup, BIOS reads return the ARM instruction at 0xF4 (open bus).
+    m_bios_open_bus = 0xE129F000;
 }
 
 auto Bus::debugRead8(u32 address) -> u8 {
@@ -117,34 +119,37 @@ auto Bus::read(u32 address) -> T {
 
     switch(address >> 24) {
         case 0x0 : //BIOS
-            if(m_core.debugger.getCPURegister(15) < 0x4000) {
-                memory_region = m_mem.bios;
-                region_size = sizeof(m_mem.bios);
+            if(address < 0x4000) {
+                if(m_core.debugger.getCPURegister(15) < 0x4000) {
+                    memory_region = m_mem.bios;
+                    region_size = sizeof(m_mem.bios);
+                    m_bios_open_bus = m_mem.bios[sub_address] | (m_mem.bios[sub_address + 1] << 8) |
+                        (m_mem.bios[sub_address + 2] << 16) | (m_mem.bios[sub_address + 3] << 24);
+                } else {
+                    // LOG_ERROR("BIOS Open Bus read");
+                    return m_bios_open_bus;
+                }
             }
-        break;
+            break;
         // case 0x1 : //Not Used
         break;
         case 0x2 : //On-Board WRAM
             memory_region = m_mem.ewram;
             region_size = sizeof(m_mem.ewram);
-        break;
+            break;
         case 0x3 : //On-Chip WRAM
             memory_region = m_mem.iwram;
             region_size = sizeof(m_mem.iwram);
-        break;
+            break;
         case 0x4 : 
             for(size_t i = 0; i < sizeof(T); i++) {
                 value |= (readIO(sub_address + i) << i * 8);
             }
 
             return value;
-        break;
         case 0x5 : return m_core.ppu.readPalette<T>(sub_address); //Palette RAM
-        break;
         case 0x6 : return m_core.ppu.readVRAM<T>(sub_address); //VRAM
-        break;
         case 0x7 : return m_core.ppu.readOAM<T>(sub_address); //OAM - OBJ Attributes
-        break;
         case 0x8 :
         case 0x9 :
         case 0xA :
@@ -153,10 +158,10 @@ auto Bus::read(u32 address) -> T {
         case 0xD :
         case 0xE :
         case 0xF : return m_pak.read<T>(address); //Cartridge
-        break;
     }
 
     if(memory_region == nullptr) {
+        // LOG_ERROR("Open Bus read, {:08X}", address);
         return 0;
     }
 
@@ -171,7 +176,7 @@ template<typename T>
 void Bus::write(u32 address, T value) {
     static_assert(std::is_integral_v<T>);
     static_assert(sizeof(T) <= 4);
-    
+
     u32 sub_address = bits::align<T>(address) & 0xFFFFFF;
     u8 *memory_region = nullptr;
     u32 region_size = 0;
@@ -222,6 +227,7 @@ void Bus::write(u32 address, T value) {
 
 auto Bus::readIO(u32 address) -> u8 {
     if(address >= sizeof(m_mem.io)) {
+        // LOG_ERROR("Open Bus read on IO region, 04{:06X}", address);
         return 0;
     }
 
@@ -252,6 +258,14 @@ auto Bus::readIO(u32 address) -> u8 {
     }
     if(address >= 0x130 && address <= 0x133) {
         return m_core.keypad.read8(address);
+    }
+
+    //IF
+    if(address == 0x202) {
+        return m_if.load() & 0xFF;
+    }
+    if(address == 0x203) {
+        return (m_if.load() >> 8) & 0xFF;
     }
 
     return m_mem.io[address];
@@ -286,8 +300,14 @@ void Bus::writeIO(u32 address, u8 value) {
         }
         return;
     }
-    if((address & ~1) == 0x202) {
-        m_mem.io[address] &= ~value;
+
+    //IF
+    if(address == 0x202) {
+        m_if.store(m_if.load() & ~value);
+        return;
+    }
+    if(address == 0x203) {
+        m_if.store(m_if.load() & ~(value << 8));
         return;
     }
 

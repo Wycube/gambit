@@ -6,7 +6,8 @@
 
 namespace emu {
 
-APU::APU(GBA &core) : m_core(core), m_pulse1(m_core.scheduler), m_pulse2(m_core.scheduler) {
+APU::APU(GBA &core) : m_core(core), m_pulse1(m_core.scheduler), m_pulse2(m_core.scheduler),
+    m_wave(m_core.scheduler), m_noise(m_core.scheduler) {
     reset();
 }
 
@@ -21,9 +22,8 @@ void APU::reset() {
     m_sndcnt_x = 0;
 
     m_update_event = m_core.scheduler.generateHandle();
-    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) {
-        update(a, b);
-    }, 512);
+    m_core.scheduler.addEvent(m_update_event, [this](u64 late) { update(late); }, 512);
+    LOG_DEBUG("APU has event handle: {}", m_update_event);
 }
 
 auto APU::read(u32 address) -> u8 {
@@ -87,7 +87,7 @@ void APU::write(u32 address, u8 value) {
 void APU::onTimerOverflow(int timer) {
     if(bits::get_bit<10>(m_sndcnt_h) == timer) {
         if(!m_fifo_a.empty()) {
-            m_fifo_sample_a = m_fifo_a.front() / 128.0f;
+            m_fifo_sample_a = m_fifo_a.front();
             m_fifo_a.pop();
         }
 
@@ -98,7 +98,7 @@ void APU::onTimerOverflow(int timer) {
 
     if(bits::get_bit<14>(m_sndcnt_h) == timer) {
         if(!m_fifo_b.empty()) {
-            m_fifo_sample_b = m_fifo_b.front() / 128.0f;
+            m_fifo_sample_b = m_fifo_b.front();
             m_fifo_b.pop();
         }
 
@@ -112,15 +112,25 @@ auto APU::isTimerSelected(int timer) -> bool {
     return bits::get_bit<10>(m_sndcnt_h) == timer || bits::get_bit<14>(m_sndcnt_h) == timer;
 }
 
-void APU::update(u64 current, u32 late) {
+void APU::update(u64 late) {
     m_pulse1.step();
     m_pulse2.step();
+    m_wave.step();
+    m_noise.step();
 
-    float sample = (m_pulse1.amplitude() + m_pulse2.amplitude()) / 30.0f + m_fifo_sample_a + m_fifo_sample_b;
-    m_core.audio_device.addSample(sample);
+    s16 sample = 0;
+    sample += m_pulse1.amplitude();
+    sample += m_pulse2.amplitude();
+    sample += m_wave.amplitude();
+    sample += m_noise.amplitude();
+    sample *= 1 + (m_sndcnt_l & 7);
+    sample += m_fifo_sample_a << bits::get_bit<2>(m_sndcnt_l);
+    sample += m_fifo_sample_b << bits::get_bit<3>(m_sndcnt_l);
 
-    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) {
-        update(a, b);
+    m_core.audio_device.addSample(sample / (float)0x800);
+
+    m_core.scheduler.addEvent(m_update_event, [this](u64 late) {
+        update(late);
     }, 512 - late);
 }
 

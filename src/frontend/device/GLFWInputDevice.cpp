@@ -9,6 +9,7 @@ GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {
     glfwSetKeyCallback(window, keyCallback);
     m_joystick_connected = false;
     memset(m_pressed, 0, sizeof(m_pressed));
+    m_keyinput.store(0x3FF);
 }
 
 void GLFWInputDevice::update() {
@@ -25,8 +26,6 @@ void GLFWInputDevice::update() {
         //Get input from joystick
         GLFWgamepadstate state;
         glfwGetGamepadState(m_current_joystick, &state);
-
-        std::lock_guard lock(m_key_mutex); 
 
         m_pressed[emu::KeypadInput::UP]       = state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] == GLFW_PRESS;
         m_pressed[emu::KeypadInput::DOWN]     = state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] == GLFW_PRESS;
@@ -47,6 +46,12 @@ void GLFWInputDevice::update() {
         m_pressed[emu::KeypadInput::BUTTON_L] = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0.3f;
         m_pressed[emu::KeypadInput::BUTTON_R] = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0.3f;
 
+        u16 keys = 0;
+        for(size_t i = 0; i < 10; i++) {
+            keys |= !m_pressed[i] << i;
+        }
+        m_keyinput.store(keys);
+
         //TODO: Call input callback if necessary
     } else {
         //Check for connections
@@ -61,14 +66,7 @@ void GLFWInputDevice::update() {
 }
 
 auto GLFWInputDevice::getKeys() -> u16 {
-    std::lock_guard lock(m_key_mutex);
-
-    u16 keys = 0;
-    for(size_t i = 0; i < 10; i++) {
-        keys |= !m_pressed[i] << i;
-    }
-
-    return keys;
+    return m_keyinput.load();
 }
 
 void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -83,7 +81,6 @@ void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int
         }
 
         bool pressed = action == GLFW_PRESS;
-        std::lock_guard lock(device.m_key_mutex);
 
         switch(key) {
             case GLFW_KEY_UP    : device.m_pressed[emu::KeypadInput::UP] = pressed; break;
@@ -98,6 +95,11 @@ void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int
             case GLFW_KEY_W     : device.m_pressed[emu::KeypadInput::BUTTON_R] = pressed; break;
         }
 
+        u16 keys = 0;
+        for(size_t i = 0; i < 10; i++) {
+            keys |= !device.m_pressed[i] << i;
+        }
+        device.m_keyinput.store(keys);
         device.m_callback();
     }
 }

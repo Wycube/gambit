@@ -21,6 +21,8 @@ public:
 
     void onHBlank();
     void onVBlank();
+    void onVideoCapture();
+    void disableVideoCapture();
     void onTimerOverflow(int fifo);
 
 private:
@@ -34,15 +36,15 @@ private:
         
         //Internal Registers
         u32 _source, _destination;
-        u16 _length;
+        u32 _length;
 
         EventHandle event;
     } m_channel[4];
 
     void startTransfer(int dma_n);
     template<typename T>
-    void transfer(int dma_n, u64 current, u32 cycles_late);
-    void transfer2(int dma_n, u32 current, u32 cycles_late);
+    void transfer(int dma_n);
+    void transfer2(int dma_n);
 };
 
 } //namespace emu

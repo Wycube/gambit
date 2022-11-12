@@ -56,7 +56,8 @@ void PPU::reset() {
     std::memset(m_state.oam, 0, sizeof(m_state.oam));
     
     m_update_event = m_core.scheduler.generateHandle();
-    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) { hblankStart(a, b); }, 960);
+    m_core.scheduler.addEvent(m_update_event, [this](u64 late) { hblankStart(late); }, 960);
+    LOG_DEBUG("PPU has event handle: {}", m_update_event);
 }
 
 auto PPU::readIO(u32 address) -> u8 {
@@ -272,9 +273,7 @@ void PPU::writeOAM(u32 address, T value) {
     }
 }
 
-void PPU::hblankStart(u64 current, u64 late) {
-    m_state.dispstat |= 2;
-
+void PPU::hblankStart(u64 late) {
     //Draw Scanline
     if(m_state.line < 160) {
         if(!bits::get_bit<7>(m_state.dispcnt)) {
@@ -290,41 +289,26 @@ void PPU::hblankStart(u64 current, u64 late) {
         }
     }
 
-    //Request H-Blank interrupt if enabled
-    if(bits::get_bit<4>(m_state.dispstat)) {
-        m_core.bus.requestInterrupt(INT_LCD_HB);
-    }
-
-    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) { hblankEnd(a, b); }, 272 - late);
-}
-
-void PPU::hblankEnd(u64 current, u64 late) {
-    //Check VCOUNT
-    m_state.dispstat &= ~4;
-    if(m_state.line == bits::get<8, 8>(m_state.dispstat)) {
-        m_state.dispstat |= 4;
-        
-        if(bits::get_bit<5>(m_state.dispstat)) {
-            m_core.bus.requestInterrupt(INT_LCD_VC);
-        }
-    }
-
     //DMA Stuff
     if(m_state.line < 160) {
         m_core.dma.onHBlank();
     }
 
-    //VBlank Start
-    if(m_state.line == 160) {
-        m_state.dispstat |= 1;
-        m_core.video_device.presentFrame();
-        m_core.dma.onVBlank();
+    m_core.scheduler.addEvent(m_update_event, [this](u64 late) { setHblankFlag(late); }, 46 - late);
+}
 
-        if(bits::get_bit<3>(m_state.dispstat)) {
-            m_core.bus.requestInterrupt(INT_LCD_VB);
-        }
+void PPU::setHblankFlag(u64 late) {
+    m_state.dispstat |= 2;
+
+    //Request H-Blank interrupt if enabled
+    if(bits::get_bit<4>(m_state.dispstat)) {
+        m_core.bus.requestInterrupt(INT_LCD_HB);
     }
 
+    m_core.scheduler.addEvent(m_update_event, [this](u64 late) { hblankEnd(late); }, 226 - late);
+}
+
+void PPU::hblankEnd(u64 late) {
     //VBlank flag cleared on last line
     if(m_state.line == 226) {
         m_state.dispstat &= ~1;
@@ -341,7 +325,35 @@ void PPU::hblankEnd(u64 current, u64 late) {
         m_state.dispstat &= ~2;
     }
 
-    m_core.scheduler.addEvent(m_update_event, [this](u64 a, u32 b) { hblankStart(a, b); }, 960 - late);
+    //Check VCOUNT
+    m_state.dispstat &= ~4;
+    if(m_state.line == bits::get<8, 8>(m_state.dispstat)) {
+        m_state.dispstat |= 4;
+        
+        if(bits::get_bit<5>(m_state.dispstat)) {
+            m_core.bus.requestInterrupt(INT_LCD_VC);
+        }
+    }
+
+    //VBlank Start
+    if(m_state.line == 160) {
+        m_state.dispstat |= 1;
+        m_core.video_device.presentFrame();
+        m_core.dma.onVBlank();
+
+        if(bits::get_bit<3>(m_state.dispstat)) {
+            m_core.bus.requestInterrupt(INT_LCD_VB);
+        }
+    }
+
+    //Video Capture DMA (scanlines 2-161)
+    if(m_state.line > 1 && m_state.line < 162) {
+        m_core.dma.onVideoCapture();
+    } else if(m_state.line == 162) {
+        m_core.dma.disableVideoCapture();
+    }
+
+    m_core.scheduler.addEvent(m_update_event, [this](u64 late) { hblankStart(late); }, 960 - late);
 }
 
 void PPU::clearBuffers() {
@@ -488,7 +500,7 @@ void PPU::drawObjects() {
         int local_y = m_state.line - obj.y;
         const int priority = bits::get<2, 2>(m_state.oam[obj.index * 8 + 5]);
         const bool mosaic = bits::get_bit<4>(m_state.oam[obj.index * 8 + 1]);
-        int obj_width = obj.double_size ? obj.width * 2 : obj.width;
+        u32 obj_width = obj.double_size ? obj.width * 2 : obj.width;
 
         if(mosaic) {
             int mosaic_h = (bits::get<12, 4>(m_state.mosaic) + 1);

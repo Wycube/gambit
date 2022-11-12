@@ -64,6 +64,9 @@ void CPU::step() {
         
         execute_thumb(instruction);
     }
+
+    m_history[m_history_index] = m_state.pc;
+    m_history_index = (m_history_index + 1) % 32;
 }
 
 void CPU::halt() {
@@ -157,6 +160,14 @@ auto CPU::get_reg(u8 reg, u8 mode) -> u32 {
 void CPU::set_reg(u8 reg, u32 value, u8 mode) {
     //Automatically align PC
     if(reg == 15) {
+        if(value == 0) {
+            for(int i = 0; i < 32; i++) {
+                LOG_INFO("PC History [{}] : 0x{:08X}", i, m_history[(m_history_index + i) % 32]);
+            }
+
+            LOG_FATAL("Jump to BIOS at PC=0x{:08X}", get_reg_banked(15));
+        }
+
         value = m_state.cpsr.t ? bits::align<u16>(value) : bits::align<u32>(value);
     }
 
@@ -277,30 +288,31 @@ void CPU::execute_thumb(u16 instruction) {
 }
 
 void CPU::service_interrupt() {
-    u16 IE = m_core.bus.debugRead16(0x04000200);
-    u16 IF = m_core.bus.debugRead16(0x04000202);
-    bool IME = m_core.bus.debugRead8(0x04000208) & 1;
+    //IE & IF
+    u16 interrupts = m_core.bus.debugRead16(0x04000200) & m_core.bus.debugRead16(0x04000202);
+    bool ime = m_core.bus.debugRead8(0x04000208) & 1;
 
-    if(!IME || IE == 0 || IF == 0 || m_state.cpsr.i) {
+    if(!ime || interrupts == 0 || m_state.cpsr.i) {
         return;
     }
 
-    //Check for any interrupts that are enabled and requested
-    for(size_t i = 0; i < 14; i++) {
-        bool enabled = bits::get_bit(IE, i);
-        bool request = bits::get_bit(IF, i);
-
-        if(enabled && request) {
-            LOG_TRACE("Interrupt serviced from source {}({}) at pc = 0x{:08X}", interrupt_names[i], i, m_state.pc);
-            get_spsr(MODE_IRQ) = m_state.cpsr;
-            m_state.cpsr.mode = MODE_IRQ;
-            set_reg(14, m_state.cpsr.t ? get_reg(15) + 2 : get_reg(15));
-            m_state.cpsr.t = false;
-            m_state.cpsr.i = true;
-            set_reg(15, 0x00000018);
-            flushPipeline();
-            break;
+    if(interrupts != 0) {
+        //Sources
+        LOG_TRACE("Interrupt serviced at pc = 0x{:08X}", m_state.pc);
+        LOG_TRACE("Sources enabled and requested:");
+        for(size_t i = 0; i < 14; i++) {
+            if(bits::get_bit(interrupts, i)) {
+                LOG_TRACE("\t- {}({})", interrupt_names[i], i);
+            }
         }
+        
+        get_spsr(MODE_IRQ) = m_state.cpsr;
+        m_state.cpsr.mode = MODE_IRQ;
+        set_reg(14, m_state.cpsr.t ? get_reg(15) + 2 : get_reg(15));
+        m_state.cpsr.t = false;
+        m_state.cpsr.i = true;
+        set_reg(15, 0x00000018);
+        flushPipeline();
     }
 }
 

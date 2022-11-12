@@ -44,8 +44,9 @@ private:
     GBA &m_core;
     EventHandle m_update_event;
 
-    void hblankStart(u64 current, u64 late);
-    void hblankEnd(u64 current, u64 late);
+    void hblankStart(u64 late);
+    void setHblankFlag(u64 late);
+    void hblankEnd(u64 late);
 
     void clearBuffers();
     void getWindowLine();

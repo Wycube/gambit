@@ -4,6 +4,7 @@
 #include "emulator/core/cpu/Types.hpp"
 #include "common/Types.hpp"
 #include <vector>
+#include <atomic>
 
 
 namespace emu {
@@ -49,6 +50,11 @@ private:
         u8 io[1023];       //04000000 - 040003FE
     } m_mem;
 
+    //Make access to IF atomic so possibly requesting an interrupt
+    //from another thread (from InputDevice) is safe.
+    std::atomic<u16> m_if;
+    u32 m_bios_open_bus;
+    // u32 m_cpu_open_bus;
     GamePak m_pak;
     GBA &m_core;
 

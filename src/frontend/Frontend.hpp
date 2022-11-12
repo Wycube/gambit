@@ -5,7 +5,11 @@
 #include "device/OGLVideoDevice.hpp"
 #include "device/MAAudioDevice.hpp"
 #include "DebuggerUI.hpp"
+#include "ui/AboutWindow.hpp"
+#include "ui/MetricsWindow.hpp"
 #include "Types.hpp"
+#define MA_NO_ENCODING
+#define MA_NO_DECODING
 #include <miniaudio.h>
 #include <thread>
 #include <atomic>
@@ -76,12 +80,15 @@ private:
     ma_device device;
 
     DebuggerUI m_debug_ui;
+    AboutWindow m_about_window;
+    MetricsWindow m_metrics_window;
+    bool m_show_status_bar;
     bool m_show_cpu_debug;
     bool m_show_disasm_debug;
     bool m_show_bkpt_debug;
     bool m_show_scheduler_debug;
-    bool m_show_about;
     bool m_show_pak_info;
+    bool m_show_settings;
 
 
     float m_frame_times[100];
@@ -92,6 +99,7 @@ private:
     float m_audio_samples[512];
     std::chrono::time_point<std::chrono::steady_clock> m_start;
     float m_average_fps;
+    float m_gba_fps;
 
     GLFWwindow *m_window;
     int m_width, m_height;

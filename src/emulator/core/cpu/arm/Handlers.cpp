@@ -409,12 +409,12 @@ void CPU::armSingleTransfer(u32 instruction) {
 void CPU::armUndefined(u32 instruction) {
     LOG_TRACE("Undefined ARM Instruction at Address: {:08X}", m_state.pc - 8);
 
-    set_reg(14, get_reg(15) - 4, MODE_UNDEFINED);
-    get_spsr(MODE_UNDEFINED) = m_state.cpsr;
-    m_state.cpsr.mode = MODE_UNDEFINED;
-    m_state.cpsr.i = true;
-    set_reg(15, 0x00000004);
-    flushPipeline();
+    // set_reg(14, get_reg(15) - 4, MODE_UNDEFINED);
+    // get_spsr(MODE_UNDEFINED) = m_state.cpsr;
+    // m_state.cpsr.mode = MODE_UNDEFINED;
+    // m_state.cpsr.i = true;
+    // set_reg(15, 0x00000004);
+    // flushPipeline();
 }
 
 void CPU::armBlockTransfer(u32 instruction) {

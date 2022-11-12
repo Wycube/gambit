@@ -34,6 +34,8 @@ private:
 
     //Hardware
     GBA &m_core;
+    u32 m_history[32];
+    int m_history_index = 0;
 
     auto get_reg_ref(u8 reg, u8 mode = 0) -> u32&;
     auto get_reg_banked(u8 reg, u8 mode = 0) -> u32&;

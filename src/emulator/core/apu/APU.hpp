@@ -41,9 +41,9 @@ private:
 
     std::queue<s8> m_fifo_a;
     std::queue<s8> m_fifo_b;
-    float m_fifo_sample_a, m_fifo_sample_b;
+    s8 m_fifo_sample_a, m_fifo_sample_b;
 
-    void update(u64 current, u32 late);
+    void update(u64 late);
 };
 
 } //namespace emu
