@@ -39,41 +39,12 @@ else()
 	message(FATAL_ERROR "Git was not found!")
 endif()
 
-# lest (Unit Testing)
-include_directories(${PROJECT_SOURCE_DIR}/lib/lest-1.35.1/include)
-include_directories(${PROJECT_SOURCE_DIR}/src)
-
-# Add fmtlib
 include_directories(${PROJECT_SOURCE_DIR}/lib/fmt/include)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/fmt)
-
-# Add GLFW
-set(GLFW_LIBRARY_TYPE "STATIC")
-set(GLFW_BUILD_EXAMPLES OFF)
-set(GLFW_BUILD_TESTS OFF)
-set(GLFW_BUILD_DOCS OFF)
-set(GLFW_INSTALL OFF)
 include_directories(${PROJECT_SOURCE_DIR}/lib/glfw/include)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/glfw)
-
-# Add Dear ImGui
 include_directories(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
-
-# Add glad
 include_directories(${PROJECT_SOURCE_DIR}/lib/glad/include)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/glad)
-
-# Add miniaudio
 include_directories(${PROJECT_SOURCE_DIR}/lib/miniaudio/include)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/miniaudio)
+add_subdirectory(${PROJECT_SOURCE_DIR}/lib)
 
-# Tests
-if(BUILD_TESTS)
-	add_subdirectory(${PROJECT_SOURCE_DIR}/src/tests)
-endif()
-
-# Add frontend and emulator library
-add_subdirectory(${PROJECT_SOURCE_DIR}/src/common)
-add_subdirectory(${PROJECT_SOURCE_DIR}/src/emulator/core)
-add_subdirectory(${PROJECT_SOURCE_DIR}/src/frontend)
+include_directories(${PROJECT_SOURCE_DIR}/src)
+add_subdirectory(${PROJECT_SOURCE_DIR}/src)

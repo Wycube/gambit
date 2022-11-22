@@ -3,6 +3,8 @@
 
 
 OGLVideoDevice::OGLVideoDevice() {
+    LOG_DEBUG("Initializing OGLVideoDevice...");
+
     new_frame = false;
 
     createTexture();

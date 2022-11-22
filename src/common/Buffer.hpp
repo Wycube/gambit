@@ -8,6 +8,48 @@
 namespace common {
 
 template<typename T, size_t _capacity>
+class FixedRingBuffer {
+public:
+
+    FixedRingBuffer() {
+        m_pos = 0;
+        std::memset(m_data, 0, sizeof(m_data));
+    }
+
+    inline void push(T value) {
+        m_data[m_pos] = value;
+        m_pos = (m_pos + 1) % _capacity;
+    }
+
+    inline auto peek(size_t index) const -> T {
+        return m_data[(m_pos + index) % _capacity];
+    }
+
+    inline void copy(T *dst) const {
+        std::memcpy(dst, &m_data[m_pos], (_capacity - m_pos) * sizeof(T));
+        std::memcpy(dst + (_capacity - m_pos), m_data, m_pos * sizeof(T));
+    }
+
+    inline auto front() const -> T {
+        return m_data[m_pos];
+    }
+
+    inline auto back() const -> T {
+        return m_data[m_pos == 0 ? _capacity - 1 : m_pos - 1];
+    }
+
+    constexpr auto capacity() const -> size_t {
+        return _capacity;
+    }
+
+private:
+
+    T m_data[_capacity];
+    size_t m_pos;
+};
+
+
+template<typename T, size_t _capacity>
 class RingBuffer {
 public:
 
@@ -47,7 +89,7 @@ public:
         std::memcpy(dst + (_capacity - m_tail), m_data, m_tail * sizeof(T));
     }
 
-    inline void pop_multiple(T *dst, size_t size) {
+    inline void pop_many(T *dst, size_t size) {
         assert(size <= m_size);
 
         size_t to_end = _capacity - m_tail;
@@ -114,9 +156,9 @@ public:
         m_buffer.copy(dst);
     }
 
-    void pop_multiple(T *dst, size_t size) {
+    void pop_many(T *dst, size_t size) {
         std::lock_guard lock(m_access_mutex);
-        m_buffer.pop_multiple(dst, size);
+        m_buffer.pop_many(dst, size);
     }
 
     auto front() const -> T {

@@ -66,7 +66,7 @@ void PulseChannel::write(u32 address, u8 value) {
 }
 
 auto PulseChannel::amplitude() -> s8 {
-    if(m_enabled) {
+    if(m_enabled && bits::get<11, 5>(m_sndcnt_h) != 0) {
         return WAVE_DUTY[bits::get<6, 2>(m_sndcnt_h)][m_wave_duty_pos] * m_current_vol;
     }
 
@@ -78,9 +78,9 @@ void PulseChannel::step() {
         m_enabled = false;
     }
 
-    if(bits::get<8, 3>(m_sndcnt_h) != 0 && m_envelope_timer > 0 && --m_envelope_timer == 0) {
+    if(m_envelope_timer > 0 && --m_envelope_timer == 0) {
         const u8 envelope_period = bits::get<8, 3>(m_sndcnt_h) == 0 ? 8 : bits::get<8, 3>(m_sndcnt_h);
-        m_envelope_timer = envelope_period * 512;
+        m_envelope_timer = envelope_period * 8;
 
         if(bits::get_bit<11>(m_sndcnt_h)) {
             //Increase
@@ -96,17 +96,17 @@ void PulseChannel::step() {
     }
 
     if(m_sweep_timer > 0 && --m_sweep_timer == 0) {
-        m_sweep_timer = bits::get<4, 3>(m_sndcnt_l) * 256;
+        m_sweep_timer = bits::get<4, 3>(m_sndcnt_l) * 4;
 
         if((m_sndcnt_l & 7) != 0 && bits::get<4, 3>(m_sndcnt_l) != 0) {
             u16 new_freq;
 
             if((m_sndcnt_l >> 3) & 1) {
                 //Decreasing
-                new_freq = m_shadow_freq - (m_shadow_freq << (m_sndcnt_l & 7));
+                new_freq = m_shadow_freq - (m_shadow_freq >> (m_sndcnt_l & 7));
             } else {
                 //Increasing
-                new_freq = m_shadow_freq + (m_shadow_freq << (m_sndcnt_l & 7));
+                new_freq = m_shadow_freq + (m_shadow_freq >> (m_sndcnt_l & 7));
             }
 
             if(new_freq > 2047) {
@@ -119,10 +119,10 @@ void PulseChannel::step() {
 
                 if((m_sndcnt_l >> 3) & 1) {
                     //Decreasing
-                    new_freq = m_shadow_freq - (m_shadow_freq << (m_sndcnt_l & 7));
+                    new_freq = m_shadow_freq - (m_shadow_freq >> (m_sndcnt_l & 7));
                 } else {
                     //Increasing
-                    new_freq = m_shadow_freq + (m_shadow_freq << (m_sndcnt_l & 7));
+                    new_freq = m_shadow_freq + (m_shadow_freq >> (m_sndcnt_l & 7));
                 }
 
                 if(new_freq > 2047) {
@@ -148,11 +148,11 @@ void PulseChannel::restart() {
     m_enabled = true;
 
     m_wave_duty_pos = 0;
-    m_length_timer = (64 - bits::get<0, 6>(m_sndcnt_h)) * 128;
+    m_length_timer = (64 - bits::get<0, 6>(m_sndcnt_h)) * 2;
     m_current_vol = bits::get<12, 4>(m_sndcnt_h);
-    m_envelope_timer = bits::get<8, 3>(m_sndcnt_h) * 512;
+    m_envelope_timer = bits::get<8, 3>(m_sndcnt_h) * 8;
     m_shadow_freq = bits::get<0, 11>(m_sndcnt_x);
-    m_sweep_timer = bits::get<4, 3>(m_sndcnt_l) * 256;
+    m_sweep_timer = bits::get<4, 3>(m_sndcnt_l) * 4;
     const u16 frequency = (2048 - m_shadow_freq) * 16;
 
     //TODO: Sweep overflow check if sweep time is not zero (i.e. is enabled)

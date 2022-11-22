@@ -56,11 +56,11 @@ void EmuThread::start() {
             // LOG_INFO("Waited for {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
 
             u32 cycles_left = (16777216 / 64) + m_cycle_diff;
-            // start = std::chrono::steady_clock::now();
+            // auto start = std::chrono::steady_clock::now();
             u32 actual = m_core.run(cycles_left);
             // LOG_INFO("Ran {} cycles in {}ms", cycles_left, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
             m_cycle_diff = (s32)cycles_left - actual;
-            // m_core.run(16777216 / 64);         
+            // m_core.run(16777216 / 64);
         }
     });
 }
@@ -71,7 +71,9 @@ void EmuThread::stop() {
         return;
     }
 
-    m_running.store(false);
+    m_running.
+    store(false);
+    runNext();
     m_thread.join();
     m_clock_speed.store(0);
 }
@@ -91,10 +93,21 @@ auto EmuThread::getClockSpeed() const -> u64 {
     return m_clock_speed.load();
 }
 
-Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_device, m_input_device, m_audio_device), m_debug_ui(m_core),
-    m_emu_thread(m_core) {
-    glfwGetWindowSize(window, &m_width, &m_height);
+Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_audio_device(audio_sync, this),
+m_core(m_video_device, m_input_device, m_audio_device), 
+m_debug_ui(m_core), m_emu_thread(m_core) {
+    LOG_DEBUG("Initializing Frontend...");
+
+    //Set window stuff
     m_window = window;
+    glfwSetWindowTitle(m_window, fmt::format("gba  [{}]", common::GIT_DESC).c_str());
+    glfwSwapInterval(1);
+
+    //Setup callbacks and retrieve window dimensions
+    glfwGetWindowSize(m_window, &m_width, &m_height);
+    glfwSetWindowUserPointer(m_window, &m_user_data);
+    glfwSetWindowSizeCallback(m_window, windowSizeCallback);
+
     m_show_status_bar = true;
     m_show_cpu_debug = false;
     m_show_disasm_debug = false;
@@ -105,50 +118,38 @@ Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_core(m_video_
     m_show_settings = true;
     m_user_data = {this, &m_core};
 
-    m_frame_times_start = 0;
-    m_audio_buffer_size_start = 0;
-    std::memset(m_audio_samples, 0, sizeof(m_audio_samples));
-    std::memset(m_audio_buffer_size, 0, sizeof(m_audio_buffer_size));
-    std::memset(m_frame_times, 0, sizeof(m_frame_times));
+    // m_frame_times_start = 0;
+    // m_audio_buffer_size_start = 0;
+    std::memset(m_audio_samples_l, 0, sizeof(m_audio_samples_l));
+    std::memset(m_audio_samples_r, 0, sizeof(m_audio_samples_r));
+    // std::memset(m_audio_buffer_size, 0, sizeof(m_audio_buffer_size));
+    // std::memset(m_frame_times, 0, sizeof(m_frame_times));
 }
 
 void Frontend::init() {
-    //Set Window title to the title in the ROM's header
-    glfwSetWindowTitle(m_window, fmt::format("gba  [{}] - {}", common::GIT_DESC, m_core.getGamePak().getTitle()).c_str());
-    
-    //Setup callbacks
-    glfwSetWindowUserPointer(m_window, &m_user_data);
-    glfwSetWindowSizeCallback(m_window, windowSizeCallback);
-
     //Spawn emulator thread
     m_emu_thread.start();
 
-    //Miniaudio Testing
-    ma_device_config config = ma_device_config_init(ma_device_type_playback);
-    config.playback.format = ma_format_f32;
-    config.playback.channels = 2;
-    config.sampleRate = 48000;
-    config.dataCallback = audio_sync;
-    config.pUserData = this;
-    config.periodSizeInFrames = 48000 / 64;
-
-    if(ma_device_init(nullptr, &config, &device) != MA_SUCCESS) {
-        LOG_FATAL("Could not initalize Miniaudio device!");
-    }
-
-    if(ma_device_start(&device) != MA_SUCCESS) {
-        LOG_FATAL("Could not start Miniaudio device!");
-    }
+    m_audio_device.start();
 }
 
 void Frontend::shutdown() {
     m_emu_thread.stop();
+}
 
-    ma_device_uninit(&device);
+void Frontend::mainloop() {
+    while(!glfwWindowShouldClose(m_window)) {
+        glfwPollEvents();
+        drawInterface();
+        glfwSwapBuffers(m_window);
+    }
 }
 
 void Frontend::loadROM(std::vector<u8> &&rom) {
     m_core.loadROM(std::move(rom));
+
+    //Set Window title to the title in the ROM's header
+    glfwSetWindowTitle(m_window, fmt::format("gba  [{}] - {}", common::GIT_DESC, m_core.getGamePak().getTitle()).c_str());
 }
 
 void Frontend::loadBIOS(const std::vector<u8> &bios) {
@@ -181,18 +182,18 @@ void Frontend::drawInterface() {
     if(ImGui::BeginMenu("Emulation")) {
         if(ImGui::MenuItem("Start")) {
             m_emu_thread.start();
-            ma_device_start(&device);
+            m_audio_device.start();
         }
         if(ImGui::MenuItem("Stop")) {
-            ma_device_stop(&device);
+            m_audio_device.stop();
             m_emu_thread.stop();
         }
         if(ImGui::MenuItem("Reset")) {
-            ma_device_stop(&device);
+            m_audio_device.stop();
             m_emu_thread.stop();
             m_core.reset();
             m_emu_thread.start();
-            ma_device_start(&device);
+            m_audio_device.start();
         }
 
         if(!m_emu_thread.running() && ImGui::MenuItem("Next Frame", "N")) {
@@ -320,6 +321,24 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
+    // if(ImGui::Begin("Input")) {
+    //     // const char *gamepads[GLFW_JOYSTICK_LAST + 1];
+    //     std::string devices;
+    //     devices = "Keyboard";
+    //     for(int i = 0; i < GLFW_JOYSTICK_LAST; i++) {
+    //         if(glfwJoystickPresent(i) == GLFW_TRUE) {
+    //             // gamepads[i] = glfwGetJoystickName(i);
+    //             devices += '\0';
+    //             devices += glfwGetJoystickName(i);
+    //         }
+    //     }
+
+    //     static int current;
+
+    //     ImGui::Combo("Input Devices", &current, devices.c_str());
+    // }
+    // ImGui::End();
+
 
     // ---------- Settings (Under Construction) ----------
 
@@ -392,28 +411,31 @@ void Frontend::drawInterface() {
 
     float values_1[100];
     float values_2[100];
-    std::memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
-    std::memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+    // std::memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
+    // std::memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+    m_frame_times.copy(values_1);
     m_video_device.getFrameTimes().copy(values_2);
 
     m_metrics_window.setHostTimes(values_1);
     m_metrics_window.setEmulatorTimes(values_2);
     m_metrics_window.update();
 
-    // if(ImGui::Begin("Audio Buffer Stats")) {
-    //     float sizes[100];
+    if(ImGui::Begin("Audio Buffer Stats")) {
+        float sizes[100];
 
-    //     m_audio_buffer_mutex.lock();
-    //     std::memcpy(sizes, &m_audio_buffer_size[m_audio_buffer_size_start], (100 - m_audio_buffer_size_start) * sizeof(float));
-    //     std::memcpy(&sizes[100 - m_audio_buffer_size_start], m_audio_buffer_size, m_audio_buffer_size_start * sizeof(float));
-    //     m_audio_buffer_mutex.unlock();
+        m_audio_buffer_mutex.lock();
+        // std::memcpy(sizes, &m_audio_buffer_size[m_audio_buffer_size_start], (100 - m_audio_buffer_size_start) * sizeof(float));
+        // std::memcpy(&sizes[100 - m_audio_buffer_size_start], m_audio_buffer_size, m_audio_buffer_size_start * sizeof(float));
+        m_audio_buffer_size.copy(sizes);
+        m_audio_buffer_mutex.unlock();
 
-    //     ImGui::PlotLines("##Audio Buffer Size", sizes, 100, 0, "Audio Buffer Size", 0.0f, 2048.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
-    //     m_audio_buffer_mutex.lock();
-    //     ImGui::PlotLines("##Output Audio Samples", m_audio_samples, 512, 0, "Output Audio Samples", -2.0f, 2.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
-    //     m_audio_buffer_mutex.unlock();
-    // }
-    // ImGui::End();
+        ImGui::PlotLines("##Audio Buffer Size", sizes, 100, 0, "Audio Buffer Size", 0.0f, 2048.0f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        m_audio_buffer_mutex.lock();
+        ImGui::PlotLines("##Output Audio Samples Left", m_audio_samples_l, 750, 0, "Output Audio Samples Left", -1.1f, 1.1f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y / 2.0f));
+        ImGui::PlotLines("##Output Audio Samples Right", m_audio_samples_r, 750, 0, "Output Audio Samples Right", -1.1f, 1.1f, ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
+        m_audio_buffer_mutex.unlock();
+    }
+    ImGui::End();
 
     endFrame();
 }
@@ -427,30 +449,32 @@ void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma
     float *f_output = reinterpret_cast<float*>(output);
 
     frontend->m_audio_buffer_mutex.lock();
-    frontend->m_audio_buffer_size[frontend->m_audio_buffer_size_start] = audio_device.m_samples.size();
-    frontend->m_audio_buffer_size_start = (frontend->m_audio_buffer_size_start + 1) % 100;
+    // frontend->m_audio_buffer_size[frontend->m_audio_buffer_size_start] = audio_device.m_samples_l.size();
+    // frontend->m_audio_buffer_size_start = (frontend->m_audio_buffer_size_start + 1) % 100;
+    frontend->m_audio_buffer_size.push(audio_device.m_samples_l.size());
     frontend->m_audio_buffer_mutex.unlock();
 
-    if(audio_device.m_samples.size() < 512) {
+    if(audio_device.m_samples_l.size() < 1024) {
         LOG_ERROR("Not enough samples for audio callback");
         return;
     }
 
-    //Resample 512 samples to 750
-    float samples[512];
-    audio_device.m_samples.pop_multiple(samples, 512);
+    float samples[1500];
+    audio_device.resample(samples, 750);
     frontend->m_audio_buffer_mutex.lock();
-    std::memcpy(frontend->m_audio_samples, samples, 512 * sizeof(float));
+    std::memcpy(frontend->m_audio_samples_l, samples, 750 * sizeof(float));
+    std::memcpy(frontend->m_audio_samples_r, samples + 750, 750 * sizeof(float));
     frontend->m_audio_buffer_mutex.unlock();
 
+
     for(size_t i = 0; i < frame_count; i++) {
-        float sample = samples[(size_t)((i / (float)frame_count) * 512)];
-        f_output[i * 2 + 0] = sample;
-        f_output[i * 2 + 1] = sample;
+        f_output[i * 2 + 0] = samples[i];
+        f_output[i * 2 + 1] = samples[i + frame_count];
     }
 }
 
 void Frontend::beginFrame() {
+    // m_start = std::chrono::steady_clock::now();
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -467,16 +491,17 @@ void Frontend::endFrame() {
     auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(now - m_start);
     m_start = now;
 
-    m_frame_times[m_frame_times_start] = (float)frame_time.count() / 1000.0f;
-    m_frame_times_start = (m_frame_times_start + 1) % 100;
+    // m_frame_times[m_frame_times_start] = (float)frame_time.count() / 1000.0f;
+    // m_frame_times_start = (m_frame_times_start + 1) % 100;
+    m_frame_times.push((float)frame_time.count() / 1000.0f);
 
     //Calculate framerate as a moving average of the last 100 frames
     float average = 0;
     for(size_t i = 0; i < 100; i++) {
-        average += m_frame_times[i];
+        average += m_frame_times.peek(i);
     }
     average /= 100.0f;
-    m_average_fps = 1000.0f / average;
+    m_average_fps = 1.0f / average * 1000.0f;
 
     //Calculate framerate as a moving average of the last 100 frames
     average = 0;
@@ -484,7 +509,7 @@ void Frontend::endFrame() {
         average += m_video_device.getFrameTimes().peek(i);
     }
     average /= (float)m_video_device.getFrameTimes().size();
-    m_gba_fps = 1000.0f / average;
+    m_gba_fps = 1.0f / average * 1000.0f;
 }
 
 void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {

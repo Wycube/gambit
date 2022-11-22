@@ -55,7 +55,7 @@ void WaveChannel::write(u32 address, u8 value) {
 }
 
 auto WaveChannel::amplitude() -> u8 {
-    if(m_enabled) {
+    if(m_enabled && !bits::get_bit<7>(m_snd3cnt_l)) {
         u8 wave_pos = m_wave_pos;
         u8 volume = VOLUMES[bits::get<13, 2>(m_snd3cnt_h)];
 
@@ -95,7 +95,7 @@ void WaveChannel::sample(u64 late) {
 void WaveChannel::restart() {
     m_enabled = true;
 
-    m_length_timer = (m_snd3cnt_l & 0xFF) * 128;
+    m_length_timer = (256 - (m_snd3cnt_l & 0xFF)) * 2;
     m_wave_pos = 0;
     const u32 sample_rate = (2048 - bits::get<0, 11>(m_snd3cnt_x)) * 8;
 

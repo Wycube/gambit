@@ -44,7 +44,6 @@ void Keypad::checkForInterrupt() {
     u16 pressed = ~m_core.input_device.getKeys() & (m_keycnt & 0x3FF);
     bool condition_met = false;
 
-
     if(bits::get_bit<15>(m_keycnt)) {
         //Logical AND (the masked buttons equal the selected buttons)
         condition_met = pressed == (m_keycnt & 0x3FF);

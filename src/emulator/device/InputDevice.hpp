@@ -18,12 +18,4 @@ protected:
     std::function<void()> m_callback;
 };
 
-class NullInputDevice final : public InputDevice {
-public:
-
-    auto getKeys() -> u16 override {
-        return 0x3FF;
-    }
-};
-
 } //namespace emu

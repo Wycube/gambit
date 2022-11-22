@@ -6,6 +6,8 @@
 
 
 GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {
+    LOG_DEBUG("Initializing GLFWInputDevice...");
+
     glfwSetKeyCallback(window, keyCallback);
     m_joystick_connected = false;
     memset(m_pressed, 0, sizeof(m_pressed));
@@ -33,8 +35,6 @@ void GLFWInputDevice::update() {
         m_pressed[emu::KeypadInput::RIGHT]    = state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] == GLFW_PRESS;
         m_pressed[emu::KeypadInput::BUTTON_A] = state.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_PRESS;
         m_pressed[emu::KeypadInput::BUTTON_B] = state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS;
-        // m_pressed[emu::KeypadInput::BUTTON_L] = state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS;
-        // m_pressed[emu::KeypadInput::BUTTON_R] = state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] == GLFW_PRESS;
         m_pressed[emu::KeypadInput::SELECT]   = state.buttons[GLFW_GAMEPAD_BUTTON_GUIDE] == GLFW_PRESS;
         m_pressed[emu::KeypadInput::START]    = state.buttons[GLFW_GAMEPAD_BUTTON_START] == GLFW_PRESS;
 
@@ -47,12 +47,15 @@ void GLFWInputDevice::update() {
         m_pressed[emu::KeypadInput::BUTTON_R] = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0.3f;
 
         u16 keys = 0;
+        u16 keys_old = m_keyinput.load();
         for(size_t i = 0; i < 10; i++) {
             keys |= !m_pressed[i] << i;
         }
         m_keyinput.store(keys);
 
-        //TODO: Call input callback if necessary
+        if(keys_old ^ keys) {
+            m_callback();
+        }
     } else {
         //Check for connections
         for(size_t i = 0; i < GLFW_JOYSTICK_LAST; i++) {
@@ -96,10 +99,14 @@ void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int
         }
 
         u16 keys = 0;
+        u16 keys_old = device.m_keyinput.load();
         for(size_t i = 0; i < 10; i++) {
             keys |= !device.m_pressed[i] << i;
         }
         device.m_keyinput.store(keys);
-        device.m_callback();
+        
+        if(keys_old ^ keys) {
+            device.m_callback();
+        }
     }
 }

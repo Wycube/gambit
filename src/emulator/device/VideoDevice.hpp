@@ -18,13 +18,4 @@ protected:
     u32 m_internal_framebuffer[240 * 160];
 };
 
-class NullVideoDevice final : public VideoDevice {
-public:
-
-    void clear(u32 color) override { }
-    void setPixel(int x, int y, u32 color) override { }
-    void setLine(int y, u32 *colors) override { }
-    void presentFrame() override { }
-};
-
 } //namespace emu

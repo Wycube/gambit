@@ -45,9 +45,9 @@ void NoiseChannel::step() {
         m_enabled = false;
     }
 
-    if(bits::get<8, 3>(m_snd4cnt_l) != 0 && m_envelope_timer > 0 && --m_envelope_timer == 0) {
+    if(m_envelope_timer > 0 && --m_envelope_timer == 0) {
         const u8 envelope_period = bits::get<8, 3>(m_snd4cnt_l) == 0 ? 8 : bits::get<8, 3>(m_snd4cnt_l);
-        m_envelope_timer = envelope_period * 512;
+        m_envelope_timer = envelope_period * 8;
 
         if(bits::get_bit<11>(m_snd4cnt_l)) {
             //Increase
@@ -64,7 +64,7 @@ void NoiseChannel::step() {
 }
 
 auto NoiseChannel::amplitude() -> s8 {
-    if(m_enabled) {
+    if(m_enabled && !bits::get<11, 5>(m_snd4cnt_l)) {
         return m_high ? m_current_vol : -m_current_vol;
     }
 
@@ -91,9 +91,9 @@ void NoiseChannel::tick(u64 late) {
 void NoiseChannel::restart() {
     m_enabled = true;
 
-    m_length_timer = (64 - bits::get<0, 6>(m_snd4cnt_l)) * 128;
+    m_length_timer = (64 - bits::get<0, 6>(m_snd4cnt_l)) * 2;
     m_current_vol = bits::get<12, 4>(m_snd4cnt_l);
-    m_envelope_timer = bits::get<8, 3>(m_snd4cnt_l) * 512;
+    m_envelope_timer = bits::get<8, 3>(m_snd4cnt_l) * 8;
     m_lfsr = bits::get_bit<3>(m_snd4cnt_h) ? 0x40 : 0x4000;
     u8 r = bits::get<0, 4>(m_snd4cnt_h);
     u32 frequency = 32 << (bits::get<4, 4>(m_snd4cnt_h) + 1);

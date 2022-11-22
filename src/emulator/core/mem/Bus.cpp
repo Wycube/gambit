@@ -235,11 +235,6 @@ auto Bus::readIO(u32 address) -> u8 {
         return m_core.ppu.readIO(address);
     }
 
-    //SOUNDBIAS Stub (for BIOS)
-    if(address == 0x89) {
-        return 2;
-    }
-
     //APU registers
     if(address >= 0x60 && address <= 0xA7) {
         return m_core.apu.read(address);

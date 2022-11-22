@@ -1,4 +1,3 @@
-#include "emulator/core/GBA.hpp"
 #include "common/Version.hpp"
 #include "common/Types.hpp"
 #include "common/Log.hpp"
@@ -14,6 +13,56 @@
 #include <fstream>
 #include <vector>
 
+
+auto initialize() -> GLFWwindow* {
+    //Initialize GLFW and create window
+    if(glfwInit() == GLFW_FALSE) {
+        LOG_FATAL("GLFW failed to initialize!");
+    }
+
+    GLFWwindow *window = glfwCreateWindow(1080, 720, "", nullptr, nullptr);
+    glfwMakeContextCurrent(window);
+
+    //Load OpenGL functions with glad and GLFW
+    int version = gladLoadGL(glfwGetProcAddress);
+    if(version == 0) {
+        LOG_FATAL("Glad failed to initialize!");
+    }
+
+    LOG_DEBUG("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+    LOG_DEBUG("Vender           : {}", glGetString(GL_VENDOR));
+    LOG_DEBUG("Renderer         : {}", glGetString(GL_RENDERER));
+    LOG_DEBUG("OpenGL Version   : {}", glGetString(GL_VERSION));
+    LOG_DEBUG("Shading Language : {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+    //Initialialization of Dear ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
+
+    ImFontConfig config = ImFontConfig();
+    config.OversampleH = 2;
+    config.PixelSnapH = true;
+    config.RasterizerMultiply = 1.2;
+    io.Fonts->AddFontFromMemoryCompressedTTF(hack_regular_compressed_data, hack_regular_compressed_size, 15, &config);
+    io.Fonts->Build();
+
+    return window;
+}
+
+void cleanup(GLFWwindow *window) {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+}
 
 int main(int argc, char *argv[]) {
     bool has_rom_path = false, has_bios_path = false;
@@ -102,45 +151,7 @@ int main(int argc, char *argv[]) {
         LOG_FATAL("Unable to open BIOS file {}!", bios_path);
     }
 
-    //Initialize GLFW and create Window
-    if(glfwInit() == GLFW_FALSE) {
-        LOG_FATAL("GLFW failed to initialize!");
-    }
-    
-    GLFWwindow *window = glfwCreateWindow(1080, 720, "", 0, 0);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
-
-    //Initialize glad/OpenGL
-    int version = gladLoadGL(glfwGetProcAddress);
-    if(version == 0) {
-        LOG_FATAL("Glad failed to initialize!");
-    }
-
-    LOG_DEBUG("Initialized OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
-    LOG_DEBUG("Vender           : {}", glGetString(GL_VENDOR));
-    LOG_DEBUG("Renderer         : {}", glGetString(GL_RENDERER));
-    LOG_DEBUG("OpenGL Version   : {}", glGetString(GL_VERSION));
-    LOG_DEBUG("Shading Language : {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
-
-    //Initialize Dear ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    ImGui::StyleColorsDark();
-    
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 130");
-    
-    ImFontConfig config = ImFontConfig();
-    config.OversampleH = 2;
-    config.PixelSnapH = true;
-    config.RasterizerMultiply = 1.2;
-    io.Fonts->AddFontFromMemoryCompressedTTF(hack_regular_compressed_data, hack_regular_compressed_size, 15, &config);
-    io.Fonts->Build();
-
+    GLFWwindow *window = initialize();
     Frontend app(window);
     
     {
@@ -167,21 +178,10 @@ int main(int argc, char *argv[]) {
     app.loadSave(save_path);
     app.init();
 
-    glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
-
-    while(!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        app.drawInterface();
-        glfwSwapBuffers(window);
-    }
+    app.mainloop();
 
     app.shutdown();
     app.writeSave(save_path);
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    cleanup(window);
 }

@@ -55,6 +55,7 @@ public:
 
     void init();
     void shutdown();
+    void mainloop();
     void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &bios);
     void loadSave(const std::string &filename);
@@ -77,7 +78,6 @@ private:
     MAAudioDevice m_audio_device;
     emu::GBA m_core;
     EmuThread m_emu_thread;
-    ma_device device;
 
     DebuggerUI m_debug_ui;
     AboutWindow m_about_window;
@@ -91,12 +91,15 @@ private:
     bool m_show_settings;
 
 
-    float m_frame_times[100];
-    size_t m_frame_times_start;
-    float m_audio_buffer_size[100];
-    size_t m_audio_buffer_size_start;
+    // float m_frame_times[100];
+    // size_t m_frame_times_start;
+    common::FixedRingBuffer<float, 100> m_frame_times;
+    // float m_audio_buffer_size[100];
+    // size_t m_audio_buffer_size_start;
+    common::FixedRingBuffer<float, 100> m_audio_buffer_size;
     std::mutex m_audio_buffer_mutex;
-    float m_audio_samples[512];
+    float m_audio_samples_l[750];
+    float m_audio_samples_r[750];
     std::chrono::time_point<std::chrono::steady_clock> m_start;
     float m_average_fps;
     float m_gba_fps;
