@@ -19,12 +19,12 @@ option(BUILD_TESTS "Build tests" OFF)
 find_package(Git)
 if(GIT_FOUND)
 	# Git describe information
-	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} describe --always --long --dirty
+	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} describe --tags --always --long --dirty
 	OUTPUT_VARIABLE GIT_DESCRIBE 
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 	# Remove trailing information from output
-	string(REGEX REPLACE "(-0)?-g([0-9]|[a-f])+(-dirty)?" "" GIT_DESCRIBE "${GIT_DESCRIBE}")
+	string(REGEX REPLACE "(-0)?-g([0-9]|[a-f])+" "" GIT_DESCRIBE "${GIT_DESCRIBE}")
 
 	# Git rev-parse current commit hash
 	execute_process(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
