@@ -167,12 +167,19 @@ auto Background::getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1)
     return vram[data_start + index];
 }
 
-void Background::getAffineCoords(int &x, int &y) {
-    x = x << 8;
-    y = (y - last_scanline) << 8;
+void Background::resetInternalRegs() {
+    internal_x = reference_x;
+    internal_y = reference_y;
+}
 
-    int new_x = ((param_a * x + param_b * y) >> 8) + reference_x;
-    int new_y = ((param_c * x + param_d * y) >> 8) + reference_y;
+void Background::incrementInternalRegs() {
+    internal_x += param_b;
+    internal_y += param_d;
+}
+
+void Background::getAffineCoords(int &x, int &y) {
+    int new_x = (param_a * (x << 8) >> 8) + internal_x;
+    int new_y = (param_c * (x << 8) >> 8) + internal_y;
 
     x = new_x >> 8;
     y = new_y >> 8;

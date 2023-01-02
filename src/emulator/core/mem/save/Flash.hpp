@@ -18,7 +18,7 @@ enum Command : u8 {
 class Flash final : public Save {
 public:
 
-    Flash(SaveType type);
+    explicit Flash(SaveType save_type);
     ~Flash() = default;
 
     void reset() override;
@@ -33,11 +33,11 @@ private:
         CMD_2,
         WRITE,
         BANK
-    } m_state;
+    } state;
 
-    bool m_chip_id_mode;
-    bool m_bank_2;
-    bool m_erase_next;
+    bool chip_id_mode;
+    bool bank_2;
+    bool erase_next;
 };
 
 } //namespace emu

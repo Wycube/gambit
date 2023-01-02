@@ -12,30 +12,30 @@ class FixedRingBuffer {
 public:
 
     FixedRingBuffer() {
-        m_pos = 0;
-        std::memset(m_data, 0, sizeof(m_data));
+        pos = 0;
+        std::memset(data, 0, sizeof(data));
     }
 
     inline void push(T value) {
-        m_data[m_pos] = value;
-        m_pos = (m_pos + 1) % _capacity;
+        data[pos] = value;
+        pos = (pos + 1) % _capacity;
     }
 
     inline auto peek(size_t index) const -> T {
-        return m_data[(m_pos + index) % _capacity];
+        return data[(pos + index) % _capacity];
     }
 
     inline void copy(T *dst) const {
-        std::memcpy(dst, &m_data[m_pos], (_capacity - m_pos) * sizeof(T));
-        std::memcpy(dst + (_capacity - m_pos), m_data, m_pos * sizeof(T));
+        std::memcpy(dst, &data[pos], (_capacity - pos) * sizeof(T));
+        std::memcpy(dst + (_capacity - pos), data, pos * sizeof(T));
     }
 
     inline auto front() const -> T {
-        return m_data[m_pos];
+        return data[pos];
     }
 
     inline auto back() const -> T {
-        return m_data[m_pos == 0 ? _capacity - 1 : m_pos - 1];
+        return data[pos == 0 ? _capacity - 1 : pos - 1];
     }
 
     constexpr auto capacity() const -> size_t {
@@ -44,8 +44,8 @@ public:
 
 private:
 
-    T m_data[_capacity];
-    size_t m_pos;
+    T data[_capacity];
+    size_t pos;
 };
 
 
@@ -54,69 +54,69 @@ class RingBuffer {
 public:
 
     RingBuffer() {
-        m_head = 0;
-        m_tail = 0;
-        m_size = 0;
-        std::memset(m_data, 0, sizeof(m_data));
+        head = 0;
+        tail = 0;
+        buf_size = 0;
+        std::memset(data, 0, sizeof(data));
     }
 
     inline void push(T value) {
-        if(m_size == _capacity) {
-            m_tail = (m_tail + 1) % _capacity;
+        if(buf_size == _capacity) {
+            tail = (tail + 1) % _capacity;
         } else {
-            m_size++;
+            buf_size++;
         }
 
-        m_data[m_head] = value;
-        m_head = (m_head + 1) % _capacity;
+        data[head] = value;
+        head = (head + 1) % _capacity;
     }
 
     inline void pop() {
-        if(m_size == 0) {
+        if(buf_size == 0) {
             return;
         }
 
-        m_tail = (m_tail + 1) % _capacity;
-        m_size--;
+        tail = (tail + 1) % _capacity;
+        buf_size--;
     }
 
     inline auto peek(size_t index) const -> T {
-        return m_data[(m_tail + index) % _capacity];
+        return data[(tail + index) % _capacity];
     }
 
     inline void copy(T *dst) const {
-        std::memcpy(dst, &m_data[m_tail], (_capacity - m_tail) * sizeof(T));
-        std::memcpy(dst + (_capacity - m_tail), m_data, m_tail * sizeof(T));
+        std::memcpy(dst, &data[tail], (_capacity - tail) * sizeof(T));
+        std::memcpy(dst + (_capacity - tail), data, tail * sizeof(T));
     }
 
-    inline void pop_many(T *dst, size_t size) {
-        assert(size <= m_size);
+    inline void pop_many(T *dst, size_t amount) {
+        assert(amount <= buf_size);
 
-        size_t to_end = _capacity - m_tail;
-        if(to_end > size) {
-            std::memcpy(dst, &m_data[m_tail], size * sizeof(T));
+        size_t to_end = _capacity - tail;
+        if(to_end > amount) {
+            std::memcpy(dst, &data[tail], amount * sizeof(T));
         } else {
-            size_t second_size = size - to_end;
-            std::memcpy(dst, &m_data[m_tail], to_end * sizeof(T));
-            std::memcpy(dst + to_end, m_data, second_size * sizeof(T));
+            size_t second_size = amount - to_end;
+            std::memcpy(dst, &data[tail], to_end * sizeof(T));
+            std::memcpy(dst + to_end, data, second_size * sizeof(T));
         }
 
-        m_tail = (m_tail + size) % _capacity;
-        m_size -= size;
+        tail = (tail + amount) % _capacity;
+        buf_size -= amount;
     }
 
     inline auto front() const -> T {
-        return m_data[m_tail];
+        return data[tail];
     }
 
     inline auto back() const -> T {
-        assert(m_size != 0);
+        assert(buf_size != 0);
 
-        return m_data[m_head == 0 ? _capacity - 1 : m_head - 1];
+        return data[head == 0 ? _capacity - 1 : head - 1];
     }
 
     inline auto size() const -> size_t {
-        return m_size;
+        return buf_size;
     }
 
     inline auto capacity() const -> size_t {
@@ -125,9 +125,8 @@ public:
 
 private:
 
-    T m_data[_capacity];
-    size_t m_head, m_tail;
-    size_t m_size;
+    T data[_capacity];
+    size_t head, tail, buf_size;
 };
 
 

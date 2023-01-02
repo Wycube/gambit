@@ -2,7 +2,8 @@
 #include "common/Types.hpp"
 #include "common/Log.hpp"
 #include "Frontend.hpp"
-#include "res/hack_regular.hpp"
+#include "fonts/RubikRegular.hpp"
+#include "fonts/NotoSansMonoMedium.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -15,6 +16,8 @@
 
 
 auto initialize() -> GLFWwindow* {
+    LOG_INFO("GBA struct size: {} bytes", sizeof(emu::GBA));
+
     //Initialize GLFW and create window
     if(glfwInit() == GLFW_FALSE) {
         LOG_FATAL("GLFW failed to initialize!");
@@ -45,11 +48,8 @@ auto initialize() -> GLFWwindow* {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    ImFontConfig config = ImFontConfig();
-    config.OversampleH = 2;
-    config.PixelSnapH = true;
-    config.RasterizerMultiply = 1.2;
-    io.Fonts->AddFontFromMemoryCompressedTTF(hack_regular_compressed_data, hack_regular_compressed_size, 15, &config);
+    io.Fonts->AddFontFromMemoryCompressedTTF(rubik_regular_compressed_data, rubik_regular_compressed_size, 15);
+    io.Fonts->AddFontFromMemoryCompressedTTF(noto_sans_mono_medium_compressed_data, noto_sans_mono_medium_compressed_size, 15);
     io.Fonts->Build();
 
     return window;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
                 fmt::print("-d            Enable debug level logging    (disabled by default)\n");
                 fmt::print("-t            Enable trace level logging    (disabled by default)\n");
                 fmt::print("-i            Disable info level logging    (enabled by default)\n");
-                fmt::print("-w            Disalbe warning level logging (enabled by default)\n");
+                fmt::print("-w            Disable warning level logging (enabled by default)\n");
                 fmt::print("-e            Disable error level logging   (enabled by default)\n");
                 
                 return 0;

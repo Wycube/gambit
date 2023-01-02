@@ -24,7 +24,7 @@ enum KeypadInput : u16 {
 class Keypad final {
 public:
 
-    Keypad(GBA &core);
+    explicit Keypad(GBA &core);
 
     void reset();
 
@@ -33,9 +33,9 @@ public:
 
 private:
 
-    GBA &m_core;
-    u16 m_keycnt;
-    std::mutex m_keycnt_mutex;
+    GBA &core;
+    u16 keycnt;
+    std::mutex keycnt_mutex;
 
     void checkForInterrupt();
 };

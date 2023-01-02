@@ -11,7 +11,7 @@ class GBA;
 class Timer final {
 public:
 
-    Timer(GBA &core);
+    explicit Timer(GBA &core);
 
     void reset();
 
@@ -20,13 +20,13 @@ public:
 
 private:
 
-    u64 m_timer_start[4];
-    u16 m_timer_counter[4];
-    u16 m_timer_reload[4];
-    u16 m_tmcnt[4];
+    u64 timer_start[4];
+    u16 timer_counter[4];
+    u16 timer_reload[4];
+    u16 tmcnt[4];
 
-    GBA &m_core;
-    EventHandle m_timer_events[4];
+    GBA &core;
+    EventHandle timer_events[4];
 
     auto isTimerRunning(u8 timer) -> bool;
     auto getTimerIntermediateValue(u8 timer, bool running) -> u16;

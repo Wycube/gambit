@@ -5,18 +5,18 @@
 
 namespace emu {
 
-Bus::Bus(GBA &core) : m_core(core) {
+Bus::Bus(GBA &core) : core(core) {
     reset();
 }
 
 void Bus::reset() {
-    std::memset(&m_mem.ewram, 0, sizeof(m_mem.ewram));
-    std::memset(&m_mem.iwram, 0, sizeof(m_mem.iwram));
-    std::memset(&m_mem.io, 0, sizeof(m_mem.io));
+    std::memset(&mem.ewram, 0, sizeof(mem.ewram));
+    std::memset(&mem.iwram, 0, sizeof(mem.iwram));
+    std::memset(&mem.io, 0, sizeof(mem.io));
 }
 
 void Bus::cycle(u32 cycles) {
-    m_core.scheduler.step(cycles);
+    core.scheduler.step(cycles);
 }
 
 auto Bus::read8(u32 address) -> u8 {
@@ -61,26 +61,26 @@ void Bus::write32(u32 address, u32 value) {
 
 void Bus::requestInterrupt(InterruptSource source) {
     //Set the flag in IF at address 0x04000202
-    m_if.store(m_if.load() | source);
+    int_flags.store(int_flags.load() | source);
 }
 
 auto Bus::getLoadedPak() -> GamePak& {
-    return m_pak;
+    return pak;
 }
 
 void Bus::loadROM(std::vector<u8> &&rom) {
-    m_pak.loadROM(std::move(rom));
+    pak.loadROM(std::move(rom));
 }
 
 void Bus::loadBIOS(const std::vector<u8> &bios) {
-    if(bios.size() != sizeof(m_mem.bios)) {
+    if(bios.size() != sizeof(mem.bios)) {
         LOG_FATAL("Failed to load BIOS: Invalid Size ({} bytes)!", bios.size());
     }
 
-    std::memcpy(m_mem.bios, bios.data(), sizeof(m_mem.bios));
+    std::memcpy(mem.bios, bios.data(), sizeof(mem.bios));
 
     //After startup, BIOS reads return the ARM instruction at 0xF4 (open bus).
-    m_bios_open_bus = 0xE129F000;
+    bios_open_bus = 0xE129F000;
 }
 
 auto Bus::debugRead8(u32 address) -> u8 {
@@ -120,26 +120,27 @@ auto Bus::read(u32 address) -> T {
     switch(address >> 24) {
         case 0x0 : //BIOS
             if(address < 0x4000) {
-                if(m_core.debugger.getCPURegister(15) < 0x4000) {
-                    memory_region = m_mem.bios;
-                    region_size = sizeof(m_mem.bios);
-                    m_bios_open_bus = m_mem.bios[sub_address] | (m_mem.bios[sub_address + 1] << 8) |
-                        (m_mem.bios[sub_address + 2] << 16) | (m_mem.bios[sub_address + 3] << 24);
+                if(core.cpu.state.pc < 0x4000) {
+                    memory_region = mem.bios;
+                    region_size = sizeof(mem.bios);
+                    bios_open_bus = mem.bios[sub_address] | (mem.bios[sub_address + 1] << 8) |
+                        (mem.bios[sub_address + 2] << 16) | (mem.bios[sub_address + 3] << 24);
                 } else {
                     // LOG_ERROR("BIOS Open Bus read");
-                    return m_bios_open_bus;
+                    return bios_open_bus;
                 }
             }
             break;
         // case 0x1 : //Not Used
         break;
         case 0x2 : //On-Board WRAM
-            memory_region = m_mem.ewram;
-            region_size = sizeof(m_mem.ewram);
+            core.scheduler.step(sizeof(T) == 4 ? 5 : 2);
+            memory_region = mem.ewram;
+            region_size = sizeof(mem.ewram);
             break;
         case 0x3 : //On-Chip WRAM
-            memory_region = m_mem.iwram;
-            region_size = sizeof(m_mem.iwram);
+            memory_region = mem.iwram;
+            region_size = sizeof(mem.iwram);
             break;
         case 0x4 : 
             for(size_t i = 0; i < sizeof(T); i++) {
@@ -147,9 +148,9 @@ auto Bus::read(u32 address) -> T {
             }
 
             return value;
-        case 0x5 : return m_core.ppu.readPalette<T>(sub_address); //Palette RAM
-        case 0x6 : return m_core.ppu.readVRAM<T>(sub_address); //VRAM
-        case 0x7 : return m_core.ppu.readOAM<T>(sub_address); //OAM - OBJ Attributes
+        case 0x5 : return core.ppu.readPalette<T>(sub_address); //Palette RAM
+        case 0x6 : return core.ppu.readVRAM<T>(sub_address); //VRAM
+        case 0x7 : return core.ppu.readOAM<T>(sub_address); //OAM - OBJ Attributes
         case 0x8 :
         case 0x9 :
         case 0xA :
@@ -157,11 +158,11 @@ auto Bus::read(u32 address) -> T {
         case 0xC :
         case 0xD :
         case 0xE :
-        case 0xF : return m_pak.read<T>(address); //Cartridge
+        case 0xF : return pak.read<T>(address); //Cartridge
     }
 
     if(memory_region == nullptr) {
-        // LOG_ERROR("Open Bus read, {:08X}", address);
+        // LOG_FATAL("Open Bus reads unimplemented, Address: 0x{:08X}", address);
         return 0;
     }
 
@@ -187,23 +188,24 @@ void Bus::write(u32 address, T value) {
         case 0x1 : //Not Used
         break;
         case 0x2 : //On-Board WRAM
-            memory_region = m_mem.ewram;
-            region_size = sizeof(m_mem.ewram);
+            core.scheduler.step(sizeof(T) == 4 ? 5 : 2);
+            memory_region = mem.ewram;
+            region_size = sizeof(mem.ewram);
         break;
         case 0x3 : //On-Chip WRAM
-            memory_region = m_mem.iwram;
-            region_size = sizeof(m_mem.iwram);
+            memory_region = mem.iwram;
+            region_size = sizeof(mem.iwram);
         break;
         case 0x4 : 
             for(size_t i = 0; i < sizeof(T); i++) {
                 writeIO(sub_address + i, (value >> i * 8) & 0xFF);
             }
         break;
-        case 0x5 : m_core.ppu.writePalette<T>(sub_address, value); //Palette RAM
+        case 0x5 : core.ppu.writePalette<T>(sub_address, value); //Palette RAM
         break;
-        case 0x6 : m_core.ppu.writeVRAM<T>(sub_address, value); //VRAM
+        case 0x6 : core.ppu.writeVRAM<T>(sub_address, value); //VRAM
         break;
-        case 0x7 : m_core.ppu.writeOAM<T>(sub_address, value); //OAM - OBJ Attributes
+        case 0x7 : core.ppu.writeOAM<T>(sub_address, value); //OAM - OBJ Attributes
         break;
         case 0x8 :
         case 0x9 :
@@ -212,7 +214,7 @@ void Bus::write(u32 address, T value) {
         case 0xC :
         case 0xD :
         case 0xE :
-        case 0xF : m_pak.write<T>(address, value); //Cartridge
+        case 0xF : pak.write<T>(address, value); //Cartridge
         break;
     }
 
@@ -226,94 +228,108 @@ void Bus::write(u32 address, T value) {
 }
 
 auto Bus::readIO(u32 address) -> u8 {
-    if(address >= sizeof(m_mem.io)) {
-        // LOG_ERROR("Open Bus read on IO region, 04{:06X}", address);
+    if(address >= sizeof(mem.io)) {
+        // LOG_FATAL("Open Bus IO reads unimplemented, Address: 0x04{:06X}", address);
         return 0;
     }
 
     if(address <= 0x56) {
-        return m_core.ppu.readIO(address);
+        return core.ppu.readIO(address);
     }
 
     //APU registers
     if(address >= 0x60 && address <= 0xA7) {
-        return m_core.apu.read(address);
+        return core.apu.read(address);
     }
 
     //SIOCNT stub (for AGS Aging Cart Tester)
-    if(address == 0x128) {
-        return 0;
-    }
+    // if(address == 0x128) {
+    //     return 0;
+    // }
 
     if(address >= 0xB0 && address < 0xE0) {
-        return m_core.dma.read8(address);
+        return core.dma.read8(address);
     }
     if(address >= 0x100 && address <= 0x10F) {
-        return m_core.timer.read8(address);
+        return core.timer.read8(address);
+    }
+    if(address >= 0x120 && address <= 0x12D) {
+        return core.sio.read8(address);
     }
     if(address >= 0x130 && address <= 0x133) {
-        return m_core.keypad.read8(address);
+        return core.keypad.read8(address);
+    }
+    if(address >= 0x134 && address <= 0x15B) {
+        return core.sio.read8(address);
     }
 
     //IF
     if(address == 0x202) {
-        return m_if.load() & 0xFF;
+        return int_flags.load() & 0xFF;
     }
     if(address == 0x203) {
-        return (m_if.load() >> 8) & 0xFF;
+        return (int_flags.load() >> 8) & 0xFF;
     }
 
-    return m_mem.io[address];
+    return mem.io[address];
 }
 
 void Bus::writeIO(u32 address, u8 value) {
-    if(address >= sizeof(m_mem.io)) {
+    if(address >= sizeof(mem.io)) {
         return;
     }
 
     if(address <= 0x56) {
-        m_core.ppu.writeIO(address, value);
+        core.ppu.writeIO(address, value);
         return;
     }
     //APU registers
     if(address >= 0x60 && address <= 0xA7) {
-        m_core.apu.write(address, value);
+        core.apu.write(address, value);
     }
     if(address >= 0xB0 && address < 0xE0) {
-        m_core.dma.write8(address, value);
+        core.dma.write8(address, value);
     }
     if(address >= 0x100 && address <= 0x10F) {
-        return m_core.timer.write8(address, value);
+        return core.timer.write8(address, value);
+    }
+    if(address >= 0x120 && address <= 0x12D) {
+        core.sio.write8(address, value);
+        return;
     }
     if(address >= 0x130 && address <= 0x133) {
-        m_core.keypad.write8(address, value);
+        core.keypad.write8(address, value);
+        return;
+    }
+    if(address >= 0x134 && address <= 0x15B) {
+        core.sio.write8(address, value);
         return;
     }
     if((address & ~3) == 0x208) {
         if(address == 0x208) {
-            m_mem.io[address] = value & 1;
+            mem.io[address] = value & 1;
         }
         return;
     }
 
     //IF
     if(address == 0x202) {
-        m_if.store(m_if.load() & ~value);
+        int_flags.store(int_flags.load() & ~value);
         return;
     }
     if(address == 0x203) {
-        m_if.store(m_if.load() & ~(value << 8));
+        int_flags.store(int_flags.load() & ~(value << 8));
         return;
     }
 
     //HALTCNT
     if(address == 0x301) {
         if(value >> 7 == 0) {
-            m_core.cpu.halt();
+            core.cpu.halt();
         }
     }
 
-    m_mem.io[address] = value;
+    mem.io[address] = value;
 }
 
 } //namespace emu

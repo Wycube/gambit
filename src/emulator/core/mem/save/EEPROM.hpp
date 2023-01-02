@@ -8,7 +8,7 @@ namespace emu {
 class EEPROM final : public Save {
 public:
 
-    EEPROM(SaveType type);
+    explicit EEPROM(SaveType save_type);
     ~EEPROM() = default;
 
     void reset() override;
@@ -26,12 +26,12 @@ private:
         WRITE_END,
         READ_DUMMY,
         READ
-    } m_state;
+    } state;
 
-    u16 m_address;
-    u64 m_serial_buffer;
-    int m_buffer_size;
-    int m_bus_size;
+    u16 address_latch;
+    u64 serial_buffer;
+    int buffer_size;
+    int bus_size;
 };
 
 } //namespace emu

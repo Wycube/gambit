@@ -8,19 +8,19 @@ constexpr u32 PRESCALER_SELECTIONS[4] = {1, 64, 256, 1024};
 
 namespace emu {
 
-Timer::Timer(GBA &core) : m_core(core) {
+Timer::Timer(GBA &core) : core(core) {
     reset();
 }
 
 void Timer::reset() {
-    std::memset(m_timer_start, 0, sizeof(m_timer_start));
-    std::memset(m_timer_counter, 0, sizeof(m_timer_counter));
-    std::memset(m_timer_reload, 0, sizeof(m_timer_reload));
-    std::memset(m_tmcnt, 0, sizeof(m_tmcnt));
+    std::memset(timer_start, 0, sizeof(timer_start));
+    std::memset(timer_counter, 0, sizeof(timer_counter));
+    std::memset(timer_reload, 0, sizeof(timer_reload));
+    std::memset(tmcnt, 0, sizeof(tmcnt));
 
     for(size_t i = 0; i < 4; i++) {
-        m_timer_events[i] = m_core.scheduler.generateHandle();
-        LOG_DEBUG("Timer {} has event handle: {}", i, m_timer_events[i]);
+        timer_events[i] = core.scheduler.generateHandle();
+        LOG_DEBUG("Timer {} has event handle: {}", i, timer_events[i]);
     }
 }
 
@@ -28,20 +28,20 @@ auto Timer::read8(u32 address) -> u8 {
     switch(address) {
         case 0x100 : return bits::get<0, 8>(getTimerIntermediateValue(0, isTimerRunning(0)));
         case 0x101 : return bits::get<8, 8>(getTimerIntermediateValue(0, isTimerRunning(0)));
-        case 0x102 : return bits::get<0, 8>(m_tmcnt[0]);
-        case 0x103 : return bits::get<8, 8>(m_tmcnt[0]);
+        case 0x102 : return bits::get<0, 8>(tmcnt[0]);
+        case 0x103 : return bits::get<8, 8>(tmcnt[0]);
         case 0x104 : return bits::get<0, 8>(getTimerIntermediateValue(1, isTimerRunning(1)));
         case 0x105 : return bits::get<8, 8>(getTimerIntermediateValue(1, isTimerRunning(1)));
-        case 0x106 : return bits::get<0, 8>(m_tmcnt[1]);
-        case 0x107 : return bits::get<8, 8>(m_tmcnt[1]);
+        case 0x106 : return bits::get<0, 8>(tmcnt[1]);
+        case 0x107 : return bits::get<8, 8>(tmcnt[1]);
         case 0x108 : return bits::get<0, 8>(getTimerIntermediateValue(2, isTimerRunning(2)));
         case 0x109 : return bits::get<8, 8>(getTimerIntermediateValue(2, isTimerRunning(2)));
-        case 0x10A : return bits::get<0, 8>(m_tmcnt[2]);
-        case 0x10B : return bits::get<8, 8>(m_tmcnt[2]);
+        case 0x10A : return bits::get<0, 8>(tmcnt[2]);
+        case 0x10B : return bits::get<8, 8>(tmcnt[2]);
         case 0x10C : return bits::get<0, 8>(getTimerIntermediateValue(3, isTimerRunning(3)));
         case 0x10D : return bits::get<8, 8>(getTimerIntermediateValue(3, isTimerRunning(3)));
-        case 0x10E : return bits::get<0, 8>(m_tmcnt[3]);
-        case 0x10F : return bits::get<8, 8>(m_tmcnt[3]);
+        case 0x10E : return bits::get<0, 8>(tmcnt[3]);
+        case 0x10F : return bits::get<8, 8>(tmcnt[3]);
     }
 
     return 0;
@@ -51,63 +51,63 @@ void Timer::write8(u32 address, u8 value) {
     u8 old_tmcnt;
 
     switch(address) {
-        case 0x100 : bits::set<0, 8>(m_timer_reload[0], value); break;
-        case 0x101 : bits::set<8, 8>(m_timer_reload[0], value); break;
+        case 0x100 : bits::set<0, 8>(timer_reload[0], value); break;
+        case 0x101 : bits::set<8, 8>(timer_reload[0], value); break;
         case 0x102 :
-            old_tmcnt = m_tmcnt[0];
+            old_tmcnt = tmcnt[0];
             //On Timer 0 bit 2 is always 0
-            bits::set<0, 8>(m_tmcnt[0], value & ~4);
+            bits::set<0, 8>(tmcnt[0], value & ~4);
             updateTimer(0, old_tmcnt);
             break;
-        case 0x103 : bits::set<8, 8>(m_tmcnt[0], value); break;
-        case 0x104 : bits::set<0, 8>(m_timer_reload[1], value); break;
-        case 0x105 : bits::set<8, 8>(m_timer_reload[1], value); break;
-        case 0x106 : 
-            old_tmcnt = m_tmcnt[1];
-            bits::set<0, 8>(m_tmcnt[1], value);
+        case 0x103 : bits::set<8, 8>(tmcnt[0], value); break;
+        case 0x104 : bits::set<0, 8>(timer_reload[1], value); break;
+        case 0x105 : bits::set<8, 8>(timer_reload[1], value); break;
+        case 0x106 :
+            old_tmcnt = tmcnt[1];
+            bits::set<0, 8>(tmcnt[1], value);
             updateTimer(1, old_tmcnt);
             break;
-        case 0x107 : bits::set<8, 8>(m_tmcnt[1], value); break;
-        case 0x108 : bits::set<0, 8>(m_timer_reload[2], value); break;
-        case 0x109 : bits::set<8, 8>(m_timer_reload[2], value); break;
-        case 0x10A : 
-            old_tmcnt = m_tmcnt[2];
-            bits::set<0, 8>(m_tmcnt[2], value);
+        case 0x107 : bits::set<8, 8>(tmcnt[1], value); break;
+        case 0x108 : bits::set<0, 8>(timer_reload[2], value); break;
+        case 0x109 : bits::set<8, 8>(timer_reload[2], value); core.scheduler.step(1); break;
+        case 0x10A :
+            old_tmcnt = tmcnt[2];
+            bits::set<0, 8>(tmcnt[2], value);
             updateTimer(2, old_tmcnt);
             break;
-        case 0x10B : bits::set<8, 8>(m_tmcnt[2], value); break;
-        case 0x10C : bits::set<0, 8>(m_timer_reload[3], value); break;
-        case 0x10D : bits::set<8, 8>(m_timer_reload[3], value); break;
-        case 0x10E : 
-            old_tmcnt = m_tmcnt[3];
-            bits::set<0, 8>(m_tmcnt[3], value);
+        case 0x10B : bits::set<8, 8>(tmcnt[2], value); break;
+        case 0x10C : bits::set<0, 8>(timer_reload[3], value); break;
+        case 0x10D : bits::set<8, 8>(timer_reload[3], value); core.scheduler.step(1); break;
+        case 0x10E :
+            old_tmcnt = tmcnt[3];
+            bits::set<0, 8>(tmcnt[3], value);
             updateTimer(3, old_tmcnt);
             break;
-        case 0x10F : bits::set<8, 8>(m_tmcnt[3], value); break;
+        case 0x10F : bits::set<8, 8>(tmcnt[3], value); break;
     }
 }
 
 auto Timer::isTimerRunning(u8 timer) -> bool {
-    return bits::get_bit<7>(m_tmcnt[timer]) && !(bits::get_bit<2>(m_tmcnt[timer]) && timer != 0);
+    return bits::get_bit<7>(tmcnt[timer]) && !(bits::get_bit<2>(tmcnt[timer]) && timer != 0);
 }
 
 auto Timer::getTimerIntermediateValue(u8 timer, bool running) -> u16 {
     if(running) {
         //Calculate value based on how long it's been running
-        return m_timer_counter[timer] + (m_core.scheduler.getCurrentTimestamp() - m_timer_start[timer]) / PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
+        return timer_counter[timer] + (core.scheduler.getCurrentTimestamp() - timer_start[timer]) / PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[timer])];
     } else {
-        return m_timer_counter[timer];
+        return timer_counter[timer];
     }
 }
 
 void Timer::updateTimer(u8 timer, u8 old_tmcnt) {
-    bool new_enable = bits::get_bit<7>(m_tmcnt[timer]);
+    bool new_enable = bits::get_bit<7>(tmcnt[timer]);
     bool old_enable = bits::get_bit<7>(old_tmcnt);
-    bool new_cascade = bits::get_bit<2>(m_tmcnt[timer]);
+    bool new_cascade = bits::get_bit<2>(tmcnt[timer]);
     bool old_cascade = bits::get_bit<2>(old_tmcnt);
 
     if(new_enable && !old_enable) {
-        m_timer_counter[timer] = m_timer_reload[timer];
+        timer_counter[timer] = timer_reload[timer];
     }
 
     //Started by setting the enable bit while cascade is false, or by unsetting the cascade bit while enable is true.
@@ -123,53 +123,54 @@ void Timer::startTimer(u8 timer) {
     LOG_TRACE("Timer {} started", timer);
 
     //Cascade, timer is incremented when the preceding one overflows (so it doesn't actually run)
-    if(bits::get_bit<2>(m_tmcnt[timer]) && timer != 0) {
+    if(bits::get_bit<2>(tmcnt[timer]) && timer != 0) {
         return;
     }
 
     //2-cycle delay before timer starts
-    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 late) {
-        u64 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-        m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
-        m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 late) {
+    core.scheduler.addEvent(timer_events[timer], [this, timer](u64 late) {
+        u64 cycles_till_overflow = (0x10000 - timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[timer])];
+        timer_start[timer] = core.scheduler.getCurrentTimestamp();
+        core.scheduler.addEvent(timer_events[timer], [this, timer](u64 late) {
             timerOverflowEvent(timer, late);
-        }, cycles_till_overflow - late);
+        }, cycles_till_overflow);
     }, 2);
 }
 
 void Timer::stopTimer(u8 timer) {
     LOG_TRACE("Timer {} stopped", timer);
 
-    m_timer_counter[timer] = getTimerIntermediateValue(timer, true);
-    m_core.scheduler.removeEvent(m_timer_events[timer]);
+    core.scheduler.step(2);
+    timer_counter[timer] = getTimerIntermediateValue(timer, true);
+    core.scheduler.removeEvent(timer_events[timer]);
 }
 
 void Timer::timerOverflowEvent(u8 timer, u64 late) {
     timerOverflow(timer);
 
-    u64 cycles_till_overflow = (0x10000 - m_timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(m_tmcnt[timer])];
-    m_timer_start[timer] = m_core.scheduler.getCurrentTimestamp();
-    m_core.scheduler.addEvent(m_timer_events[timer], [this, timer](u64 late) {
+    u64 cycles_till_overflow = (0x10000 - timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[timer])];
+    timer_start[timer] = core.scheduler.getCurrentTimestamp();
+    core.scheduler.addEvent(timer_events[timer], [this, timer](u64 late) {
         timerOverflowEvent(timer, late);
     }, cycles_till_overflow - late);
 }
 
 void Timer::timerOverflow(u8 timer) {
-    m_timer_counter[timer] = m_timer_reload[timer];
+    timer_counter[timer] = timer_reload[timer];
 
-    if(m_core.apu.isTimerSelected(timer)) {
-        m_core.apu.onTimerOverflow(timer);
+    if(core.apu.isTimerSelected(timer)) {
+        core.apu.onTimerOverflow(timer);
     }
  
-    if(timer < 3 && bits::get_bit<2>(m_tmcnt[timer + 1])) {
-        if(++m_timer_counter[timer + 1] == 0) {
+    if(timer < 3 && bits::get_bit<2>(tmcnt[timer + 1])) {
+        if(++timer_counter[timer + 1] == 0) {
             timerOverflow(timer + 1);
         }
     }
 
     //Request Interrupt if enabled
-    if(bits::get_bit<6>(m_tmcnt[timer])) {
-        m_core.bus.requestInterrupt(static_cast<InterruptSource>(INT_TIM_0 << timer));
+    if(bits::get_bit<6>(tmcnt[timer])) {
+        core.bus.requestInterrupt(static_cast<InterruptSource>(INT_TIM_0 << timer));
     }
 }
 

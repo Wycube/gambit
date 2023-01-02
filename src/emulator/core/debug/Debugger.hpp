@@ -48,17 +48,17 @@ public:
 
 private:
 
-    std::vector<u32> m_breakpoints;
-    std::function<void ()> m_on_break;
+    std::vector<u32> breakpoints;
+    std::function<void ()> on_break;
 
     //Pointer to CPU state
-    const CPUState *m_cpu_state = nullptr;
+    const CPUState *cpu_state = nullptr;
 
     //Pointer to Scheduler stuff
-    const std::vector<Event> *m_scheduler_events;
-    const u64 *m_scheduler_timestamp;
+    const std::vector<Event> *scheduler_events;
+    const u64 *scheduler_timestamp;
 
-    GBA &m_core;
+    GBA &core;
 };
 
 } //namespace dbg

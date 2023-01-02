@@ -16,21 +16,6 @@ enum PrivilegeMode : u8 {
     MODE_SYSTEM     = 0x1F
 };
 
-enum ExecutionState {
-    EXEC_ARM   = 0,
-    EXEC_THUMB = 1
-};
-
-enum Flag : u32 {
-    FLAG_THUMB    = 1 << 5,
-    FLAG_FIQ      = 1 << 6,
-    FLAG_IRQ      = 1 << 7,
-    FLAG_OVERFLOW = 1 << 28, 
-    FLAG_CARRY    = 1 << 29,
-    FLAG_ZERO     = 1 << 30,
-    FLAG_NEGATIVE = (u32)1 << 31 
-};
-
 enum InterruptSource : u16 {
     INT_LCD_VB  = 1 << 0,  //LCD V-Blank
     INT_LCD_HB  = 1 << 1,  //LCD H-Blank

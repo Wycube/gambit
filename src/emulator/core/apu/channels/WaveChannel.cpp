@@ -8,28 +8,28 @@ static constexpr u8 VOLUMES[4] = {0, 4, 2, 1};
 
 namespace emu {
 
-WaveChannel::WaveChannel(Scheduler &scheduler) : m_scheduler(scheduler) { }
+WaveChannel::WaveChannel(Scheduler &scheduler) : scheduler(scheduler) { }
 
 void WaveChannel::reset() {
-    m_snd3cnt_l = 0;
-    m_snd3cnt_h = 0;
-    m_snd3cnt_x = 0;
-    std::memset(m_wave_ram, 0, sizeof(m_wave_ram));
-    m_enabled = false;
+    snd3cnt_l = 0;
+    snd3cnt_h = 0;
+    snd3cnt_x = 0;
+    std::memset(wave_ram, 0, sizeof(wave_ram));
+    enabled = false;
 
-    m_sample_event = m_scheduler.generateHandle();
-    LOG_DEBUG("Wave channel has event handle: {}", m_sample_event);
+    sample_event = scheduler.generateHandle();
+    LOG_DEBUG("Wave channel has event handle: {}", sample_event);
 }
 
 auto WaveChannel::read(u32 address) -> u8 {
     switch(address) {
-        case 0x70 : return m_snd3cnt_l & 0xFF;
-        case 0x73 : return (m_snd3cnt_h >> 8) & 0xE0;
-        case 0x75 : return (m_snd3cnt_x >> 8) & 0x40;
+        case 0x70 : return snd3cnt_l & 0xFF;
+        case 0x73 : return (snd3cnt_h >> 8) & 0xE0;
+        case 0x75 : return (snd3cnt_x >> 8) & 0x40;
     }
 
     if(address >= 0x90 && address <= 0x9F) {
-        return m_wave_ram[(address - 0x90) + bits::get_bit<6>(~m_snd3cnt_l) * 16];
+        return wave_ram[(address - 0x90) + bits::get_bit<6>(~snd3cnt_l) * 16];
     }
 
     return 0;
@@ -37,12 +37,12 @@ auto WaveChannel::read(u32 address) -> u8 {
 
 void WaveChannel::write(u32 address, u8 value) {
     switch(address) {
-        case 0x70 : m_snd3cnt_l = value & 0xE0; break;
+        case 0x70 : snd3cnt_l = value & 0xE0; break;
 
-        case 0x72 : m_snd3cnt_h = (m_snd3cnt_h & 0xFF00) | value; break;
-        case 0x73 : m_snd3cnt_h = (m_snd3cnt_h & 0x00FF) | (value << 8); break;
-        case 0x74 : m_snd3cnt_x = (m_snd3cnt_x & 0xFF00) | value; break;
-        case 0x75 : m_snd3cnt_x = (m_snd3cnt_x & 0x00FF) | (value << 8); 
+        case 0x72 : snd3cnt_h = (snd3cnt_h & 0xFF00) | value; break;
+        case 0x73 : snd3cnt_h = (snd3cnt_h & 0x00FF) | (value << 8); break;
+        case 0x74 : snd3cnt_x = (snd3cnt_x & 0xFF00) | value; break;
+        case 0x75 : snd3cnt_x = (snd3cnt_x & 0x00FF) | (value << 8); 
             if(value >> 7) {
                 restart();
             }
@@ -50,27 +50,27 @@ void WaveChannel::write(u32 address, u8 value) {
     }
 
     if(address >= 0x90 && address <= 0x9F) {
-        m_wave_ram[(address - 0x90) + bits::get_bit<6>(~m_snd3cnt_l) * 16] = value;
+        wave_ram[(address - 0x90) + bits::get_bit<6>(~snd3cnt_l) * 16] = value;
     }
 }
 
 auto WaveChannel::amplitude() -> u8 {
-    if(m_enabled && !bits::get_bit<7>(m_snd3cnt_l)) {
-        u8 wave_pos = m_wave_pos;
-        u8 volume = VOLUMES[bits::get<13, 2>(m_snd3cnt_h)];
+    if(enabled && !bits::get_bit<7>(snd3cnt_l)) {
+        u8 wave_index = wave_pos;
+        u8 volume = VOLUMES[bits::get<13, 2>(snd3cnt_h)];
 
-        if(bits::get_bit<15>(m_snd3cnt_h)) {
+        if(bits::get_bit<15>(snd3cnt_h)) {
             volume = 3;
         }
 
-        if(bits::get_bit<6>(m_snd3cnt_l) && !bits::get_bit<5>(m_snd3cnt_l)) {
-            wave_pos += 32;
+        if(bits::get_bit<6>(snd3cnt_l) && !bits::get_bit<5>(snd3cnt_l)) {
+            wave_index += 32;
         }
 
-        if(wave_pos % 2 == 0) {
-            return ((m_wave_ram[wave_pos / 2] >> 4) * volume) / 4;
+        if(wave_index % 2 == 0) {
+            return ((wave_ram[wave_index / 2] >> 4) * volume) / 4;
         } else {
-            return ((m_wave_ram[wave_pos / 2] & 0xF) * volume) / 4;
+            return ((wave_ram[wave_index / 2] & 0xF) * volume) / 4;
         }
     } else {
         return 0;
@@ -78,29 +78,29 @@ auto WaveChannel::amplitude() -> u8 {
 }
 
 void WaveChannel::step() {
-    if(bits::get_bit<14>(m_snd3cnt_x) && m_length_timer > 0 && --m_length_timer == 0) {
-        m_enabled = false;
+    if(bits::get_bit<14>(snd3cnt_x) && length_timer > 0 && --length_timer == 0) {
+        enabled = false;
     }
 }
 
 void WaveChannel::sample(u64 late) {
-    const u32 sample_rate = (2048 - bits::get<0, 11>(m_snd3cnt_x)) * 8;
-    m_wave_pos = (m_wave_pos + 1) % (bits::get_bit<5>(m_snd3cnt_l) ? 64 : 32);
+    const u32 sample_rate = (2048 - bits::get<0, 11>(snd3cnt_x)) * 8;
+    wave_pos = (wave_pos + 1) % (bits::get_bit<5>(snd3cnt_l) ? 64 : 32);
 
-    m_scheduler.addEvent(m_sample_event, [this](u64 late) {
+    scheduler.addEvent(sample_event, [this](u64 late) {
         sample(late);
     }, sample_rate - late);
 }
 
 void WaveChannel::restart() {
-    m_enabled = true;
+    enabled = true;
 
-    m_length_timer = (256 - (m_snd3cnt_l & 0xFF)) * 2;
-    m_wave_pos = 0;
-    const u32 sample_rate = (2048 - bits::get<0, 11>(m_snd3cnt_x)) * 8;
+    length_timer = (256 - (snd3cnt_l & 0xFF)) * 2;
+    wave_pos = 0;
+    const u32 sample_rate = (2048 - bits::get<0, 11>(snd3cnt_x)) * 8;
 
-    m_scheduler.removeEvent(m_sample_event);
-    m_scheduler.addEvent(m_sample_event, [this](u64 late) {
+    scheduler.removeEvent(sample_event);
+    scheduler.addEvent(sample_event, [this](u64 late) {
         sample(late);
     }, sample_rate);
 }

@@ -9,9 +9,9 @@
 namespace emu {
 
 void CPU::thumbUnimplemented(u16 instruction) {
-    ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_core.bus.debugRead16(m_state.pc - 6));
+    ThumbInstruction decoded = thumbDecodeInstruction(instruction, state.pc - 4, core.bus.debugRead16(state.pc - 6));
 
-    LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", m_state.pc - 4, decoded.type, decoded.disassembly);
+    LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", state.pc - 4, decoded.type, decoded.disassembly);
 }
 
 void CPU::thumbMoveShifted(u16 instruction) {
@@ -19,9 +19,9 @@ void CPU::thumbMoveShifted(u16 instruction) {
     u8 immed_5 = bits::get<6, 5>(instruction);
     const u8 rm = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    const u32 value = get_reg(rm);
+    const u32 value = getRegister(rm);
     u32 result = 0;
-    bool carry = m_state.cpsr.c;
+    bool carry = state.cpsr.c;
 
     if(immed_5 == 0 && opcode != 0) {
         immed_5 = 32;
@@ -34,11 +34,11 @@ void CPU::thumbMoveShifted(u16 instruction) {
         case 3 : return;
     }
 
-    set_reg(rd, result);
+    setRegister(rd, result);
 
-    m_state.cpsr.n = result >> 31;
-    m_state.cpsr.z = result == 0;
-    m_state.cpsr.c = carry;
+    state.cpsr.n = result >> 31;
+    state.cpsr.z = result == 0;
+    state.cpsr.c = carry;
 }
 
 void CPU::thumbAddSubtract(u16 instruction) {
@@ -47,8 +47,8 @@ void CPU::thumbAddSubtract(u16 instruction) {
     const u8 rm_immed = bits::get<6, 3>(instruction);
     const u8 rn = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    const u32 op_1 = get_reg(rn);
-    const u32 op_2 = i ? rm_immed : get_reg(rm_immed);
+    const u32 op_1 = getRegister(rn);
+    const u32 op_2 = i ? rm_immed : getRegister(rm_immed);
     u32 result;
     
     if(s) {
@@ -57,23 +57,23 @@ void CPU::thumbAddSubtract(u16 instruction) {
         result = op_1 + op_2;
     }
 
-    set_reg(rd, result);
+    setRegister(rd, result);
 
-    m_state.cpsr.n = result >> 31;
-    m_state.cpsr.z = result == 0;
-    m_state.cpsr.c = s ? op_1 >= op_2 : result < op_1;
+    state.cpsr.n = result >> 31;
+    state.cpsr.z = result == 0;
+    state.cpsr.c = s ? op_1 >= op_2 : result < op_1;
     
     bool a = op_1 >> 31;
     bool b = op_2 >> 31;
     bool c = result >> 31;
-    m_state.cpsr.v = a ^ (b ^ !s) && a ^ c;
+    state.cpsr.v = a ^ (b ^ !s) && a ^ c;
 }
 
 void CPU::thumbProcessImmediate(u16 instruction) {
     const u8 opcode = bits::get<11, 2>(instruction);
     const u8 rd = bits::get<8, 3>(instruction);
     const u8 immed_8 = bits::get<0, 8>(instruction);
-    const u32 op_1 = get_reg(rd);
+    const u32 op_1 = getRegister(rd);
     u32 result = 0;
 
     switch(opcode) {
@@ -84,25 +84,25 @@ void CPU::thumbProcessImmediate(u16 instruction) {
     }
 
     if(opcode != 1) {
-        set_reg(rd, result);
+        setRegister(rd, result);
     }
 
-    m_state.cpsr.n = result >> 31;
-    m_state.cpsr.z = result == 0;
+    state.cpsr.n = result >> 31;
+    state.cpsr.z = result == 0;
 
     //Set carry and overflow for opcodes other than MOV
     if(opcode != 0) {
         bool subtract = opcode != 2;
         
         if(subtract) {
-            m_state.cpsr.c = op_1 >= immed_8;
+            state.cpsr.c = op_1 >= immed_8;
         } else {
-            m_state.cpsr.c = result < op_1;
+            state.cpsr.c = result < op_1;
         }
 
         bool a = op_1 >> 31;
         bool c = result >> 31;
-        m_state.cpsr.v = a ^ !subtract && a ^ c;
+        state.cpsr.v = a ^ !subtract && a ^ c;
     }
 }
 
@@ -110,10 +110,10 @@ void CPU::thumbALUOperation(u16 instruction) {
     const u8 opcode = bits::get<6, 4>(instruction);
     const u8 rm = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    u32 op_1 = get_reg(rd);
-    const u32 op_2 = get_reg(rm);
+    u32 op_1 = getRegister(rd);
+    const u32 op_2 = getRegister(rm);
     u32 result;
-    bool shift_carry = m_state.cpsr.c;
+    bool shift_carry = state.cpsr.c;
 
     switch(opcode) {
         case 0x0 : result = op_1 & op_2; break;  //AND
@@ -121,8 +121,8 @@ void CPU::thumbALUOperation(u16 instruction) {
         case 0x2 : result = bits::lsl_c(op_1, op_2 & 0xFF, shift_carry); break; //LSL
         case 0x3 : result = bits::lsr_c(op_1, op_2 & 0xFF, shift_carry); break; //LSR
         case 0x4 : result = bits::asr_c(op_1, op_2 & 0xFF, shift_carry); break; //ASR
-        case 0x5 : result = op_1 + op_2 + m_state.cpsr.c; break;                //ADC
-        case 0x6 : result = op_1 - op_2 - !m_state.cpsr.c; break;               //SBC
+        case 0x5 : result = op_1 + op_2 + state.cpsr.c; break;                //ADC
+        case 0x6 : result = op_1 - op_2 - !state.cpsr.c; break;               //SBC
         case 0x7 : result = bits::ror_c(op_1, op_2 & 0xFF, shift_carry); break; //ROR
         case 0x8 : result = op_1 & op_2; break;     //TST
         case 0x9 : result = -op_2; op_1 = 0; break; //NEG
@@ -136,12 +136,12 @@ void CPU::thumbALUOperation(u16 instruction) {
 
     //Save result for all opcodes except TST, CMP, and CMN
     if(opcode != 0x8 && opcode != 0xA && opcode != 0xB) {
-        set_reg(rd, result);
+        setRegister(rd, result);
     }
 
     //Set Negative and Zero flags appropriately
-    m_state.cpsr.n = result >> 31;
-    m_state.cpsr.z = result == 0;
+    state.cpsr.n = result >> 31;
+    state.cpsr.z = result == 0;
 
     //Note: The carry flag gets destroyed with a MUL on ARMv4, 
     //however I don't know how, so I will leave it unchanged.
@@ -152,20 +152,20 @@ void CPU::thumbALUOperation(u16 instruction) {
         const bool subtract = opcode == 0x6 || opcode == 0x9 || opcode == 0xA;
 
         if(subtract) {
-            m_state.cpsr.c = (u64)op_1 >= (u64)op_2 + (u64)(use_carry ? !m_state.cpsr.c : 0);
+            state.cpsr.c = (u64)op_1 >= (u64)op_2 + (u64)(use_carry ? !state.cpsr.c : 0);
         } else {
-            m_state.cpsr.c = (u64)op_1 + (u64)op_2 + (use_carry ? m_state.cpsr.c : 0) > 0xFFFFFFFF;
+            state.cpsr.c = (u64)op_1 + (u64)op_2 + (use_carry ? state.cpsr.c : 0) > 0xFFFFFFFF;
         }
 
         const bool a = op_1 >> 31;
         const bool b = op_2 >> 31;
         const bool c = result >> 31;
-        m_state.cpsr.v = a ^ (b ^ !subtract) && a ^ c;
+        state.cpsr.v = a ^ (b ^ !subtract) && a ^ c;
     }
 
     //Write to the Carry flag for shift opcodes
     if(((op_2 & 0xFF) != 0) && (opcode == 2 || opcode == 3 || opcode == 4 || opcode == 7)) {
-        m_state.cpsr.c = shift_carry;
+        state.cpsr.c = shift_carry;
     }
 }
 
@@ -173,8 +173,8 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
     const u8 opcode = bits::get<8, 2>(instruction);
     const u8 rs = bits::get_bit<6>(instruction) << 3 | bits::get<3, 3>(instruction);
     const u8 rd = bits::get_bit<7>(instruction) << 3 | bits::get<0, 3>(instruction);
-    const u32 op_1 = get_reg(rd);
-    const u32 op_2 = get_reg(rs);
+    const u32 op_1 = getRegister(rd);
+    const u32 op_2 = getRegister(rs);
     u32 result = 0;
 
     switch(opcode) {
@@ -185,41 +185,41 @@ void CPU::thumbHiRegisterOp(u16 instruction) {
     }
 
     if(opcode != 1) {
-        set_reg(rd, result);
+        setRegister(rd, result);
 
         if(rd == 15) {
             flushPipeline();
         }
     } else {
-        m_state.cpsr.n = result >> 31;
-        m_state.cpsr.z = result == 0;
-        m_state.cpsr.c = op_1 >= op_2;
-        m_state.cpsr.v = (op_1 >> 31) ^ (op_2 >> 31) && (op_1 >> 31) ^ (result >> 31);
+        state.cpsr.n = result >> 31;
+        state.cpsr.z = result == 0;
+        state.cpsr.c = op_1 >= op_2;
+        state.cpsr.v = (op_1 >> 31) ^ (op_2 >> 31) && (op_1 >> 31) ^ (result >> 31);
     }
 }
 
 void CPU::thumbBranchExchange(u16 instruction) {
     const bool link = bits::get_bit<7>(instruction);
     const u8 rm = bits::get<3, 4>(instruction);
-    const u32 address = get_reg(rm);
+    const u32 address = getRegister(rm);
 
     //Store address of next instruction, plus the thumb-bit (in the lsb), in the Link-Register
     if(link) {
-        set_reg(14, get_reg(15) - 1);
+        setRegister(14, getRegister(15) - 1);
     }
 
     //The lowest bit of the address determines the execution mode (1 = THUMB, 0 = ARM)
-    m_state.cpsr.t = address & 1;
-    set_reg(15, address);
+    state.cpsr.t = address & 1;
+    setRegister(15, address);
     flushPipeline();
 }
 
 void CPU::thumbPCRelativeLoad(u16 instruction) {
     const u8 rd = bits::get<8, 3>(instruction);
     const u16 offset = bits::get<0, 8>(instruction) * 4;
-    const u32 address = bits::align<u32>(get_reg(15)) + offset;
+    const u32 address = bits::align<u32>(getRegister(15)) + offset;
     
-    set_reg(rd, m_core.bus.read32(address));
+    setRegister(rd, core.bus.read32(address));
 }
 
 void CPU::thumbLoadStoreRegister(u16 instruction) {
@@ -228,19 +228,19 @@ void CPU::thumbLoadStoreRegister(u16 instruction) {
     const u8 rm = bits::get<6, 3>(instruction);
     const u8 rn = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    const u32 address = get_reg(rn) + get_reg(rm);
+    const u32 address = getRegister(rn) + getRegister(rm);
 
     if(l) {
         if(b) {
-            set_reg(rd, m_core.bus.read8(address));
+            setRegister(rd, core.bus.read8(address));
         } else {
-            set_reg(rd, m_core.bus.readRotated32(address));
+            setRegister(rd, core.bus.readRotated32(address));
         }
     } else {
         if(b) {
-            m_core.bus.write8(address, get_reg(rd) & 0xFF);
+            core.bus.write8(address, getRegister(rd) & 0xFF);
         } else {
-            m_core.bus.write32(address, get_reg(rd));
+            core.bus.write32(address, getRegister(rd));
         }
     }
 }
@@ -250,13 +250,13 @@ void CPU::thumbLoadStoreSigned(u16 instruction) {
     const u8 rm = bits::get<6, 3>(instruction);
     const u8 rn = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    const u32 address = get_reg(rn) + get_reg(rm);
+    const u32 address = getRegister(rn) + getRegister(rm);
 
     switch(opcode) {
-        case 0 : m_core.bus.write16(address, get_reg(rd)); break;
-        case 1 : set_reg(rd, bits::sign_extend<8, u32>(m_core.bus.read8(address))); break;
-        case 2 : set_reg(rd, m_core.bus.readRotated16(address)); break;
-        case 3 : set_reg(rd, (address & 1) ? bits::sign_extend<8, u32>(m_core.bus.readRotated16(address) & 0xFF) : bits::sign_extend<16, u32>(m_core.bus.readRotated16(address))); break;
+        case 0 : core.bus.write16(address, getRegister(rd)); break;
+        case 1 : setRegister(rd, bits::sign_extend<8, u32>(core.bus.read8(address))); break;
+        case 2 : setRegister(rd, core.bus.readRotated16(address)); break;
+        case 3 : setRegister(rd, (address & 1) ? bits::sign_extend<8, u32>(core.bus.readRotated16(address) & 0xFF) : bits::sign_extend<16, u32>(core.bus.readRotated16(address))); break;
     }
 }
 
@@ -266,19 +266,19 @@ void CPU::thumbLoadStoreImmediate(u16 instruction) {
     const u8 offset = bits::get<6, 5>(instruction) * (b ? 1 : 4);
     const u8 rn = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    const u32 address = get_reg(rn) + offset;
+    const u32 address = getRegister(rn) + offset;
 
     if(l) {
         if(b) {
-            set_reg(rd, m_core.bus.read8(address));
+            setRegister(rd, core.bus.read8(address));
         } else {
-            set_reg(rd, m_core.bus.readRotated32(address));
+            setRegister(rd, core.bus.readRotated32(address));
         }
     } else {
         if(b) {
-            m_core.bus.write8(address, get_reg(rd) & 0xFF);
+            core.bus.write8(address, getRegister(rd) & 0xFF);
         } else {
-            m_core.bus.write32(address, get_reg(rd));
+            core.bus.write32(address, getRegister(rd));
         }
     }
 }
@@ -288,12 +288,12 @@ void CPU::thumbLoadStoreHalfword(u16 instruction) {
     const u8 offset = bits::get<6, 5>(instruction) * 2;
     const u8 rn = bits::get<3, 3>(instruction);
     const u8 rd = bits::get<0, 3>(instruction);
-    const u32 address = get_reg(rn) + offset;
+    const u32 address = getRegister(rn) + offset;
 
     if(l) {
-        set_reg(rd, m_core.bus.readRotated16(address));
+        setRegister(rd, core.bus.readRotated16(address));
     } else {
-        m_core.bus.write16(address, get_reg(rd));
+        core.bus.write16(address, getRegister(rd));
     }
 }
 
@@ -301,12 +301,12 @@ void CPU::thumbSPRelativeLoadStore(u16 instruction) {
     const bool l = bits::get_bit<11>(instruction);
     const u8 rd = bits::get<8, 3>(instruction);
     const u16 offset = bits::get<0, 8>(instruction) * 4;
-    const u32 address = get_reg(13) + offset;
+    const u32 address = getRegister(13) + offset;
 
     if(l) {
-        set_reg(rd, m_core.bus.readRotated32(address));
+        setRegister(rd, core.bus.readRotated32(address));
     } else {
-        m_core.bus.write32(address, get_reg(rd));
+        core.bus.write32(address, getRegister(rd));
     }
 }
 
@@ -314,16 +314,16 @@ void CPU::thumbLoadAddress(u16 instruction) {
     const bool sp = bits::get_bit<11>(instruction);
     const u8 rd = bits::get<8, 3>(instruction);
     const u16 offset = bits::get<0, 8>(instruction) << 2;
-    const u32 address = sp ? get_reg(13) : bits::align<u32>(get_reg(15));
+    const u32 address = sp ? getRegister(13) : bits::align<u32>(getRegister(15));
 
-    set_reg(rd, address + offset);
+    setRegister(rd, address + offset);
 }
 
 void CPU::thumbAdjustSP(u16 instruction) {
     const bool s = bits::get_bit<7>(instruction);
     const u16 offset = bits::get<0, 7>(instruction) * 4;
 
-    set_reg(13, get_reg(13) + offset * (s ? -1 : 1));
+    setRegister(13, getRegister(13) + offset * (s ? -1 : 1));
 }
 
 void CPU::thumbPushPopRegisters(u16 instruction) {
@@ -332,38 +332,38 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
     const u8 registers = bits::get<0, 8>(instruction);
 
     if(l) {
-        u32 address = get_reg(13);
+        u32 address = getRegister(13);
 
         for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                set_reg(i, m_core.bus.read32(address));
+                setRegister(i, core.bus.read32(address));
                 address += 4;
             }
         }
 
         //Set PC
         if(r) {
-            set_reg(15, m_core.bus.read32(address));
+            setRegister(15, core.bus.read32(address));
             flushPipeline();
         }
 
-        set_reg(13, get_reg(13) + 4 * (bits::popcount<u16>(registers) + r));
+        setRegister(13, getRegister(13) + 4 * (bits::popcount<u16>(registers) + r));
     } else {
-        u32 address = get_reg(13) - 4 * (bits::popcount<u16>(registers) + r);
+        u32 address = getRegister(13) - 4 * (bits::popcount<u16>(registers) + r);
 
         for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                m_core.bus.write32(address, get_reg(i));
+                core.bus.write32(address, getRegister(i));
                 address += 4;
             }
         }
 
         //Store LR
         if(r) {
-            m_core.bus.write32(address, get_reg(14));
+            core.bus.write32(address, getRegister(14));
         }
 
-        set_reg(13, get_reg(13) - 4 * (bits::popcount<u16>(registers) + r));
+        setRegister(13, getRegister(13) - 4 * (bits::popcount<u16>(registers) + r));
     }
 }
 
@@ -371,26 +371,26 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
     const bool l = bits::get_bit<11>(instruction);
     const u8 rn = bits::get<8, 3>(instruction);
     const u8 registers = bits::get<0, 8>(instruction);
-    u32 address = get_reg(rn);
+    u32 address = getRegister(rn);
     u32 writeback = address + 4 * bits::popcount<u16>(registers);
 
     if(l) {
         for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                set_reg(i, m_core.bus.read32(address));
+                setRegister(i, core.bus.read32(address));
                 address += 4;
             }
         }
 
         if(registers == 0) {
-            set_reg(15, m_core.bus.read32(address));
+            setRegister(15, core.bus.read32(address));
             flushPipeline();
-            writeback = get_reg(rn) + 0x40;
+            writeback = getRegister(rn) + 0x40;
         }
 
         //No writeback if rn is in the register list
         if(!bits::get_bit(registers, rn)) {
-            set_reg(rn, writeback);
+            setRegister(rn, writeback);
         }
     } else {
         bool lowest_set = false;
@@ -399,9 +399,9 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
             if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && lowest_set) {
-                    m_core.bus.write32(address, writeback);
+                    core.bus.write32(address, writeback);
                 } else {
-                    m_core.bus.write32(address, get_reg(i));
+                    core.bus.write32(address, getRegister(i));
                 }
 
                 address += 4;
@@ -410,11 +410,11 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
         }
 
         if(registers == 0) {
-            m_core.bus.write32(address, get_reg(15) + 2);
-            writeback = get_reg(rn) + 0x40;
+            core.bus.write32(address, getRegister(15) + 2);
+            writeback = getRegister(rn) + 0x40;
         }
 
-        set_reg(rn, writeback);
+        setRegister(rn, writeback);
     }
 }
 
@@ -427,28 +427,28 @@ void CPU::thumbConditionalBranch(u16 instruction) {
     
     const s32 immediate = bits::sign_extend<9, s32>(bits::get<0, 8>(instruction) << 1);
 
-    set_reg(15, get_reg(15) + immediate);
+    state.pc += immediate;
     flushPipeline();
 }
 
 void CPU::thumbSoftwareInterrupt(u16 instruction) {
     const u8 comment = bits::get<0, 8>(instruction);
-    LOG_TRACE("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, m_state.pc - 4);
-    LOG_TRACE("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", get_reg(0), get_reg(1), get_reg(2));
+    LOG_TRACE("SWI {}(0x{:02X}) called from THUMB Address: {:08X}", function_names[comment > 0x2B ? 0x2B : comment], comment, state.pc - 4);
+    LOG_TRACE("Arguments: r0: {:08X}, r1: {:08X}, r2: {:08X}", getRegister(0), getRegister(1), getRegister(2));
 
-    get_spsr(MODE_SUPERVISOR) = m_state.cpsr;
-    set_reg(14, get_reg(15) - 2, MODE_SUPERVISOR);
-    m_state.cpsr.mode = MODE_SUPERVISOR;
-    m_state.cpsr.t = false;
-    m_state.cpsr.i = true;
-    set_reg(15, 0x00000008);
+    getSpsr(MODE_SUPERVISOR) = state.cpsr;
+    setRegister(14, state.pc - 2, MODE_SUPERVISOR);
+    state.cpsr.mode = MODE_SUPERVISOR;
+    state.cpsr.t = false;
+    state.cpsr.i = true;
+    state.pc = 0x8;
     flushPipeline();
 }
 
 void CPU::thumbUnconditionalBranch(u16 instruction) {
     const s32 immediate = bits::sign_extend<12, s32>(bits::get<0, 11>(instruction) << 1);
 
-    set_reg(15, get_reg(15) + immediate);
+    state.pc += immediate;
     flushPipeline();
 }
 
@@ -456,17 +456,24 @@ void CPU::thumbLongBranch(u16 instruction) {
     const bool second = bits::get_bit<11>(instruction);
 
     if(second) {
-        const u32 lr = get_reg(14);
-        set_reg(14, (get_reg(15) - 2) | 1);
-        set_reg(15, lr + (bits::get<0, 11>(instruction) << 1));
+        const u32 lr = getRegister(14);
+        setRegister(14, (getRegister(15) - 2) | 1);
+        state.pc = lr + (bits::get<0, 11>(instruction) << 1);
         flushPipeline();
     } else {
-        set_reg(14, get_reg(15) + bits::sign_extend<23, s32>(bits::get<0, 11>(instruction) << 12));
+        setRegister(14, getRegister(15) + bits::sign_extend<23, s32>(bits::get<0, 11>(instruction) << 12));
     }
 }
 
 void CPU::thumbUndefined(u16 instruction) {
-    LOG_TRACE("Undefined THUMB Instruction at Address: {:08X}", m_state.pc - 4);
+    LOG_TRACE("Undefined THUMB Instruction at Address: {:08X}", state.pc - 4);
+
+    // setRegister(14, getRegister(15) - 4, MODE_UNDEFINED);
+    // getSpsr(MODE_UNDEFINED) = state.cpsr;
+    // state.cpsr.mode = MODE_UNDEFINED;
+    // state.cpsr.i = true;
+    // state.pc = 0x4;
+    // flushPipeline();
 }
 
 } //namespace emu

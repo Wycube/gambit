@@ -16,8 +16,8 @@ void Save::loadFromFile(const std::string &filename) {
         return;
     }
 
-    size_t size = std::min(m_data.size(), std::filesystem::file_size(filename));
-    file.read(reinterpret_cast<char*>(m_data.data()), size);
+    size_t size = std::min(data.size(), std::filesystem::file_size(filename));
+    file.read(reinterpret_cast<char*>(data.data()), size);
     file.close();
 
     LOG_INFO("Save file {} ({} bytes) loaded", filename, size);
@@ -31,15 +31,15 @@ void Save::writeToFile(const std::string &filename) {
         return;
     }
 
-    size_t size = m_data.size();
-    file.write(reinterpret_cast<char*>(m_data.data()), size);
+    size_t size = data.size();
+    file.write(reinterpret_cast<char*>(data.data()), size);
     file.close();
 
     LOG_INFO("Save file {} ({} bytes) written", filename, size);
 }
 
 auto Save::getType() -> SaveType {
-    return m_type;
+    return type;
 }
 
 } //namespace emu

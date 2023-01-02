@@ -9,38 +9,38 @@ Scheduler::Scheduler() {
 }
 
 void Scheduler::reset() {
-    m_current_timestamp = 0;
-    m_next_handle = 1;
-    m_events.clear();
+    current_timestamp = 0;
+    next_handle = 1;
+    events.clear();
 }
 
 auto Scheduler::generateHandle() -> EventHandle {
-    return m_next_handle++;
+    return next_handle++;
 }
 
 void Scheduler::addEvent(const EventHandle handle, EventFunc callback, u64 cycles_from_now) {
-    m_events.push_back(Event{handle, callback, m_current_timestamp + cycles_from_now});
-    std::sort(m_events.begin(), m_events.end(), [](const Event &a, const Event &b) {
+    events.push_back(Event{handle, callback, current_timestamp + cycles_from_now});
+    std::sort(events.begin(), events.end(), [](const Event &a, const Event &b) {
         return a.scheduled_timestamp > b.scheduled_timestamp;
     });
 }
 
 void Scheduler::removeEvent(const EventHandle handle) {
-    for(auto iter = m_events.begin(); iter != m_events.end(); iter++) {
+    for(auto iter = events.begin(); iter != events.end(); iter++) {
         if(iter->handle == handle) {
-            m_events.erase(iter);
+            events.erase(iter);
             break;
         }
     }
 }
 
 void Scheduler::step(u32 cycles) {
-    m_current_timestamp += cycles;
+    current_timestamp += cycles;
 
     while(true) {
-        if(m_events.size() > 0 && m_events.back().scheduled_timestamp <= m_current_timestamp) {
-            m_events.back().callback(m_current_timestamp - m_events.back().scheduled_timestamp);
-            m_events.pop_back();
+        if(events.size() > 0 && events.back().scheduled_timestamp <= current_timestamp) {
+            events.back().callback(current_timestamp - events.back().scheduled_timestamp);
+            events.pop_back();
         } else {
             break;
         }
@@ -48,25 +48,25 @@ void Scheduler::step(u32 cycles) {
 }
 
 void Scheduler::runToNext() {
-    if(!m_events.empty()) {
-        step(m_events.back().scheduled_timestamp - m_current_timestamp);
+    if(!events.empty()) {
+        step(events.back().scheduled_timestamp - current_timestamp);
     }
 }
 
 auto Scheduler::nextEventTime() -> u64 {
-    if(m_events.empty()) {
+    if(events.empty()) {
         return 0;
     }
 
-    return m_events.back().scheduled_timestamp;
+    return events.back().scheduled_timestamp;
 }
 
 auto Scheduler::getCurrentTimestamp() -> u64 {
-    return m_current_timestamp;
+    return current_timestamp;
 }
 
 void Scheduler::attachDebugger(dbg::Debugger &debugger) {
-    debugger.attachScheduler(&m_events, &m_current_timestamp);
+    debugger.attachScheduler(&events, &current_timestamp);
 }
 
 } //namespace emu

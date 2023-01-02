@@ -20,7 +20,7 @@ public:
 
     auto getTextureID() -> GLuint;
     auto getFrameTimes() -> const common::ThreadSafeRingBuffer<float, 100>& {
-        return m_frame_times;
+        return frame_times;
     }
 
 private:
@@ -28,11 +28,11 @@ private:
     void createTexture();
     void updateTexture(u32 *pixels);
 
-    u32 *m_present_framebuffer = new u32[sizeof(m_internal_framebuffer)];
-    GLuint m_texture_id;
-    std::mutex m_update_mutex;
+    u32 *present_framebuffer = new u32[sizeof(internal_framebuffer)];
+    GLuint texture_id;
+    std::mutex update_mutex;
     bool new_frame;
 
-    common::ThreadSafeRingBuffer<float, 100> m_frame_times;
-    std::chrono::time_point<std::chrono::steady_clock> m_start;
+    common::ThreadSafeRingBuffer<float, 100> frame_times;
+    std::chrono::time_point<std::chrono::steady_clock> start;
 };

@@ -39,9 +39,12 @@ struct Background {
     auto getBitmapPixelMode4(int x, int y, const u8 *vram, const u8 *palette, bool frame_1) -> u16;
     auto getBitmapPixelMode5(int x, int y, const u8 *vram, bool frame_1) -> u16;
 
-    u8 last_scanline = 0;
+    void resetInternalRegs();
+    void incrementInternalRegs();
 
 private:
+
+    s32 internal_x, internal_y;
 
     void getAffineCoords(int &x, int &y);
 };

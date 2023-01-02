@@ -34,6 +34,23 @@ public:
         
         //Metroid: Fusion
         // m_debugger.addBreakpoint(0x0800D558); //Jump to address 0, sometimes
+
+        //Final Fantasy VI Advance
+        // m_debugger.addBreakpoint(0x00001812);
+        // m_debugger.addBreakpoint(0x000016FC);
+        // m_debugger.addBreakpoint(0x0000013C);
+        // m_debugger.addBreakpoint(0x08136A16);
+        // m_debugger.addBreakpoint(0x03004584);
+        // m_debugger.addBreakpoint(0x00000C08);
+        // m_debugger.addBreakpoint(0x08136354);
+        // m_debugger.addBreakpoint(0x03004594);
+        // m_debugger.addBreakpoint(0x030044D8);
+        // m_debugger.addBreakpoint(0x08132E26);
+
+        // m_debugger.addBreakpoint(0x0800D8C2);
+        // m_debugger.addBreakpoint(0x0800D8BC);
+
+        // m_debugger.addBreakpoint(0x08000b22);
     }
 
     void drawScreen() {
@@ -120,6 +137,7 @@ public:
         u8 mode = modes[m_mode];
 
         //CPU Registers
+        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
         if(ImGui::BeginTable("##CPURegisters_Table", 2, ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableNextRow();
 
@@ -174,11 +192,13 @@ public:
         ImGui::Spacing();
 
         if(!running) {
-            // u32 sp = m_debugger.getCPURegister(13);
-            // for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
-            //     ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
-            // }
+            u32 sp = m_debugger.getCPURegister(13);
+            for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
+                ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
+            }
         }
+
+        ImGui::PopFont();
 
         
         ImGui::EndGroup();
@@ -296,6 +316,7 @@ public:
 
         emu::GamePak &pak = m_gba.getGamePak();
 
+        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 
         if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
             ImGui::BeginTable("##Disassembly_Table", 4);
@@ -365,6 +386,8 @@ public:
             
         }
         ImGui::EndChild();
+
+        ImGui::PopFont();
 
         ImGui::EndGroup();
     }

@@ -4,110 +4,110 @@
 
 namespace emu {
 
-EEPROM::EEPROM(SaveType type) {
-    if(type != EEPROM_512 && type != EEPROM_8K) {
-        LOG_FATAL("Invalid SaveType: {}, for EEPROM!", type);
+EEPROM::EEPROM(SaveType save_type) {
+    if(save_type != EEPROM_512 && save_type != EEPROM_8K) {
+        LOG_FATAL("Invalid SaveType: {}, for EEPROM!", save_type);
     }
 
-    m_type = type;
-    m_data.resize(type == EEPROM_512 ? 512 : 8192);
-    m_bus_size = type == EEPROM_512 ? 6 : 14;
+    type = save_type;
+    data.resize(type == EEPROM_512 ? 512 : 8192);
+    bus_size = type == EEPROM_512 ? 6 : 14;
     reset();
 }
 
 void EEPROM::reset() {
-    m_state = ACCEPT_COMMAND;
-    m_address = 0;
-    m_serial_buffer = 0;
-    m_buffer_size = 0;
+    state = ACCEPT_COMMAND;
+    address_latch = 0;
+    serial_buffer = 0;
+    buffer_size = 0;
 }
 
 auto EEPROM::read(u32 address) -> u8 {
-    u8 data = 1;
+    u8 data_out = 1;
 
-    switch(m_state) {
+    switch(state) {
         case READ_DUMMY :
-            data = 0;
-            m_buffer_size++;
-            if(m_buffer_size == 4) {
-                m_state = READ;
-                m_buffer_size = 0;
+            data_out = 0;
+            buffer_size++;
+            if(buffer_size == 4) {
+                state = READ;
+                buffer_size = 0;
             }
             break;
         case READ :
             //MSB first
-            data = (m_data[m_address * 8 + (m_buffer_size / 8)] >> (7 - m_buffer_size % 8)) & 1;
-            m_buffer_size++;
+            data_out = (data[address_latch * 8 + (buffer_size / 8)] >> (7 - buffer_size % 8)) & 1;
+            buffer_size++;
 
-            if(m_buffer_size == 64) {
-                m_state = ACCEPT_COMMAND;
-                m_buffer_size = 0;
+            if(buffer_size == 64) {
+                state = ACCEPT_COMMAND;
+                buffer_size = 0;
             }
             break;
         default : break;
     }
 
-    return data;
+    return data_out;
 }
 
 void EEPROM::write(u32 address, u8 value) {
-    if(m_state == READ_DUMMY || m_state == READ) {
+    if(state == READ_DUMMY || state == READ) {
         return;
     }
 
-    m_serial_buffer = (m_serial_buffer << 1) | (value & 1);
-    m_buffer_size++;
+    serial_buffer = (serial_buffer << 1) | (value & 1);
+    buffer_size++;
 
-    switch(m_state) {
+    switch(state) {
         case ACCEPT_COMMAND :
-            if(m_buffer_size == 2) {
-                switch(m_serial_buffer) {
-                    case 0 : m_state = ACCEPT_COMMAND; break;
-                    case 1 : m_state = ACCEPT_COMMAND; break;
-                    case 2 : m_state = WRITE_GET_ADDRESS; break;
-                    case 3 : m_state = READ_GET_ADDRESS; break;
+            if(buffer_size == 2) {
+                switch(serial_buffer) {
+                    case 0 : state = ACCEPT_COMMAND; break;
+                    case 1 : state = ACCEPT_COMMAND; break;
+                    case 2 : state = WRITE_GET_ADDRESS; break;
+                    case 3 : state = READ_GET_ADDRESS; break;
                 }
-                m_serial_buffer = 0;
-                m_buffer_size = 0;
+                serial_buffer = 0;
+                buffer_size = 0;
             }
             break;
         case READ_GET_ADDRESS :
         case WRITE_GET_ADDRESS :
-            if(m_buffer_size == m_bus_size) {
-                m_address = m_serial_buffer & 0x3FF;
+            if(buffer_size == bus_size) {
+                address_latch = serial_buffer & 0x3FF;
                 
-                if(m_state == READ_GET_ADDRESS) {
-                    m_state = READ_END;
+                if(state == READ_GET_ADDRESS) {
+                    state = READ_END;
                 } else {
-                    m_state = WRITE_GET_DATA;
+                    state = WRITE_GET_DATA;
                 }
                 
-                m_serial_buffer = 0;
-                m_buffer_size = 0;
+                serial_buffer = 0;
+                buffer_size = 0;
             }
             break;
         case WRITE_GET_DATA :
-            if(m_buffer_size == 64) {
+            if(buffer_size == 64) {
                 for(size_t i = 0; i < 8; i++) {
-                    m_data[m_address * 8 + i] = (m_serial_buffer >> (7 - i) * 8) & 0xFF;
+                    data[address_latch * 8 + i] = (serial_buffer >> (7 - i) * 8) & 0xFF;
                 }
 
-                m_state = WRITE_END;
-                m_serial_buffer = 0;
-                m_buffer_size = 0;
+                state = WRITE_END;
+                serial_buffer = 0;
+                buffer_size = 0;
             }
             break;
         case READ_END :
         case WRITE_END :
-            if(m_buffer_size == 1) {
-                if(m_state == READ_END) {
-                    m_state = READ_DUMMY;
+            if(buffer_size == 1) {
+                if(state == READ_END) {
+                    state = READ_DUMMY;
                 } else {
-                    m_state = ACCEPT_COMMAND;
+                    state = ACCEPT_COMMAND;
                 }
 
-                m_serial_buffer = 0;
-                m_buffer_size = 0;
+                serial_buffer = 0;
+                buffer_size = 0;
             }
             break;
         default : break;

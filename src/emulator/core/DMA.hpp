@@ -11,10 +11,11 @@ class GBA;
 class DMA final {
 public:
 
-    DMA(GBA &core);
+    explicit DMA(GBA &core);
 
     void reset();
     auto running() -> bool;
+    void step();
 
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
@@ -27,7 +28,7 @@ public:
 
 private:
 
-    GBA &m_core;
+    GBA &core;
 
     struct DMAChannel {
         bool active;
@@ -39,12 +40,12 @@ private:
         u32 _length;
 
         EventHandle event;
-    } m_channel[4];
+    } channel[4];
 
     void startTransfer(int dma_n);
-    template<typename T>
-    void transfer(int dma_n);
-    void transfer2(int dma_n);
+    // template<typename T>
+    // void transfer(int dma_n);
+    // void transfer2(int dma_n);
 };
 
 } //namespace emu

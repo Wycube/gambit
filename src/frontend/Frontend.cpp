@@ -449,13 +449,13 @@ void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma
     float *f_output = reinterpret_cast<float*>(output);
 
     frontend->m_audio_buffer_mutex.lock();
-    // frontend->m_audio_buffer_size[frontend->m_audio_buffer_size_start] = audio_device.m_samples_l.size();
+    // frontend->m_audio_buffer_size[frontend->m_audio_buffer_size_start] = audio_device.samples_l.size();
     // frontend->m_audio_buffer_size_start = (frontend->m_audio_buffer_size_start + 1) % 100;
-    frontend->m_audio_buffer_size.push(audio_device.m_samples_l.size());
+    frontend->m_audio_buffer_size.push(audio_device.samples_l.size());
     frontend->m_audio_buffer_mutex.unlock();
 
-    if(audio_device.m_samples_l.size() < 1024) {
-        LOG_ERROR("Not enough samples for audio callback");
+    if(audio_device.samples_l.size() < 1024) {
+        // LOG_ERROR("Not enough samples for audio callback");
         return;
     }
 
@@ -498,17 +498,17 @@ void Frontend::endFrame() {
     //Calculate framerate as a moving average of the last 100 frames
     float average = 0;
     for(size_t i = 0; i < 100; i++) {
-        average += m_frame_times.peek(i);
+        average += m_frame_times.peek(i) * (i + 1);
     }
-    average /= 100.0f;
+    average /= (100.0f * 101.0f) / 2.0f;
     m_average_fps = 1.0f / average * 1000.0f;
 
     //Calculate framerate as a moving average of the last 100 frames
     average = 0;
     for(size_t i = 0; i < m_video_device.getFrameTimes().size(); i++) {
-        average += m_video_device.getFrameTimes().peek(i);
+        average += m_video_device.getFrameTimes().peek(i) * (i + 1);
     }
-    average /= (float)m_video_device.getFrameTimes().size();
+    average /= (float)(m_video_device.getFrameTimes().size() * (m_video_device.getFrameTimes().size() + 1)) / 2.0f;
     m_gba_fps = 1.0f / average * 1000.0f;
 }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Types.hpp"
-#include "Log.hpp"
 #include <type_traits>
 #include <array>
 #include <cstring>
@@ -67,9 +66,10 @@ auto match_bits(T value, const char *(&patterns)[_count], size_t no_match = _cou
                 case '>' :
                     if(excl_mask_used) break;
                     
-                    mask = generate_exclusion_mask<T>(pattern, j, length);
                     //Mask out all bits not being tested
+                    mask = generate_exclusion_mask<T>(pattern, j, length);
                     temp &= mask.second;
+
                     //Test if the bits match the exclusion pattern, with an XOR
                     match = (temp ^ mask.first) != 0;
                     excl_mask_used = true;
@@ -86,8 +86,7 @@ auto match_bits(T value, const char *(&patterns)[_count], size_t no_match = _cou
 }
 
 
-//Bit Pattern Matching via generating certain bitmasks at compile-time
-
+//Bit Pattern Matching via generating bitmasks at compile-time
 template<typename T, typename = std::enable_if<std::is_integral<T>::value>>
 struct PatternMask {
     T exclusion_bits, exclusion_mask, constant_mask, result;

@@ -14,7 +14,7 @@ class GBA;
 class Bus final {
 public:
 
-    Bus(GBA &core);
+    explicit Bus(GBA &core);
 
     void reset();
 
@@ -48,15 +48,15 @@ private:
         u8 ewram[256_KiB]; //02000000 - 0203FFFF
         u8 iwram[32_KiB];  //03000000 - 03007FFF
         u8 io[1023];       //04000000 - 040003FE
-    } m_mem;
+    } mem;
 
     //Make access to IF atomic so possibly requesting an interrupt
     //from another thread (from InputDevice) is safe.
-    std::atomic<u16> m_if;
-    u32 m_bios_open_bus;
-    // u32 m_cpu_open_bus;
-    GamePak m_pak;
-    GBA &m_core;
+    std::atomic<u16> int_flags;
+    u32 bios_open_bus;
+    // u32 cpu_open_bus;
+    GamePak pak;
+    GBA &core;
 
     template<typename T>
     auto read(u32 address) -> T;

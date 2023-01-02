@@ -40,10 +40,10 @@ public:
 
 private:
 
-    std::vector<u8> m_rom;
-    GamePakHeader m_header;
-    std::string m_title;
-    std::shared_ptr<Save> m_save;
+    std::vector<u8> rom;
+    GamePakHeader header;
+    std::string title;
+    std::shared_ptr<Save> save;
 
     void parseHeader();
     auto findSaveType() -> bool;

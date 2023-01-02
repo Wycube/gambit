@@ -13,8 +13,8 @@ public:
 
 private:
 
-    float m_host_ms[100];
-    float m_emu_ms[100];
+    float host_ms[100];
+    float emu_ms[100];
 
     void draw() override;
 };

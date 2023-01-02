@@ -30,14 +30,14 @@ public:
 
 protected:
 
-    std::vector<u8> m_data;
-    SaveType m_type;
+    std::vector<u8> data;
+    SaveType type;
 };
 
 class None final : public Save {
 public:
 
-    None() { m_type = NONE; }
+    None() { type = NONE; }
     
     void reset() override { }
     auto read(u32 address) -> u8 override { return 0; }

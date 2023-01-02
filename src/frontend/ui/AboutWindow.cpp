@@ -5,16 +5,16 @@
 
 
 AboutWindow::AboutWindow() {
-    m_name = "About";
-    m_active = false;
+    name = "About";
+    active = false;
 }
 
 void AboutWindow::draw() {
-    ImGui::OpenPopup(m_name);
+    ImGui::OpenPopup(name);
 
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    if(ImGui::BeginPopupModal(m_name, &m_active, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+    if(ImGui::BeginPopupModal(name, &active, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::Text("Game Boy Advance Emulator,");
         ImGui::Text("Copyright (c) 2021-2022 Wycube");
         ImGui::Separator();

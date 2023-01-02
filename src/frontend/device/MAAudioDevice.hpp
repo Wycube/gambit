@@ -24,11 +24,11 @@ public:
 
 // private:
 
-    ma_device m_device;
-    common::ThreadSafeRingBuffer<float, 8192> m_samples_l;
-    common::ThreadSafeRingBuffer<float, 8192> m_samples_r;
-    std::atomic<int> m_samples;
-    std::atomic<int> m_sample_counter;
+    ma_device device;
+    common::ThreadSafeRingBuffer<float, 8192> samples_l;
+    common::ThreadSafeRingBuffer<float, 8192> samples_r;
+    std::atomic<int> samples;
+    std::atomic<int> sample_counter;
 
     static void audioCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count);
 };

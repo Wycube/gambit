@@ -15,7 +15,7 @@ public:
 
 protected:
 
-    u32 m_internal_framebuffer[240 * 160];
+    u32 internal_framebuffer[240 * 160];
 };
 
 } //namespace emu

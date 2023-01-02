@@ -7,7 +7,7 @@ class Window {
 public:
 
     void update() {
-        if(!m_active) {
+        if(!active) {
             return;
         }
 
@@ -15,21 +15,21 @@ public:
     }
 
     auto getActive() -> bool* {
-        return &m_active;
+        return &active;
     }
 
     auto isActive() -> bool {
-        return m_active;
+        return active;
     }
 
     auto getName() -> const char* {
-        return m_name;
+        return name;
     }
 
 protected:
 
-    bool m_active;
-    const char *m_name;
+    bool active;
+    const char *name;
 
     virtual void draw() = 0;
 };

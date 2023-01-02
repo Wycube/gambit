@@ -9,43 +9,53 @@
 
 namespace emu {
 
-CPU::CPU(GBA &core) : m_core(core) {
+CPU::CPU(GBA &core) : core(core) {
     reset();
 }
 
 void CPU::reset() {
-    //Setup register banks
-    for(size_t i = 0; i < 16; i++) {
-        m_state.banks[0][i] = &get_reg_ref(i, MODE_SYSTEM);
-        m_state.banks[1][i] = &get_reg_ref(i, MODE_FIQ);
-        m_state.banks[2][i] = &get_reg_ref(i, MODE_IRQ);
-        m_state.banks[3][i] = &get_reg_ref(i, MODE_SUPERVISOR);
-        m_state.banks[4][i] = &get_reg_ref(i, MODE_ABORT);
-        m_state.banks[5][i] = &get_reg_ref(i, MODE_UNDEFINED);
+    state.halted = false;
+    state.cpsr.fromInt(0);
+    state.cpsr.mode = MODE_SYSTEM;
+    std::memset(state.spsr, 0, sizeof(state.spsr));
+    std::memset(state.regs, 0, sizeof(state.regs));
+    setupRegisterBanks();
+    setRegister(13, 0x03007F00);
+    setRegister(13, 0x03007FA0, MODE_IRQ);
+    setRegister(13, 0x03007FE0, MODE_SUPERVISOR);
+    setRegister(14, 0x08000000);
+    state.pc = 0x00000000;
+
+    core.debugger.attachCPUState(&state);
+}
+
+void CPU::halt() {
+    state.halted = true;
+}
+
+auto CPU::halted() -> bool {
+    return state.halted;
+}
+
+void CPU::checkForInterrupt() {
+    u16 IE = core.bus.debugRead16(0x04000200);
+    u16 IF = core.bus.debugRead16(0x04000202);
+
+    if(IE && IF) {
+        state.halted = false;
     }
-
-    m_state.halted = false;
-    m_state.cpsr.fromInt(0);
-    m_state.cpsr.mode = MODE_SYSTEM;
-    std::memset(m_state.spsr, 0, sizeof(m_state.spsr));
-    std::memset(m_state.regs, 0, sizeof(m_state.regs));
-    set_reg(13, 0x03007F00);
-    set_reg(13, 0x03007FA0, MODE_IRQ);
-    set_reg(13, 0x03007FE0, MODE_SUPERVISOR);
-    set_reg(14, 0x08000000);
-    set_reg(15, 0x08000000);
-
-    m_core.debugger.attachCPUState(&m_state);
 }
 
 void CPU::step() {
-    service_interrupt();
+    if(service_interrupt()) {
+        return;
+    }
 
-    if(!m_state.cpsr.t) {
-        u32 instruction = m_state.pipeline[0];
-        m_state.pipeline[0] = m_state.pipeline[1];
-        m_state.pipeline[1] = m_core.bus.read32(m_state.pc + 4);
-        m_state.pc += 4;
+    if(!state.cpsr.t) {
+        u32 instruction = state.pipeline[0];
+        state.pipeline[0] = state.pipeline[1];
+        state.pipeline[1] = core.bus.read32(state.pc + 4);
+        state.pc += 4;
 
         // ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
         // LOG_TRACE("PC: {:08X} | Instruction: {:08X}", m_state.pc - 8, instruction);
@@ -54,10 +64,10 @@ void CPU::step() {
             execute_arm(instruction);
         }
     } else {
-        u16 instruction = m_state.pipeline[0];
-        m_state.pipeline[0] = m_state.pipeline[1];
-        m_state.pipeline[1] = m_core.bus.read16(m_state.pc + 2);
-        m_state.pc += 2;
+        u16 instruction = state.pipeline[0];
+        state.pipeline[0] = state.pipeline[1];
+        state.pipeline[1] = core.bus.read16(state.pc + 2);
+        state.pc += 2;
 
         // ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
         // LOG_TRACE("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
@@ -65,174 +75,61 @@ void CPU::step() {
         execute_thumb(instruction);
     }
 
-    m_history[m_history_index] = m_state.pc;
-    m_history_index = (m_history_index + 1) % 32;
-}
-
-void CPU::halt() {
-    m_state.halted = true;
-}
-
-auto CPU::halted() -> bool {
-    return m_state.halted;
-}
-
-void CPU::checkForInterrupt() {
-    u16 IE = m_core.bus.debugRead16(0x04000200);
-    u16 IF = m_core.bus.debugRead16(0x04000202);
-
-    if(IE && IF) {
-        m_state.halted = false;
-    }
+    history[history_index] = state.pc;
+    history_index = (history_index + 1) % 128;
 }
 
 void CPU::flushPipeline() {
-    if(!m_state.cpsr.t) {
-        m_state.pipeline[0] = m_core.bus.read32(m_state.pc);
-        m_state.pipeline[1] = m_core.bus.read32(m_state.pc + 4);
-        m_state.pc += 4;
+    if(!state.cpsr.t) {
+        state.pipeline[0] = core.bus.read32(state.pc);
+        state.pipeline[1] = core.bus.read32(state.pc + 4);
+        state.pc += 4;
     } else {
-        m_state.pipeline[0] = m_core.bus.read16(m_state.pc);
-        m_state.pipeline[1] = m_core.bus.read16(m_state.pc + 2);
-        m_state.pc += 2;
+        state.pipeline[0] = core.bus.read16(state.pc);
+        state.pipeline[1] = core.bus.read16(state.pc + 2);
+        state.pc += 2;
     }
 }
 
-auto CPU::get_reg_ref(u8 reg, u8 mode) -> u32& {
-    reg &= 0xF;
-
-    if(mode == 0) {
-        mode = m_state.cpsr.mode;
+void CPU::setupRegisterBanks() {
+    //r0-r12, same for all modes (except FIQ)
+    for(size_t i = 0; i < 13; i++) {
+        state.banks[0][i] = &state.regs[i];
+        state.banks[1][i] = &state.regs[i];
+        state.banks[2][i] = &state.regs[i];
+        state.banks[3][i] = &state.regs[i];
+        state.banks[4][i] = &state.regs[i];
+        state.banks[5][i] = &state.regs[i];
     }
 
-    if(reg < 13) {
-        if(reg > 7 && mode == MODE_FIQ) {
-            return m_state.fiq_regs[reg - 8];
-        }
+    //r8-r12 for FIQ
+    state.banks[1][8] = &state.fiq_regs[0];
+    state.banks[1][9] = &state.fiq_regs[1];
+    state.banks[1][10] = &state.fiq_regs[2];
+    state.banks[1][11] = &state.fiq_regs[3];
+    state.banks[1][12] = &state.fiq_regs[4];
 
-        return m_state.regs[reg];
-    }
+    //Mode specific r13 and r14
+    state.banks[0][13] = &state.banked_regs[0];
+    state.banks[0][14] = &state.banked_regs[1];
+    state.banks[1][13] = &state.banked_regs[2];
+    state.banks[1][14] = &state.banked_regs[3];
+    state.banks[2][13] = &state.banked_regs[4];
+    state.banks[2][14] = &state.banked_regs[5];
+    state.banks[3][13] = &state.banked_regs[6];
+    state.banks[3][14] = &state.banked_regs[7];
+    state.banks[4][13] = &state.banked_regs[8];
+    state.banks[4][14] = &state.banked_regs[9];
+    state.banks[5][13] = &state.banked_regs[10];
+    state.banks[5][14] = &state.banked_regs[11];
 
-    if(reg == 15) {
-        return m_state.pc;
-    }
-
-    switch(mode) {
-        case MODE_USER :
-        case MODE_SYSTEM : return m_state.banked_regs[reg - 13];
-        case MODE_FIQ : return m_state.banked_regs[reg - 11];
-        case MODE_IRQ : return m_state.banked_regs[reg - 9];
-        case MODE_SUPERVISOR : return m_state.banked_regs[reg - 7];
-        case MODE_ABORT : return m_state.banked_regs[reg - 5];
-        case MODE_UNDEFINED : return m_state.banked_regs[reg - 3];
-        default : LOG_FATAL("Mode {:05X}, is not a valid mode!", mode);
-    }
-}
-
-auto CPU::get_reg_banked(u8 reg, u8 mode) -> u32& {
-    reg &= 0xF;
-
-    if(mode == 0) {
-        mode = m_state.cpsr.mode;
-    }
-
-    switch(mode) {
-        case MODE_USER :
-        case MODE_SYSTEM : return *m_state.banks[0][reg];
-        case MODE_FIQ : return *m_state.banks[1][reg];
-        case MODE_IRQ : return *m_state.banks[2][reg];
-        case MODE_SUPERVISOR : return *m_state.banks[3][reg];
-        case MODE_ABORT : return *m_state.banks[4][reg];
-        case MODE_UNDEFINED : return *m_state.banks[5][reg];
-        default : LOG_INFO("PC: {:08X}, Invalid Mode: {:02X}", m_state.pc, mode); //LOG_FATAL("PC: {:08X}, Mode {:05X}, is not a valid mode!", m_state.pc, mode);
-    }
-
-    static u32 dummy;
-
-    return dummy;
-}
-
-auto CPU::get_reg(u8 reg, u8 mode) -> u32 {
-    return get_reg_banked(reg, mode);
-    //return get_reg_ref(reg, mode);
-}
-
-void CPU::set_reg(u8 reg, u32 value, u8 mode) {
-    //Automatically align PC
-    if(reg == 15) {
-        if(value == 0) {
-            for(int i = 0; i < 32; i++) {
-                LOG_INFO("PC History [{}] : 0x{:08X}", i, m_history[(m_history_index + i) % 32]);
-            }
-
-            LOG_FATAL("Jump to BIOS at PC=0x{:08X}", get_reg_banked(15));
-        }
-
-        value = m_state.cpsr.t ? bits::align<u16>(value) : bits::align<u32>(value);
-    }
-
-    //get_reg_ref(reg, mode) = value;
-    get_reg_banked(reg, mode) = value;
-}
-
-auto CPU::get_spsr(u8 mode) -> StatusRegister& {
-    if(mode == 0) {
-        mode = m_state.cpsr.mode;
-    }
-
-    switch(mode) {
-        case MODE_USER :
-        case MODE_SYSTEM : return m_state.cpsr;
-        case MODE_FIQ : return m_state.spsr[0];
-        case MODE_IRQ : return m_state.spsr[1];
-        case MODE_SUPERVISOR : return m_state.spsr[2];
-        case MODE_ABORT : return m_state.spsr[3];
-        case MODE_UNDEFINED : return m_state.spsr[4];
-        default : LOG_FATAL("Mode {:05X}, is not a valid mode!", mode);
-    }
-}
-
-auto CPU::passed(u8 condition) const -> bool {
-    condition &= 0xF;
-
-    switch(condition) {
-        case EQ : return m_state.cpsr.z;
-        case NE : return !m_state.cpsr.z;
-        case CS : return m_state.cpsr.c;
-        case CC : return !m_state.cpsr.c;
-        case MI : return m_state.cpsr.n;
-        case PL : return !m_state.cpsr.n;
-        case VS : return m_state.cpsr.v;
-        case VC : return !m_state.cpsr.v;
-        case HI : return m_state.cpsr.c && !m_state.cpsr.z;
-        case LS : return !m_state.cpsr.c || m_state.cpsr.z;
-        case GE : return m_state.cpsr.n == m_state.cpsr.v;
-        case LT : return m_state.cpsr.n != m_state.cpsr.v;
-        case GT : return !m_state.cpsr.z && (m_state.cpsr.n == m_state.cpsr.v);
-        case LE : return m_state.cpsr.z || (m_state.cpsr.n != m_state.cpsr.v);
-        case AL : return true;
-        case NV : return false; //reserved on armv4T
-    }
-
-    return false;
-}
-
-auto CPU::mode_from_bits(u8 mode) const -> PrivilegeMode {
-    switch(mode) {
-        case MODE_USER : return MODE_USER;
-        case MODE_SYSTEM : return MODE_SYSTEM;
-        case MODE_FIQ : return MODE_FIQ;
-        case MODE_IRQ : return MODE_IRQ;
-        case MODE_SUPERVISOR : return MODE_SUPERVISOR;
-        case MODE_ABORT : return MODE_ABORT;
-        case MODE_UNDEFINED : return MODE_UNDEFINED;
-        default : LOG_FATAL("Mode {:05X}, is not a valid mode!", mode);
-    }
-}
-
-//Returns true if the CPU is currently in a privileged mode (User is the only non-privileged mode though).
-auto CPU::privileged() const -> bool {
-    return m_state.cpsr.mode != MODE_USER;
+    //r15 the same for all modes
+    state.banks[0][15] = &state.pc;
+    state.banks[1][15] = &state.pc;
+    state.banks[2][15] = &state.pc;
+    state.banks[3][15] = &state.pc;
+    state.banks[4][15] = &state.pc;
+    state.banks[5][15] = &state.pc;
 }
 
 void CPU::execute_arm(u32 instruction) {
@@ -287,18 +184,18 @@ void CPU::execute_thumb(u16 instruction) {
     }
 }
 
-void CPU::service_interrupt() {
+auto CPU::service_interrupt() -> bool {
     //IE & IF
-    u16 interrupts = m_core.bus.debugRead16(0x04000200) & m_core.bus.debugRead16(0x04000202);
-    bool ime = m_core.bus.debugRead8(0x04000208) & 1;
+    u16 interrupts = core.bus.debugRead16(0x04000200) & core.bus.debugRead16(0x04000202);
+    bool ime = core.bus.debugRead8(0x04000208) & 1;
 
-    if(!ime || interrupts == 0 || m_state.cpsr.i) {
-        return;
+    if(!ime || interrupts == 0 || state.cpsr.i) {
+        return false;
     }
 
     if(interrupts != 0) {
         //Sources
-        LOG_TRACE("Interrupt serviced at pc = 0x{:08X}", m_state.pc);
+        LOG_TRACE("Interrupt serviced at PC: 0x{:08X}, Cycle: {}", state.pc, core.scheduler.getCurrentTimestamp());
         LOG_TRACE("Sources enabled and requested:");
         for(size_t i = 0; i < 14; i++) {
             if(bits::get_bit(interrupts, i)) {
@@ -306,14 +203,129 @@ void CPU::service_interrupt() {
             }
         }
         
-        get_spsr(MODE_IRQ) = m_state.cpsr;
-        m_state.cpsr.mode = MODE_IRQ;
-        set_reg(14, m_state.cpsr.t ? get_reg(15) + 2 : get_reg(15));
-        m_state.cpsr.t = false;
-        m_state.cpsr.i = true;
-        set_reg(15, 0x00000018);
+        getSpsr(MODE_IRQ) = state.cpsr;
+        state.cpsr.mode = MODE_IRQ;
+        setRegister(14, state.cpsr.t ? state.pc + 2 : state.pc);
+        state.cpsr.t = false;
+        state.cpsr.i = true;
+        state.pc = 0x18;
         flushPipeline();
+
+        return true;
     }
+
+    return false;
+}
+
+auto CPU::getRegister(u8 reg, u8 mode) -> u32 {
+    assert(reg < 16 && "Requested invalid register!");
+
+    if(mode == 0) {
+        mode = state.cpsr.mode;
+    }
+
+    switch(mode) {
+        case MODE_USER :
+        case MODE_SYSTEM : return *state.banks[0][reg];
+        case MODE_FIQ : return *state.banks[1][reg];
+        case MODE_IRQ : return *state.banks[2][reg];
+        case MODE_SUPERVISOR : return *state.banks[3][reg];
+        case MODE_ABORT : return *state.banks[4][reg];
+        case MODE_UNDEFINED : return *state.banks[5][reg];
+        default : return 0; //Apparently invalid modes return 0
+    }
+}
+
+void CPU::setRegister(u8 reg, u32 value, u8 mode) {
+    assert(reg < 16 && "Requested invalid register!");
+
+    //Automatically align PC
+    if(reg == 15) {
+        if(value == 0) {
+            for(int i = 0; i < 128; i++) {
+                LOG_INFO("PC History [{}] : 0x{:08X}", i, history[(history_index + i) % 128]);
+            }
+
+            LOG_FATAL("Jump to BIOS at PC=0x{:08X}, Cycle {}", state.pc, core.scheduler.getCurrentTimestamp());
+        }
+
+        value = state.cpsr.t ? bits::align<u16>(value) : bits::align<u32>(value);
+    }
+
+    if(mode == 0) {
+        mode = state.cpsr.mode;
+    }
+
+    //Apparently invalid modes do nothing on write
+    switch(mode) {
+        case MODE_USER :
+        case MODE_SYSTEM : *state.banks[0][reg] = value; break;
+        case MODE_FIQ : *state.banks[1][reg] = value; break;
+        case MODE_IRQ : *state.banks[2][reg] = value; break;
+        case MODE_SUPERVISOR : *state.banks[3][reg] = value; break;
+        case MODE_ABORT : *state.banks[4][reg] = value; break;
+        case MODE_UNDEFINED : *state.banks[5][reg] = value; break;
+    }
+}
+
+auto CPU::getSpsr(u8 mode) -> StatusRegister& {
+    if(mode == 0) {
+        mode = state.cpsr.mode;
+    }
+
+    switch(mode) {
+        case MODE_USER :
+        case MODE_SYSTEM : return state.cpsr;
+        case MODE_FIQ : return state.spsr[0];
+        case MODE_IRQ : return state.spsr[1];
+        case MODE_SUPERVISOR : return state.spsr[2];
+        case MODE_ABORT : return state.spsr[3];
+        case MODE_UNDEFINED : return state.spsr[4];
+        default : LOG_FATAL("PC: {:08X}, Invalid Mode: {:02X}", state.pc, mode);
+    }
+}
+
+auto CPU::passed(u8 condition) const -> bool {
+    condition &= 0xF;
+
+    switch(condition) {
+        case EQ : return state.cpsr.z;
+        case NE : return !state.cpsr.z;
+        case CS : return state.cpsr.c;
+        case CC : return !state.cpsr.c;
+        case MI : return state.cpsr.n;
+        case PL : return !state.cpsr.n;
+        case VS : return state.cpsr.v;
+        case VC : return !state.cpsr.v;
+        case HI : return state.cpsr.c && !state.cpsr.z;
+        case LS : return !state.cpsr.c || state.cpsr.z;
+        case GE : return state.cpsr.n == state.cpsr.v;
+        case LT : return state.cpsr.n != state.cpsr.v;
+        case GT : return !state.cpsr.z && (state.cpsr.n == state.cpsr.v);
+        case LE : return state.cpsr.z || (state.cpsr.n != state.cpsr.v);
+        case AL : return true;
+        case NV : return false; //reserved on armv4T
+    }
+
+    return false;
+}
+
+auto CPU::modeFromBits(u8 mode) const -> PrivilegeMode {
+    switch(mode) {
+        case MODE_USER : return MODE_USER;
+        case MODE_SYSTEM : return MODE_SYSTEM;
+        case MODE_FIQ : return MODE_FIQ;
+        case MODE_IRQ : return MODE_IRQ;
+        case MODE_SUPERVISOR : return MODE_SUPERVISOR;
+        case MODE_ABORT : return MODE_ABORT;
+        case MODE_UNDEFINED : return MODE_UNDEFINED;
+        default : LOG_FATAL("Mode {:05X}, is not a valid mode!", mode);
+    }
+}
+
+//Returns true if the CPU is currently in a privileged mode (User is the only non-privileged mode though).
+auto CPU::privileged() const -> bool {
+    return state.cpsr.mode != MODE_USER;
 }
 
 } //namespace emu

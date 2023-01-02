@@ -5,6 +5,7 @@
 #include "emulator/core/Keypad.hpp"
 #include "emulator/core/Timer.hpp"
 #include "emulator/core/DMA.hpp"
+#include "emulator/core/SIO.hpp"
 #include "emulator/core/ppu/PPU.hpp"
 #include "emulator/core/apu/APU.hpp"
 #include "emulator/core/mem/Bus.hpp"
@@ -22,7 +23,6 @@ public:
     GBA(VideoDevice &video_device, InputDevice &input_device, AudioDevice &audio_device);
 
     void reset();
-
     void step();
     auto run(u32 cycles) -> u32;
     auto getGamePak() -> GamePak&;
@@ -39,6 +39,7 @@ public:
     Keypad keypad;
     Timer timer;
     DMA dma;
+    SIO sio;
     PPU ppu;
     APU apu;
     Bus bus;

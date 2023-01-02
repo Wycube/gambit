@@ -12,10 +12,10 @@ namespace emu {
 
 class GBA;
 
-class APU {
+class APU final {
 public:
 
-    APU(GBA &core);
+    explicit APU(GBA &core);
 
     void reset();
 
@@ -27,22 +27,22 @@ public:
 
 private:
 
-    GBA &m_core;
-    EventHandle m_update_event;
+    GBA &core;
+    EventHandle update_event;
 
-    PulseChannel m_pulse1;
-    PulseChannel m_pulse2;
-    WaveChannel m_wave;
-    NoiseChannel m_noise;
+    PulseChannel pulse1;
+    PulseChannel pulse2;
+    WaveChannel wave;
+    NoiseChannel noise;
 
-    u16 m_sndcnt_l; //NR50, NR51
-    u16 m_sndcnt_h;
-    u8 m_sndcnt_x;  //NR52
-    u16 m_sndbias;
+    u16 sndcnt_l; //NR50, NR51
+    u16 sndcnt_h;
+    u8 sndcnt_x;  //NR52
+    u16 sndbias;
 
-    std::deque<s8> m_fifo_a;
-    std::deque<s8> m_fifo_b;
-    s8 m_fifo_sample_a, m_fifo_sample_b;
+    std::deque<s8> fifo_a;
+    std::deque<s8> fifo_b;
+    s8 fifo_sample_a, fifo_sample_b;
 
     void step(u64 late);
     void sample(u64 late);

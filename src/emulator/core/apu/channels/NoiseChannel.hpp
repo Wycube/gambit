@@ -21,17 +21,17 @@ public:
 
 private:
 
-    u16 m_snd4cnt_l; //NR41, NR42
-    u16 m_snd4cnt_h; //NR43, NR44
-    bool m_enabled;
-    u8 m_current_vol;
-    u16 m_envelope_timer;
-    u16 m_length_timer;
-    u16 m_lfsr;
-    bool m_high;
+    u16 snd4cnt_l; //NR41, NR42
+    u16 snd4cnt_h; //NR43, NR44
+    bool enabled;
+    u8 current_vol;
+    u16 envelope_timer;
+    u16 length_timer;
+    u16 lfsr;
+    bool high;
 
-    Scheduler &m_scheduler;
-    EventHandle m_frequency_event;
+    Scheduler &scheduler;
+    EventHandle frequency_event;
 
     void tick(u64 late);
     void restart();

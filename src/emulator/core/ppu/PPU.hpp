@@ -12,7 +12,7 @@ class GBA;
 class PPU final {
 public:
 
-    PPU(GBA &core);
+    explicit PPU(GBA &core);
 
     void reset();
 
@@ -34,15 +34,15 @@ public:
 
 private:
 
-    PPUState m_state;
-    u8 m_win_line[240];
-    u16 m_bmp_col[240];
-    u16 m_bg_col[4][240];
-    u16 m_obj_col[240];
-    u8 m_obj_info[240];
+    PPUState state;
+    u8 win_line[240];
+    u16 bmp_col[240];
+    u16 bg_col[4][240];
+    u16 obj_col[240];
+    u8 obj_info[240];
 
-    GBA &m_core;
-    EventHandle m_update_event;
+    GBA &core;
+    EventHandle update_event;
 
     void hblankStart(u64 late);
     void setHblankFlag(u64 late);
