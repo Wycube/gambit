@@ -38,7 +38,7 @@ auto initialize() -> GLFWwindow* {
     LOG_DEBUG("OpenGL Version   : {}", glGetString(GL_VERSION));
     LOG_DEBUG("Shading Language : {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-    //Initialialization of Dear ImGui
+    //Initialize Dear ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO(); (void)io;
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
                 return 0;
             } else if(strcmp(substr, "v") == 0 || strcmp(substr, "-version") == 0) {
                 fmt::print("Game Boy Advance Emulator,\n");
-                fmt::print("Copyright (c) 2021-2022 Wycube\n");
+                fmt::print("Copyright (c) 2021-2023 Wycube\n");
                 fmt::print("\n");
                 fmt::print("Version : {}\n", common::GIT_DESC);
                 fmt::print("Branch  : {}\n", common::GIT_BRANCH);

@@ -26,7 +26,7 @@ public:
     void reset();
 
     auto generateHandle() -> EventHandle;
-    void addEvent(const EventHandle handle, EventFunc callback, u64 cycles_from_now);
+    void addEvent(const EventHandle handle, u64 cycles_from_now, EventFunc callback);
     void removeEvent(const EventHandle handle);
 
     void step(u32 cycles);

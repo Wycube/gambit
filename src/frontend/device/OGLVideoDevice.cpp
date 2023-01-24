@@ -38,7 +38,7 @@ void OGLVideoDevice::setPixel(int x, int y, u32 color) {
     internal_framebuffer[x + y * 240] = color;
 }
 
-void OGLVideoDevice::setLine(int y, u32 *colors) {
+void OGLVideoDevice::setLine(int y, const u32 *colors) {
     std::lock_guard lock(update_mutex);
     
     std::memcpy(&internal_framebuffer[y * 240], colors, 240 * sizeof(u32));

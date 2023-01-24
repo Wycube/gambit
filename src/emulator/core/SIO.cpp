@@ -45,14 +45,14 @@ void SIO::scheduleDummyTransfer() {
     int transfer_length = bits::get_bit<12>(siocnt) ? 32 : 8;
     u64 cycles = (bits::get_bit<0>(siocnt) ? 64 : 8) * transfer_length;
     
-    core.scheduler.addEvent(event, [this](u64) {
+    core.scheduler.addEvent(event, cycles, [this](u64) {
         //Disable start bit
         siocnt &= ~0x80;
 
         if(bits::get_bit<14>(siocnt)) {
             core.bus.requestInterrupt(INT_SERIAL);
         }
-    }, cycles);
+    });
 }
 
 } //namespace emu

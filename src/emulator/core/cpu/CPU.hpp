@@ -27,11 +27,18 @@ public:
     void step();
     void flushPipeline();
 
+    auto readIO(u32 address) -> u8;
+    void writeIO(u32 address, u8 value);
+
 private:
 
     GBA &core;
     u32 history[128];
     int history_index = 0;
+
+    u16 int_enable;
+    u16 int_flag;
+    bool master_enable;
 
     void setupRegisterBanks();
     void execute_arm(u32 instruction);

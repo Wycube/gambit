@@ -31,7 +31,7 @@ public:
 
     auto getLoadedPak() -> GamePak&;
     void loadROM(std::vector<u8> &&rom);
-    void loadBIOS(const std::vector<u8> &bios);
+    void loadBIOS(const std::vector<u8> &data);
 
     //Same as other read/writes but doesn't tick the scheduler
     auto debugRead8(u32 address) -> u8;
@@ -43,20 +43,18 @@ public:
 
 private:
 
-    struct Memory {
-        u8 bios[16_KiB];   //00000000 - 00003FFF
-        u8 ewram[256_KiB]; //02000000 - 0203FFFF
-        u8 iwram[32_KiB];  //03000000 - 03007FFF
-        u8 io[1023];       //04000000 - 040003FE
-    } mem;
+    u8 bios[16_KiB];   //00000000 - 00003FFF
+    u8 ewram[256_KiB]; //02000000 - 0203FFFF
+    u8 iwram[32_KiB];  //03000000 - 03007FFF
 
-    //Make access to IF atomic so possibly requesting an interrupt
-    //from another thread (from InputDevice) is safe.
+    //Make access to IF atomic so requesting an interrupt
+    //from another thread (InputDevice) is safe.
     std::atomic<u16> int_flags;
     u32 bios_open_bus;
     // u32 cpu_open_bus;
-    GamePak pak;
+    u16 waitcnt;
     GBA &core;
+    GamePak pak;
 
     template<typename T>
     auto read(u32 address) -> T;

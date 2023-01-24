@@ -138,9 +138,9 @@ void PulseChannel::tick(u64 late) {
     const u16 frequency = (2048 - shadow_freq) * 16;
 
     if(enabled) {
-        scheduler.addEvent(frequency_event, [this](u64 late) {
+        scheduler.addEvent(frequency_event, frequency - late, [this](u64 late) {
             tick(late);
-        }, frequency - late);
+        });
     }
 }
 
@@ -158,9 +158,9 @@ void PulseChannel::restart() {
     //TODO: Sweep overflow check if sweep time is not zero (i.e. is enabled)
 
     scheduler.removeEvent(frequency_event);
-    scheduler.addEvent(frequency_event, [this](u64 late) {
+    scheduler.addEvent(frequency_event, frequency, [this](u64 late) {
         tick(late);
-    }, frequency);
+    });
 }
 
 } //namespace emu

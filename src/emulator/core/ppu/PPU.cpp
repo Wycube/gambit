@@ -56,7 +56,7 @@ void PPU::reset() {
     std::memset(state.oam, 0, sizeof(state.oam));
     
     update_event = core.scheduler.generateHandle();
-    core.scheduler.addEvent(update_event, [this](u64 late) { hblankStart(late); }, 960);
+    core.scheduler.addEvent(update_event, 960, [this](u64 late) { hblankStart(late); });
     LOG_DEBUG("PPU has event handle: {}", update_event);
 }
 
@@ -228,7 +228,6 @@ void PPU::writePalette(u32 address, T value) {
             state.palette[(address + i) % sizeof(state.palette)] = (value >> i * 8) & 0xFF;
         }
     }
-    
 }
 
 template<typename T>
@@ -241,12 +240,12 @@ void PPU::writeVRAM(u32 address, T value) {
         
         if(bitmap) {
             if(address < 80_KiB || (address >= 96_KiB && address < 112_KiB)) {
-                state.vram[address % 96_KiB]     = value;
+                state.vram[address % 96_KiB + 0] = value;
                 state.vram[address % 96_KiB + 1] = value;
             }
         } else {
             if(address < 64_KiB) {
-                state.vram[address]     = value;
+                state.vram[address + 0] = value;
                 state.vram[address + 1] = value;
             }
         }
@@ -284,7 +283,7 @@ void PPU::hblankStart(u64 late) {
             compositeLine();
         } else {
             //Forced Blank
-            static u32 blank[240] = {0};
+            static constexpr u32 blank[240] = {0};
             core.video_device.setLine(state.line, blank);
         }
     }
@@ -298,7 +297,7 @@ void PPU::hblankStart(u64 late) {
         core.dma.onHBlank();
     }
 
-    core.scheduler.addEvent(update_event, [this](u64 late) { setHblankFlag(late); }, 46 - late);
+    core.scheduler.addEvent(update_event, 46 - late, [this](u64 late) { setHblankFlag(late); });
 }
 
 void PPU::setHblankFlag(u64 late) {
@@ -309,7 +308,7 @@ void PPU::setHblankFlag(u64 late) {
         core.bus.requestInterrupt(INT_LCD_HB);
     }
 
-    core.scheduler.addEvent(update_event, [this](u64 late) { hblankEnd(late); }, 226 - late);
+    core.scheduler.addEvent(update_event, 226 - late, [this](u64 late) { hblankEnd(late); });
 }
 
 void PPU::hblankEnd(u64 late) {
@@ -343,6 +342,7 @@ void PPU::hblankEnd(u64 late) {
     if(state.line == 160) {
         state.dispstat |= 1;
         core.video_device.presentFrame();
+        core.debug.onVblank();
         core.dma.onVBlank();
 
         if(bits::get_bit<3>(state.dispstat)) {
@@ -357,7 +357,7 @@ void PPU::hblankEnd(u64 late) {
         core.dma.disableVideoCapture();
     }
 
-    core.scheduler.addEvent(update_event, [this](u64 late) { hblankStart(late); }, 960 - late);
+    core.scheduler.addEvent(update_event, 960 - late, [this](u64 late) { hblankStart(late); });
 }
 
 void PPU::clearBuffers() {

@@ -458,7 +458,7 @@ void CPU::thumbLongBranch(u16 instruction) {
     if(second) {
         const u32 lr = getRegister(14);
         setRegister(14, (getRegister(15) - 2) | 1);
-        state.pc = lr + (bits::get<0, 11>(instruction) << 1);
+        setRegister(15, lr + (bits::get<0, 11>(instruction) << 1));
         flushPipeline();
     } else {
         setRegister(14, getRegister(15) + bits::sign_extend<23, s32>(bits::get<0, 11>(instruction) << 12));

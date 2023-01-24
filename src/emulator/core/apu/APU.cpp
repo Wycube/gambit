@@ -22,8 +22,8 @@ void APU::reset() {
     sndbias = 0x200;
 
     update_event = core.scheduler.generateHandle();
-    core.scheduler.addEvent(update_event, [this](u64 late) { step(late); }, 32768);
-    core.scheduler.addEvent(update_event, [this](u64 late) { sample(late); }, 512);
+    core.scheduler.addEvent(update_event, 32768, [this](u64 late) { step(late); });
+    core.scheduler.addEvent(update_event, 512, [this](u64 late) { sample(late); });
     LOG_DEBUG("APU has event handle: {}", update_event);
 }
 
@@ -82,7 +82,8 @@ void APU::write(u32 address, u8 value) {
             break;
         case 0x84 : sndcnt_x = value & 0x80; break;
         case 0x88 : sndbias = (sndbias & 0xFF00) | (value & ~1); break;
-        case 0x89 : sndbias = (sndbias & 0x00FF) | (value & 0xC3) << 8;
+        case 0x89 : 
+            sndbias = (sndbias & 0x00FF) | (value & 0xC3) << 8;
             core.audio_device.setSampleRate(bits::get<14, 2>(sndbias));
             LOG_DEBUG("Sampling rate {}KHz selected", 32 << bits::get<14, 2>(sndbias));
             break;
@@ -133,9 +134,9 @@ void APU::step(u64 late) {
     wave.step();
     noise.step();
 
-    core.scheduler.addEvent(update_event, [this](u64 late) {
+    core.scheduler.addEvent(update_event, 32768 - late, [this](u64 late) {
         this->step(late);
-    }, 32768 - late);
+    });
 }
 
 void APU::sample(u64 late) {
@@ -149,10 +150,15 @@ void APU::sample(u64 late) {
     if(bits::get_bit<13>(sndcnt_l)) sample_l += pulse2.amplitude();
     if(bits::get_bit<14>(sndcnt_l)) sample_l += wave.amplitude();
     if(bits::get_bit<15>(sndcnt_l)) sample_l += noise.amplitude();
+    
     sample_r *= 1 + (sndcnt_l & 7);
     sample_l *= 1 + ((sndcnt_l >> 4) & 7);
     int volume_shift = 2 - bits::get<0, 2>(sndcnt_h);
-    if(volume_shift != 3) sample_r >>= volume_shift; sample_l >>= volume_shift;
+    if(volume_shift != 3) {
+        sample_r >>= volume_shift;
+        sample_l >>= volume_shift;
+    }
+
     if(bits::get_bit<8>(sndcnt_h)) sample_r += fifo_sample_a << bits::get_bit<2>(sndcnt_h);
     if(bits::get_bit<9>(sndcnt_h)) sample_l += fifo_sample_a << bits::get_bit<2>(sndcnt_h);
     if(bits::get_bit<12>(sndcnt_h)) sample_r += fifo_sample_b << bits::get_bit<3>(sndcnt_h);
@@ -162,9 +168,9 @@ void APU::sample(u64 late) {
 
     core.audio_device.pushSample(sample_l / (float)0x800, sample_r / (float)0x800);
 
-    core.scheduler.addEvent(update_event, [this](u64 late) {
-        this->sample(late);
-    }, (512 >> bits::get<14, 2>(sndbias)) - late);
+    core.scheduler.addEvent(update_event, (512 >> bits::get<14, 2>(sndbias)) - late, [this](u64 late) {
+        sample(late);
+    });
 }
 
 } //namespace emu

@@ -128,13 +128,13 @@ void Timer::startTimer(u8 timer) {
     }
 
     //2-cycle delay before timer starts
-    core.scheduler.addEvent(timer_events[timer], [this, timer](u64 late) {
+    core.scheduler.addEvent(timer_events[timer], 2, [this, timer](u64 late) {
         u64 cycles_till_overflow = (0x10000 - timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[timer])];
         timer_start[timer] = core.scheduler.getCurrentTimestamp();
-        core.scheduler.addEvent(timer_events[timer], [this, timer](u64 late) {
+        core.scheduler.addEvent(timer_events[timer], cycles_till_overflow, [this, timer](u64 late) {
             timerOverflowEvent(timer, late);
-        }, cycles_till_overflow);
-    }, 2);
+        });
+    });
 }
 
 void Timer::stopTimer(u8 timer) {
@@ -150,9 +150,9 @@ void Timer::timerOverflowEvent(u8 timer, u64 late) {
 
     u64 cycles_till_overflow = (0x10000 - timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[timer])];
     timer_start[timer] = core.scheduler.getCurrentTimestamp();
-    core.scheduler.addEvent(timer_events[timer], [this, timer](u64 late) {
+    core.scheduler.addEvent(timer_events[timer], cycles_till_overflow - late, [this, timer](u64 late) {
         timerOverflowEvent(timer, late);
-    }, cycles_till_overflow - late);
+    });
 }
 
 void Timer::timerOverflow(u8 timer) {

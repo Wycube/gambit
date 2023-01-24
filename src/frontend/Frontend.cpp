@@ -8,12 +8,17 @@
 #include <backends/imgui_impl_opengl3.h>
 
 
-EmuThread::EmuThread(emu::GBA &core) : m_core(core) {
+EmuThread::EmuThread(std::shared_ptr<emu::GBA> core) : m_core(core) {
     m_cycle_diff = 0;
+    fastforward = false;
+    m_running.store(false);
 
-    m_core.debugger.onBreak([this] () {
-        m_running.store(false);
-        m_clock_speed.store(0);
+    m_core->debug.setCallback([this]() {
+        m_mutex.lock();
+        cmd_queue.clear();
+        cmd_queue.push(TERMINATE);
+        m_cv.notify_one();
+        m_mutex.unlock();
     });
 }
 
@@ -33,69 +38,97 @@ void EmuThread::start() {
         }
     }
 
-    m_clock_speed.store(0);
-    m_clock_start = m_core.scheduler.getCurrentTimestamp();
-    m_start = std::chrono::steady_clock::now();
-    m_running.store(true);
-    m_cycle_diff = 0;
+    // m_clock_speed.store(0);
+    // m_clock_start = m_core.scheduler.getCurrentTimestamp();
+    // m_start = std::chrono::steady_clock::now();
 
     m_thread = std::thread([this]() {
-        while(m_running.load()) {
-            if(std::chrono::steady_clock::now() >= (m_start + std::chrono::seconds(1))) {
-                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_start);
-                m_clock_speed.store((m_core.scheduler.getCurrentTimestamp() - m_clock_start) / ((float)duration.count() / 1000000.0f));
-                m_clock_start = m_core.scheduler.getCurrentTimestamp();
-                m_start = std::chrono::steady_clock::now();
-            }
-
-            // auto start = std::chrono::steady_clock::now();
-            std::unique_lock lock(m_mutex);
-            m_cv.wait(lock, [&]() { return m_run; });
-            m_run = false;
-            lock.unlock();
-            // LOG_INFO("Waited for {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
-
-            u32 cycles_left = (16777216 / 64) + m_cycle_diff;
-            // auto start = std::chrono::steady_clock::now();
-            u32 actual = m_core.run(cycles_left);
-            // LOG_INFO("Ran {} cycles in {}ms", cycles_left, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
-            m_cycle_diff = (s32)cycles_left - actual;
-            // m_core.run(16777216 / 64);
-        }
+        processCommands();
     });
 }
 
 void EmuThread::stop() {
-    //Don't do anything if not running
-    if(!m_thread.joinable()) {
-        return;
-    }
+    sendCommand(TERMINATE);
+    while(m_running.load()) { }
+}
 
-    m_running.
-    store(false);
-    runNext();
-    m_thread.join();
-    m_clock_speed.store(0);
+void EmuThread::sendCommand(Command cmd) {
+    m_mutex.lock();
+    cmd_queue.push(cmd);
+    m_cv.notify_one();
+    m_mutex.unlock();
+}
+
+void EmuThread::setFastforward(bool enable) {
+    fastforward.store(enable);
+}
+
+auto EmuThread::fastforwarding() -> bool {
+    return fastforward.load();
 }
 
 auto EmuThread::running() const -> bool {
     return m_running.load();
 }
 
-void EmuThread::runNext() {
-    m_mutex.lock();
-    m_run = true;
-    m_cv.notify_one();
-    m_mutex.unlock();
-}
-
 auto EmuThread::getClockSpeed() const -> u64 {
     return m_clock_speed.load();
 }
 
+
+void EmuThread::processCommands() {
+    bool running = true;
+    m_cycle_diff = 0;
+    cmd_queue.clear();
+    m_running.store(true);
+
+    while(running) {
+        // if(std::chrono::steady_clock::now() >= (m_start + std::chrono::seconds(1))) {
+        //     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_start);
+        //     m_clock_speed.store((m_core.scheduler.getCurrentTimestamp() - m_clock_start) / ((float)duration.count() / 1000000.0f));
+        //     m_clock_start = m_core.scheduler.getCurrentTimestamp();
+        //     m_start = std::chrono::steady_clock::now();
+        // }
+
+        Command cmd;
+        if(fastforward.load()) {
+            // auto start = std::chrono::steady_clock::now();
+            u32 actual = m_core->run(16777216 / 64);
+            // LOG_INFO("Ran {} cycles in {}ms", actual, (std::chrono::steady_clock::now() - start).count() / 1000000.0f);
+
+            if(cmd_queue.size() == 0) {
+                continue;
+            }
+
+            cmd = cmd_queue.pop();
+        } else {
+            std::unique_lock lock(m_mutex);
+            m_cv.wait(lock, [this]() { return cmd_queue.size() > 0; });
+            cmd = cmd_queue.pop();
+            lock.unlock();
+            // LOG_INFO("Waited for {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
+        }
+
+        switch(cmd) {
+            case RUN : 
+                if(!fastforward) {
+                    m_cycle_diff += 16777216 / 64;
+                    // auto start = std::chrono::steady_clock::now();
+                    u32 actual = m_core->run(m_cycle_diff);
+                    // LOG_INFO("Ran {} cycles in {}ms", actual, (std::chrono::steady_clock::now() - start).count() / 1000000.0f);
+                    m_cycle_diff = m_cycle_diff - actual;
+                }
+                break;
+
+            case TERMINATE : running = false; break;
+        }
+    }
+
+    m_running.store(false);
+}
+
 Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_audio_device(audio_sync, this),
-m_core(m_video_device, m_input_device, m_audio_device), 
-m_debug_ui(m_core), m_emu_thread(m_core) {
+m_core(std::make_shared<emu::GBA>(m_video_device, m_input_device, m_audio_device)), m_debug_ui(m_core), m_emu_thread(m_core) {
     LOG_DEBUG("Initializing Frontend...");
 
     //Set window stuff
@@ -111,19 +144,14 @@ m_debug_ui(m_core), m_emu_thread(m_core) {
     m_show_status_bar = true;
     m_show_cpu_debug = false;
     m_show_disasm_debug = false;
-    m_show_bkpt_debug = false;
     m_show_scheduler_debug = false;
     // m_show_about = false;
     m_show_pak_info = false;
     m_show_settings = true;
-    m_user_data = {this, &m_core};
+    m_user_data = {this, m_core};
 
-    // m_frame_times_start = 0;
-    // m_audio_buffer_size_start = 0;
     std::memset(m_audio_samples_l, 0, sizeof(m_audio_samples_l));
     std::memset(m_audio_samples_r, 0, sizeof(m_audio_samples_r));
-    // std::memset(m_audio_buffer_size, 0, sizeof(m_audio_buffer_size));
-    // std::memset(m_frame_times, 0, sizeof(m_frame_times));
 }
 
 void Frontend::init() {
@@ -146,22 +174,22 @@ void Frontend::mainloop() {
 }
 
 void Frontend::loadROM(std::vector<u8> &&rom) {
-    m_core.loadROM(std::move(rom));
+    m_core->loadROM(std::move(rom));
 
     //Set Window title to the title in the ROM's header
-    glfwSetWindowTitle(m_window, fmt::format("gba  [{}] - {}", common::GIT_DESC, m_core.getGamePak().getTitle()).c_str());
+    glfwSetWindowTitle(m_window, fmt::format("gba  [{}] - {}", common::GIT_DESC, m_core->getGamePak().getTitle()).c_str());
 }
 
 void Frontend::loadBIOS(const std::vector<u8> &bios) {
-    m_core.loadBIOS(bios);
+    m_core->loadBIOS(bios);
 }
 
 void Frontend::loadSave(const std::string &filename) {
-    m_core.loadSave(filename);
+    m_core->loadSave(filename);
 }
 
 void Frontend::writeSave(const std::string &filename) {
-    m_core.writeSave(filename);
+    m_core->writeSave(filename);
 }
 
 void Frontend::drawInterface() {
@@ -184,6 +212,9 @@ void Frontend::drawInterface() {
             m_emu_thread.start();
             m_audio_device.start();
         }
+        if(ImGui::MenuItem("Fast Forward")) {
+            m_emu_thread.setFastforward(!m_emu_thread.fastforwarding());
+        }
         if(ImGui::MenuItem("Stop")) {
             m_audio_device.stop();
             m_emu_thread.stop();
@@ -197,7 +228,7 @@ void Frontend::drawInterface() {
         }
 
         if(!m_emu_thread.running() && ImGui::MenuItem("Next Frame", "N")) {
-            m_core.run(280896); //1 frame of cycles
+            m_core->run(280896); //1 frame of cycles
         }
 
         ImGui::EndMenu();
@@ -217,15 +248,6 @@ void Frontend::drawInterface() {
             if(ImGui::MenuItem("Disassembly")) {
                 m_show_disasm_debug = true;
             }
-            if(ImGui::MenuItem("Breakpoints")) {
-                m_show_bkpt_debug = true;
-            }
-            // if(ImGui::MenuItem("Memory Viewer")) {
-            //     show_mem_debug = true;
-            // }
-            // if(ImGui::MenuItem("Framebuffer")) {
-            //     show_vram_debug = true;
-            // }
             if(ImGui::MenuItem("Scheduler")) {
                 m_show_scheduler_debug = true;
             }
@@ -249,13 +271,18 @@ void Frontend::drawInterface() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ImGui::GetStyle().WindowPadding.x, 0));
     if(m_show_status_bar && ImGui::BeginViewportSideBar("##StatusBar", ImGui::GetMainViewport(), ImGuiDir_Down, ImGui::GetFrameHeight(), ImGuiWindowFlags_MenuBar)) {
         if(ImGui::BeginMenuBar()) {
+            //Use UI font but make it not jump around
+            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
             ImGui::Text("FPS: %4.1f", m_average_fps);
             ImGui::Dummy(ImVec2(5, 0));
             ImGui::Text("FPS: %4.1f", m_gba_fps);
             ImGui::Dummy(ImVec2(5, 0));
-            ImGui::Text("Clock Speed: %zuhz", m_emu_thread.getClockSpeed());
+            // ImGui::Text("Clock Speed: %zuhz", m_emu_thread.getClockSpeed());
+            // ImGui::Dummy(ImVec2(5, 0));
+            ImGui::Text("%5.1f%%", m_gba_fps / 59.737f * 100.0f); //(float)m_emu_thread.getClockSpeed() / 16777216.0f * 100.0f);
             ImGui::Dummy(ImVec2(5, 0));
-            ImGui::Text("%.1f%%", (float)m_emu_thread.getClockSpeed() / 16777216.0f * 100.0f);
+            ImGui::Text("CPU: %.1f%%", m_core->debug.getCPUUsage().back());
+            ImGui::PopFont();
 
             ImGui::EndMenuBar();
         }
@@ -274,11 +301,6 @@ void Frontend::drawInterface() {
 
     bool running = m_emu_thread.running();
 
-    if(m_show_bkpt_debug) {
-        if(ImGui::Begin("Breakpoints", &m_show_bkpt_debug)) m_debug_ui.drawBreakpoints(running);
-        ImGui::End();
-    }
-
     if(m_show_cpu_debug) {
         if(ImGui::Begin("CPU Debugger", &m_show_cpu_debug)) m_debug_ui.drawCPUDebugger(running);
         ImGui::End();
@@ -289,16 +311,6 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
-    // if(show_mem_debug) {
-    //     if(ImGui::Begin("Memory Viewer", &show_mem_debug)) debug_ui.drawMemoryViewer();
-    //     ImGui::End();
-    // }
-
-    // if(show_vram_debug) {
-    //     if(ImGui::Begin("Framebuffer", &show_vram_debug)) debug_ui.drawPPUState();
-    //     ImGui::End();
-    // }
-
     if(m_show_scheduler_debug) {
         if(ImGui::Begin("Scheduler", &m_show_scheduler_debug)) m_debug_ui.drawSchedulerViewer();
         ImGui::End();
@@ -306,7 +318,7 @@ void Frontend::drawInterface() {
 
     if(m_show_pak_info) {
         if(ImGui::Begin("Pak Info", &m_show_pak_info)) {
-            emu::GamePak &pak = m_core.getGamePak();
+            emu::GamePak &pak = m_core->getGamePak();
             const emu::GamePakHeader &header = pak.getHeader();
             ImGui::Text("Size: %u bytes", pak.size());
             ImGui::Text("Internal Title: %s", pak.getTitle().c_str());
@@ -321,23 +333,23 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
-    // if(ImGui::Begin("Input")) {
-    //     // const char *gamepads[GLFW_JOYSTICK_LAST + 1];
-    //     std::string devices;
-    //     devices = "Keyboard";
-    //     for(int i = 0; i < GLFW_JOYSTICK_LAST; i++) {
-    //         if(glfwJoystickPresent(i) == GLFW_TRUE) {
-    //             // gamepads[i] = glfwGetJoystickName(i);
-    //             devices += '\0';
-    //             devices += glfwGetJoystickName(i);
-    //         }
-    //     }
+    if(ImGui::Begin("Input")) {
+        // const char *gamepads[GLFW_JOYSTICK_LAST + 1];
+        std::string devices;
+        devices = "Keyboard";
+        for(int i = 0; i < GLFW_JOYSTICK_LAST; i++) {
+            if(glfwJoystickPresent(i) == GLFW_TRUE) {
+                // gamepads[i] = glfwGetJoystickName(i);
+                devices += '\0';
+                devices += glfwGetJoystickName(i);
+            }
+        }
 
-    //     static int current;
+        static int current;
 
-    //     ImGui::Combo("Input Devices", &current, devices.c_str());
-    // }
-    // ImGui::End();
+        ImGui::Combo("Input Devices", &current, devices.c_str());
+    }
+    ImGui::End();
 
 
     // ---------- Settings (Under Construction) ----------
@@ -411,21 +423,20 @@ void Frontend::drawInterface() {
 
     float values_1[100];
     float values_2[100];
-    // std::memcpy(values_1, &m_frame_times[m_frame_times_start], (100 - m_frame_times_start) * sizeof(float));
-    // std::memcpy(&values_1[100 - m_frame_times_start], m_frame_times, m_frame_times_start * sizeof(float));
+    float values_3[100];
     m_frame_times.copy(values_1);
     m_video_device.getFrameTimes().copy(values_2);
+    m_core->debug.getCPUUsage().copy(values_3);
 
     m_metrics_window.setHostTimes(values_1);
     m_metrics_window.setEmulatorTimes(values_2);
+    m_metrics_window.setCPUUsage(values_3);
     m_metrics_window.update();
 
     if(ImGui::Begin("Audio Buffer Stats")) {
         float sizes[100];
 
         m_audio_buffer_mutex.lock();
-        // std::memcpy(sizes, &m_audio_buffer_size[m_audio_buffer_size_start], (100 - m_audio_buffer_size_start) * sizeof(float));
-        // std::memcpy(&sizes[100 - m_audio_buffer_size_start], m_audio_buffer_size, m_audio_buffer_size_start * sizeof(float));
         m_audio_buffer_size.copy(sizes);
         m_audio_buffer_mutex.unlock();
 
@@ -442,15 +453,13 @@ void Frontend::drawInterface() {
 
 void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
     Frontend *frontend = reinterpret_cast<Frontend*>(device->pUserData);
-    frontend->m_emu_thread.runNext();
+    frontend->m_emu_thread.sendCommand(RUN);
 
     MAAudioDevice &audio_device = frontend->m_audio_device;
 
     float *f_output = reinterpret_cast<float*>(output);
 
     frontend->m_audio_buffer_mutex.lock();
-    // frontend->m_audio_buffer_size[frontend->m_audio_buffer_size_start] = audio_device.samples_l.size();
-    // frontend->m_audio_buffer_size_start = (frontend->m_audio_buffer_size_start + 1) % 100;
     frontend->m_audio_buffer_size.push(audio_device.samples_l.size());
     frontend->m_audio_buffer_mutex.unlock();
 
@@ -491,25 +500,23 @@ void Frontend::endFrame() {
     auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(now - m_start);
     m_start = now;
 
-    // m_frame_times[m_frame_times_start] = (float)frame_time.count() / 1000.0f;
-    // m_frame_times_start = (m_frame_times_start + 1) % 100;
     m_frame_times.push((float)frame_time.count() / 1000.0f);
 
     //Calculate framerate as a moving average of the last 100 frames
-    float average = 0;
+    m_average_fps = 0;
     for(size_t i = 0; i < 100; i++) {
-        average += m_frame_times.peek(i) * (i + 1);
+        m_average_fps += m_frame_times.peek(i);
     }
-    average /= (100.0f * 101.0f) / 2.0f;
-    m_average_fps = 1.0f / average * 1000.0f;
+    // (1 / (average / 100)) * 1000
+    m_average_fps = 100000.0f / m_average_fps;
 
     //Calculate framerate as a moving average of the last 100 frames
-    average = 0;
-    for(size_t i = 0; i < m_video_device.getFrameTimes().size(); i++) {
-        average += m_video_device.getFrameTimes().peek(i) * (i + 1);
+    const auto &gba_frame_times = m_video_device.getFrameTimes();
+    m_gba_fps = 0;
+    for(size_t i = 0; i < gba_frame_times.size(); i++) {
+        m_gba_fps += gba_frame_times.peek(i);
     }
-    average /= (float)(m_video_device.getFrameTimes().size() * (m_video_device.getFrameTimes().size() + 1)) / 2.0f;
-    m_gba_fps = 1.0f / average * 1000.0f;
+    m_gba_fps = (1000.0f * (float)gba_frame_times.size()) / m_gba_fps;
 }
 
 void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {

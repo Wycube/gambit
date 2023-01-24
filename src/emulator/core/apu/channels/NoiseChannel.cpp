@@ -83,9 +83,9 @@ void NoiseChannel::tick(u64 late) {
     u8 r = bits::get<0, 4>(snd4cnt_h);
     const u32 frequency = (r == 0 ? 16 : r * 32) << (bits::get<4, 4>(snd4cnt_h) + 1);
 
-    scheduler.addEvent(frequency_event, [this](u64 late) {
+    scheduler.addEvent(frequency_event, frequency, [this](u64 late) {
         tick(late);
-    }, frequency);
+    });
 }
 
 void NoiseChannel::restart() {
@@ -100,9 +100,9 @@ void NoiseChannel::restart() {
     frequency = r == 0 ? frequency / 2 : frequency * r;
 
     scheduler.removeEvent(frequency_event);
-    scheduler.addEvent(frequency_event, [this](u64 late) {
+    scheduler.addEvent(frequency_event, frequency, [this](u64 late) {
         tick(late);
-    }, frequency);
+    });
 }
 
 } //namespace emu

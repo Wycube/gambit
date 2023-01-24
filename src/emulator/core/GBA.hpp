@@ -2,6 +2,7 @@
 
 #include "emulator/core/Scheduler.hpp"
 #include "emulator/core/debug/Debugger.hpp"
+#include "emulator/core/debug/DebugInterface.hpp"
 #include "emulator/core/Keypad.hpp"
 #include "emulator/core/Timer.hpp"
 #include "emulator/core/DMA.hpp"
@@ -36,6 +37,7 @@ public:
     AudioDevice &audio_device;
     Scheduler scheduler;
     dbg::Debugger debugger;
+    DebugInterface debug;
     Keypad keypad;
     Timer timer;
     DMA dma;
@@ -44,6 +46,8 @@ public:
     APU apu;
     Bus bus;
     CPU cpu;
+
+    u32 cycles_active;
 };
 
 } //namespace emu

@@ -17,35 +17,45 @@
 #include <deque>
 
 
+enum Command {
+    RUN,
+    TERMINATE
+};
+
 class EmuThread final {
 public:
 
-    EmuThread(emu::GBA &core);
+    EmuThread(std::shared_ptr<emu::GBA> core);
     ~EmuThread();
 
     void start();
     void stop();
     void pause();
+    void sendCommand(Command cmd);
+    void setFastforward(bool enable);
+    auto fastforwarding() -> bool;
 
     auto running() const -> bool;
-    void runNext();
     auto getClockSpeed() const -> u64;
 
 private:
 
-    emu::GBA &m_core;
+    void processCommands();
+
+    std::shared_ptr<emu::GBA> m_core;
 
     std::thread m_thread;
     std::atomic<bool> m_running;
 
     std::condition_variable m_cv;
     std::mutex m_mutex;
-    bool m_run;
     s32 m_cycle_diff;
 
     std::chrono::steady_clock::time_point m_start;
     u64 m_clock_start;
     std::atomic<u64> m_clock_speed;
+    common::ThreadSafeRingBuffer<Command, 20> cmd_queue;
+    std::atomic<bool> fastforward;
 };
 
 class Frontend final {
@@ -76,7 +86,7 @@ private:
     OGLVideoDevice m_video_device;
     GLFWInputDevice m_input_device;
     MAAudioDevice m_audio_device;
-    emu::GBA m_core;
+    std::shared_ptr<emu::GBA> m_core;
     EmuThread m_emu_thread;
 
     DebuggerUI m_debug_ui;
@@ -85,17 +95,11 @@ private:
     bool m_show_status_bar;
     bool m_show_cpu_debug;
     bool m_show_disasm_debug;
-    bool m_show_bkpt_debug;
     bool m_show_scheduler_debug;
     bool m_show_pak_info;
     bool m_show_settings;
 
-
-    // float m_frame_times[100];
-    // size_t m_frame_times_start;
     common::FixedRingBuffer<float, 100> m_frame_times;
-    // float m_audio_buffer_size[100];
-    // size_t m_audio_buffer_size_start;
     common::FixedRingBuffer<float, 100> m_audio_buffer_size;
     std::mutex m_audio_buffer_mutex;
     float m_audio_samples_l[750];

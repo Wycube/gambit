@@ -1,9 +1,12 @@
 #include "GamePak.hpp"
+#include "emulator/core/GBA.hpp"
 #include "save/EEPROM.hpp"
 #include "save/Flash.hpp"
 #include "save/SRAM.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
+
+constexpr u32 SRAM_WAIT_CYCLES[4] = {4, 3, 2, 8};
 
 
 namespace emu {
@@ -14,6 +17,8 @@ template auto GamePak::read<u32>(u32 address) -> u32;
 template void GamePak::write<u8>(u32 address, u8 value);
 template void GamePak::write<u16>(u32 address, u16 value);
 template void GamePak::write<u32>(u32 address, u32 value);
+
+GamePak::GamePak(Scheduler &scheduler) : scheduler(scheduler) { }
 
 template<typename T>
 auto GamePak::read(u32 address) -> T {
@@ -39,7 +44,6 @@ auto GamePak::read(u32 address) -> T {
     }
 
     T value = 0;
-
     for(size_t i = 0; i < sizeof(T); i++) {
         value |= (rom[aligned + i] << i * 8);
     }
@@ -67,6 +71,11 @@ void GamePak::write(u32 address, T value) {
             }
             break;
     }
+}
+
+void GamePak::updateWaitstates(u16 waitcnt) {
+    sram_waitstate = SRAM_WAIT_CYCLES[waitcnt & 3];
+    // ws1_waits = 
 }
 
 auto GamePak::getHeader() -> const GamePakHeader& {

@@ -15,7 +15,7 @@ public:
 
     void reset();
     auto running() -> bool;
-    void step();
+    void step(u32 cycles);
 
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
@@ -43,9 +43,6 @@ private:
     } channel[4];
 
     void startTransfer(int dma_n);
-    // template<typename T>
-    // void transfer(int dma_n);
-    // void transfer2(int dma_n);
 };
 
 } //namespace emu

@@ -5,14 +5,13 @@
 
 namespace emu {
 
-Bus::Bus(GBA &core) : core(core) {
+Bus::Bus(GBA &core) : core(core), pak(core.scheduler) {
     reset();
 }
 
 void Bus::reset() {
-    std::memset(&mem.ewram, 0, sizeof(mem.ewram));
-    std::memset(&mem.iwram, 0, sizeof(mem.iwram));
-    std::memset(&mem.io, 0, sizeof(mem.io));
+    std::memset(ewram, 0, sizeof(ewram));
+    std::memset(iwram, 0, sizeof(iwram));
 }
 
 void Bus::cycle(u32 cycles) {
@@ -72,12 +71,12 @@ void Bus::loadROM(std::vector<u8> &&rom) {
     pak.loadROM(std::move(rom));
 }
 
-void Bus::loadBIOS(const std::vector<u8> &bios) {
-    if(bios.size() != sizeof(mem.bios)) {
-        LOG_FATAL("Failed to load BIOS: Invalid Size ({} bytes)!", bios.size());
+void Bus::loadBIOS(const std::vector<u8> &data) {
+    if(data.size() != sizeof(bios)) {
+        LOG_FATAL("Failed to load BIOS: Invalid Size ({} bytes)!", data.size());
     }
 
-    std::memcpy(mem.bios, bios.data(), sizeof(mem.bios));
+    std::memcpy(bios, data.data(), sizeof(bios));
 
     //After startup, BIOS reads return the ARM instruction at 0xF4 (open bus).
     bios_open_bus = 0xE129F000;
@@ -121,10 +120,10 @@ auto Bus::read(u32 address) -> T {
         case 0x0 : //BIOS
             if(address < 0x4000) {
                 if(core.cpu.state.pc < 0x4000) {
-                    memory_region = mem.bios;
-                    region_size = sizeof(mem.bios);
-                    bios_open_bus = mem.bios[sub_address] | (mem.bios[sub_address + 1] << 8) |
-                        (mem.bios[sub_address + 2] << 16) | (mem.bios[sub_address + 3] << 24);
+                    memory_region = bios;
+                    region_size = sizeof(bios);
+                    bios_open_bus = bios[sub_address] | (bios[sub_address + 1] << 8) |
+                        (bios[sub_address + 2] << 16) | (bios[sub_address + 3] << 24);
                 } else {
                     // LOG_ERROR("BIOS Open Bus read");
                     return bios_open_bus;
@@ -135,12 +134,12 @@ auto Bus::read(u32 address) -> T {
         break;
         case 0x2 : //On-Board WRAM
             core.scheduler.step(sizeof(T) == 4 ? 5 : 2);
-            memory_region = mem.ewram;
-            region_size = sizeof(mem.ewram);
+            memory_region = ewram;
+            region_size = sizeof(ewram);
             break;
         case 0x3 : //On-Chip WRAM
-            memory_region = mem.iwram;
-            region_size = sizeof(mem.iwram);
+            memory_region = iwram;
+            region_size = sizeof(iwram);
             break;
         case 0x4 : 
             for(size_t i = 0; i < sizeof(T); i++) {
@@ -189,12 +188,12 @@ void Bus::write(u32 address, T value) {
         break;
         case 0x2 : //On-Board WRAM
             core.scheduler.step(sizeof(T) == 4 ? 5 : 2);
-            memory_region = mem.ewram;
-            region_size = sizeof(mem.ewram);
+            memory_region = ewram;
+            region_size = sizeof(ewram);
         break;
         case 0x3 : //On-Chip WRAM
-            memory_region = mem.iwram;
-            region_size = sizeof(mem.iwram);
+            memory_region = iwram;
+            region_size = sizeof(iwram);
         break;
         case 0x4 : 
             for(size_t i = 0; i < sizeof(T); i++) {
@@ -228,7 +227,7 @@ void Bus::write(u32 address, T value) {
 }
 
 auto Bus::readIO(u32 address) -> u8 {
-    if(address >= sizeof(mem.io)) {
+    if(address >= 0x400) {
         // LOG_FATAL("Open Bus IO reads unimplemented, Address: 0x04{:06X}", address);
         return 0;
     }
@@ -236,17 +235,9 @@ auto Bus::readIO(u32 address) -> u8 {
     if(address <= 0x56) {
         return core.ppu.readIO(address);
     }
-
-    //APU registers
     if(address >= 0x60 && address <= 0xA7) {
         return core.apu.read(address);
     }
-
-    //SIOCNT stub (for AGS Aging Cart Tester)
-    // if(address == 0x128) {
-    //     return 0;
-    // }
-
     if(address >= 0xB0 && address < 0xE0) {
         return core.dma.read8(address);
     }
@@ -271,11 +262,21 @@ auto Bus::readIO(u32 address) -> u8 {
         return (int_flags.load() >> 8) & 0xFF;
     }
 
-    return mem.io[address];
+    //Post-boot flag
+    if(address == 0x300) {
+        return 0;
+    }
+
+    if(address >= 0x200 && address <= 0x20B) {
+        return core.cpu.readIO(address);
+    }
+
+    // LOG_FATAL("Read from unimplemented IO at address: 0x04{:06X}", address);
+    return 0;
 }
 
 void Bus::writeIO(u32 address, u8 value) {
-    if(address >= sizeof(mem.io)) {
+    if(address >= 0x400) {
         return;
     }
 
@@ -283,7 +284,6 @@ void Bus::writeIO(u32 address, u8 value) {
         core.ppu.writeIO(address, value);
         return;
     }
-    //APU registers
     if(address >= 0x60 && address <= 0xA7) {
         core.apu.write(address, value);
     }
@@ -305,12 +305,6 @@ void Bus::writeIO(u32 address, u8 value) {
         core.sio.write8(address, value);
         return;
     }
-    if((address & ~3) == 0x208) {
-        if(address == 0x208) {
-            mem.io[address] = value & 1;
-        }
-        return;
-    }
 
     //IF
     if(address == 0x202) {
@@ -322,6 +316,26 @@ void Bus::writeIO(u32 address, u8 value) {
         return;
     }
 
+    //WAITCNT
+    if(address == 0x204) {
+        // LOG_INFO("Write to WAITCNT");
+        waitcnt &= 0xFF00;
+        waitcnt |= value;
+
+        // static u8 cycles[] = {4, 3, 2, 8};
+
+        // LOG_ERROR("SRAM waits: {}", cycles[waitcnt & 3]);
+        // pak.updateWaitstates(waitcnt);
+    }
+    if(address == 0x205) {
+        // LOG_INFO("Write to WAITCNT");
+        waitcnt &= 0xFF;
+        waitcnt |= value << 8;
+        waitcnt &= 0xFF7F; //Cart type flag
+    
+        // LOG_ERROR("Prefetch: {}", bits::get_bit<14>(waitcnt));
+    }
+
     //HALTCNT
     if(address == 0x301) {
         if(value >> 7 == 0) {
@@ -329,7 +343,12 @@ void Bus::writeIO(u32 address, u8 value) {
         }
     }
 
-    mem.io[address] = value;
+    if(address >= 0x200 && address <= 0x20B) {
+        core.cpu.writeIO(address, value);
+        return;
+    }
+
+    // LOG_FATAL("Write to unimplemented IO at address: 0x04{:06X}", address);
 }
 
 } //namespace emu

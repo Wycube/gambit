@@ -1,5 +1,6 @@
 #include "DebugInterface.hpp"
 #include "emulator/core/GBA.hpp"
+#include "common/Log.hpp"
 
 
 namespace emu {
@@ -58,15 +59,35 @@ auto DebugInterface::getBreakpoints() -> std::vector<Breakpoint> {
     return copy;
 }
 
+void DebugInterface::setCallback(std::function<void ()> &&callback) {
+    on_break = callback;
+}
+
 auto DebugInterface::onStep() -> bool {
-    u32 pc = core.cpu.state.pc;
+    u32 pc = core.cpu.state.pc - (core.cpu.state.cpsr.t ? 2 : 4);
 
     if(breakpoints.count(pc) != 0 && breakpoints[pc].enabled) {
         //Unconditional Breakpoints do not have a condition function defined
-        return breakpoints[pc].condition ? breakpoints[pc].condition(core) : true;
+        Breakpoint &bkpt = breakpoints[pc];
+        // return breakpoints[pc].condition ? breakpoints[pc].condition(core) : true;
+        if(!bkpt.condition || (bkpt.condition && bkpt.condition(core))) {
+            if(on_break) { on_break(); }
+            return true;
+        }
     }
 
     return false;
+}
+
+auto DebugInterface::getCPUUsage() const -> const common::ThreadSafeRingBuffer<float, 100>& {
+    return cpu_usage;
+}
+
+void DebugInterface::onVblank() {
+    u64 total_cycles = core.scheduler.getCurrentTimestamp() - frame_start;
+    cpu_usage.push((float)core.cycles_active / (float)total_cycles * 100.0f);
+    frame_start = core.scheduler.getCurrentTimestamp();
+    core.cycles_active = 0;
 }
 
 auto DebugInterface::getRegister(u8 reg, u8 mode) -> u32 {
@@ -84,10 +105,31 @@ auto DebugInterface::getRegister(u8 reg, u8 mode) -> u32 {
         case MODE_SUPERVISOR : return *core.cpu.state.banks[3][reg];
         case MODE_ABORT : return *core.cpu.state.banks[4][reg];
         case MODE_UNDEFINED : return *core.cpu.state.banks[5][reg];
-        default : return 0; //Apparently invalid modes return 0
+        default : LOG_FATAL("Requesting a register from an invalid mode!");
     }
 }
 
 //void DebugInterface::setRegister(u8 reg, u8 mode, u32 value) {}
+
+auto DebugInterface::getCurrentStatus() -> StatusRegister {
+    return core.cpu.state.cpsr;
+}
+
+auto DebugInterface::getSavedStatus(u8 mode) -> StatusRegister {
+    if(mode == 0) {
+        mode = core.cpu.state.cpsr.mode;
+    }
+
+    switch(mode) {
+        case MODE_USER :
+        case MODE_SYSTEM : return core.cpu.state.cpsr;
+        case MODE_FIQ : return core.cpu.state.spsr[0];
+        case MODE_IRQ : return core.cpu.state.spsr[1];
+        case MODE_SUPERVISOR : return core.cpu.state.spsr[2];
+        case MODE_ABORT : return core.cpu.state.spsr[3];
+        case MODE_UNDEFINED : return core.cpu.state.spsr[4];
+        default : LOG_FATAL("Requesting an SPSR from an invalid mode!", core.cpu.state.pc, mode);
+    }
+}
 
 } //namespace emu

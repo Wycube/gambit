@@ -24,9 +24,7 @@ void CPU::reset() {
     setRegister(13, 0x03007FA0, MODE_IRQ);
     setRegister(13, 0x03007FE0, MODE_SUPERVISOR);
     setRegister(14, 0x08000000);
-    state.pc = 0x00000000;
-
-    core.debugger.attachCPUState(&state);
+    state.pc = 0x08000000;
 }
 
 void CPU::halt() {
@@ -88,6 +86,28 @@ void CPU::flushPipeline() {
         state.pipeline[0] = core.bus.read16(state.pc);
         state.pipeline[1] = core.bus.read16(state.pc + 2);
         state.pc += 2;
+    }
+}
+
+auto CPU::readIO(u32 address) -> u8 {
+    switch(address) {
+        case 0x200 : return int_enable & 0xFF;
+        case 0x201 : return int_enable >> 8;
+        case 0x202 : return int_flag & 0xFF;
+        case 0x203 : return int_flag >> 8;
+        case 0x208 : return master_enable;
+    }
+
+    return 0;
+}
+
+void CPU::writeIO(u32 address, u8 value) {
+    switch(address) {
+        case 0x200 : int_enable = (int_enable & 0xFF00) | value; break;
+        case 0x201 : int_enable = (int_enable & 0x00FF) | (value << 8); break;
+        case 0x202 : int_flag &= ~value; break;
+        case 0x203 : int_flag &= ~(value << 8); break;
+        case 0x208 : master_enable = value & 1;
     }
 }
 
@@ -186,10 +206,9 @@ void CPU::execute_thumb(u16 instruction) {
 
 auto CPU::service_interrupt() -> bool {
     //IE & IF
-    u16 interrupts = core.bus.debugRead16(0x04000200) & core.bus.debugRead16(0x04000202);
-    bool ime = core.bus.debugRead8(0x04000208) & 1;
+    u16 interrupts = int_enable & core.bus.debugRead16(0x04000202);
 
-    if(!ime || interrupts == 0 || state.cpsr.i) {
+    if(!master_enable || interrupts == 0 || state.cpsr.i) {
         return false;
     }
 
@@ -232,7 +251,7 @@ auto CPU::getRegister(u8 reg, u8 mode) -> u32 {
         case MODE_SUPERVISOR : return *state.banks[3][reg];
         case MODE_ABORT : return *state.banks[4][reg];
         case MODE_UNDEFINED : return *state.banks[5][reg];
-        default : return 0; //Apparently invalid modes return 0
+        default : LOG_FATAL("Invalid mode at PC={:08X}", state.pc);
     }
 }
 
@@ -241,6 +260,8 @@ void CPU::setRegister(u8 reg, u32 value, u8 mode) {
 
     //Automatically align PC
     if(reg == 15) {
+        value = state.cpsr.t ? bits::align<u16>(value) : bits::align<u32>(value);
+
         if(value == 0) {
             for(int i = 0; i < 128; i++) {
                 LOG_INFO("PC History [{}] : 0x{:08X}", i, history[(history_index + i) % 128]);
@@ -248,8 +269,6 @@ void CPU::setRegister(u8 reg, u32 value, u8 mode) {
 
             LOG_FATAL("Jump to BIOS at PC=0x{:08X}, Cycle {}", state.pc, core.scheduler.getCurrentTimestamp());
         }
-
-        value = state.cpsr.t ? bits::align<u16>(value) : bits::align<u32>(value);
     }
 
     if(mode == 0) {
@@ -265,6 +284,7 @@ void CPU::setRegister(u8 reg, u32 value, u8 mode) {
         case MODE_SUPERVISOR : *state.banks[3][reg] = value; break;
         case MODE_ABORT : *state.banks[4][reg] = value; break;
         case MODE_UNDEFINED : *state.banks[5][reg] = value; break;
+        default : LOG_FATAL("Invalid mode at PC={:08X}", state.pc);
     }
 }
 

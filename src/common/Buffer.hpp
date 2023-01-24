@@ -54,10 +54,7 @@ class RingBuffer {
 public:
 
     RingBuffer() {
-        head = 0;
-        tail = 0;
-        buf_size = 0;
-        std::memset(data, 0, sizeof(data));
+        clear();
     }
 
     inline void push(T value) {
@@ -71,13 +68,14 @@ public:
         head = (head + 1) % _capacity;
     }
 
-    inline void pop() {
-        if(buf_size == 0) {
-            return;
-        }
+    inline auto pop() -> T {
+        assert(buf_size != 0 && "Attempt to pop element from empty RingBuffer!");
 
+        T &temp = data[tail];
         tail = (tail + 1) % _capacity;
         buf_size--;
+
+        return temp;
     }
 
     inline auto peek(size_t index) const -> T {
@@ -115,6 +113,13 @@ public:
         return data[head == 0 ? _capacity - 1 : head - 1];
     }
 
+    inline void clear() {
+        head = 0;
+        tail = 0;
+        buf_size = 0;
+        std::memset(data, 0, sizeof(data));
+    }
+
     inline auto size() const -> size_t {
         return buf_size;
     }
@@ -140,9 +145,9 @@ public:
         m_buffer.push(value);
     }
 
-    void pop() {
+    auto pop() -> T {
         std::lock_guard lock(m_access_mutex);
-        m_buffer.pop();
+        return m_buffer.pop();
     }
 
     auto peek(size_t index) const -> T {
@@ -168,6 +173,11 @@ public:
     auto back() const -> T {
         std::lock_guard lock(m_access_mutex);
         return m_buffer.back();
+    }
+
+    void clear() {
+        std::lock_guard lock(m_access_mutex);
+        m_buffer.clear();
     }
 
     auto size() const -> size_t {

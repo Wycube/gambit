@@ -87,9 +87,9 @@ void WaveChannel::sample(u64 late) {
     const u32 sample_rate = (2048 - bits::get<0, 11>(snd3cnt_x)) * 8;
     wave_pos = (wave_pos + 1) % (bits::get_bit<5>(snd3cnt_l) ? 64 : 32);
 
-    scheduler.addEvent(sample_event, [this](u64 late) {
+    scheduler.addEvent(sample_event, sample_rate - late, [this](u64 late) {
         sample(late);
-    }, sample_rate - late);
+    });
 }
 
 void WaveChannel::restart() {
@@ -100,9 +100,9 @@ void WaveChannel::restart() {
     const u32 sample_rate = (2048 - bits::get<0, 11>(snd3cnt_x)) * 8;
 
     scheduler.removeEvent(sample_event);
-    scheduler.addEvent(sample_event, [this](u64 late) {
+    scheduler.addEvent(sample_event, sample_rate, [this](u64 late) {
         sample(late);
-    }, sample_rate);
+    });
 }
 
 } //namespace emu

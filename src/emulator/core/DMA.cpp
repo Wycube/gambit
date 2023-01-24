@@ -3,7 +3,7 @@
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
 
-//Internal Memory (27 bit address) or Any Memory (28 bit address)
+//Internal Memory (27-bit address) or Any Memory except SRAM (28-bit address)
 static constexpr u32 SOURCE_ADDRESS_MASK[4] = {0x07FFFFFF, 0x0FFFFFFF, 0x0FFFFFFF, 0x0FFFFFFF};
 static constexpr u32 DESTINATION_ADDRESS_MASK[4] = {0x07FFFFFF, 0x07FFFFFF, 0x07FFFFFF, 0x0FFFFFFF};
 static constexpr u16 LENGTH_MASK[4] = {0x3FFF, 0x3FFF, 0x3FFF, 0xFFFF};
@@ -42,48 +42,56 @@ void adjustAddress(u32 &address, u8 adjust_type, u8 amount) {
     }
 }
 
-void DMA::step() {
-    //Get current DMA channel highest priority
-    int current = 0;
-    for(int i = 0; i < 4; i++) {
-        if(channel[i].active) {
-            current = i;
+void DMA::step(u32 cycles) {
+    u64 target = core.scheduler.getCurrentTimestamp() + cycles;
+
+    while(core.scheduler.getCurrentTimestamp() < target) {
+        //Get current DMA channel highest priority
+        int current = -1;
+        for(int i = 0; i < 4; i++) {
+            if(channel[i].active) {
+                current = i;
+                break;
+            }
+        }
+
+        if(current == -1) {
             break;
         }
-    }
 
-    bool audio_dma = (current == 1 || current == 2) && bits::get<12, 2>(channel[current].control) == 3;
-    bool transfer_size = audio_dma ? true : bits::get_bit<10>(channel[current].control);
-    u32 control = channel[current]._source >= 0x08000000 ? channel[current].control & ~0x180 : channel[current].control;
+        bool audio_dma = (current == 1 || current == 2) && bits::get<12, 2>(channel[current].control) == 3;
+        bool transfer_size = bits::get_bit<10>(channel[current].control) | audio_dma;
+        u32 control = channel[current]._source >= 0x08000000 ? channel[current].control & ~0x180 : channel[current].control;
 
-    if(transfer_size) {
-        core.bus.write32(channel[current]._destination, core.bus.read32(channel[current]._source));
-        adjustAddress(channel[current]._source, bits::get<7, 2>(control), 4);
-        adjustAddress(channel[current]._destination, audio_dma ? 2 : bits::get<5, 2>(control), 4);
-    } else {
-        core.bus.write16(channel[current]._destination, core.bus.read16(channel[current]._source));
-        adjustAddress(channel[current]._source, bits::get<7, 2>(control), 2);
-        adjustAddress(channel[current]._destination, bits::get<5, 2>(control), 2);
-    }
-
-    channel[current]._length--;
-
-    if(channel[current]._length == 0) {
-        LOG_TRACE("Finished on cycle: {}", core.scheduler.getCurrentTimestamp());
-
-        channel[current].active = false;
-
-        if(bits::get_bit<9>(control)) {
-            if(bits::get<5, 2>(control) == 3) {
-                channel[current]._destination = channel[current].destination & ~(transfer_size ? 3 : 1);
-            }
-            channel[current]._length = channel[current].length;
+        if(transfer_size) {
+            core.bus.write32(channel[current]._destination, core.bus.read32(channel[current]._source));
+            adjustAddress(channel[current]._source, bits::get<7, 2>(control), 4);
+            adjustAddress(channel[current]._destination, audio_dma ? 2 : bits::get<5, 2>(control), 4);
         } else {
-            channel[current].control &= ~0x8000;
+            core.bus.write16(channel[current]._destination, core.bus.read16(channel[current]._source));
+            adjustAddress(channel[current]._source, bits::get<7, 2>(control), 2);
+            adjustAddress(channel[current]._destination, bits::get<5, 2>(control), 2);
         }
 
-        if(bits::get_bit<14>(control)) {
-            core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << current));
+        channel[current]._length--;
+
+        if(channel[current]._length == 0) {
+            LOG_TRACE("DMA {} finished on cycle: {}", current, core.scheduler.getCurrentTimestamp());
+
+            channel[current].active = false;
+
+            if(bits::get_bit<9>(control)) {
+                if(bits::get<5, 2>(control) == 3) {
+                    channel[current]._destination = channel[current].destination & ~(transfer_size ? 3 : 1);
+                }
+                channel[current]._length = channel[current].length;
+            } else {
+                channel[current].control &= ~0x8000;
+            }
+
+            if(bits::get_bit<14>(control)) {
+                core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << current));
+            }
         }
     }
 }
@@ -184,14 +192,6 @@ void DMA::onTimerOverflow(int fifo) {
         channel[1].control |= 0x8000;
         channel[1]._length = 4;
         startTransfer(1);
-
-        // core.scheduler.addEvent(channel[1].event, [this](u64 late) { 
-        //     channel[1].active = true;
-        
-        //     core.scheduler.addEvent(channel[1].event, [this](u64) {
-        //         transfer2(1);
-        //     }, 10 - late);
-        // }, 2);
     }
 
     if(bits::get<12, 2>(channel[2].control) == 3
@@ -201,94 +201,18 @@ void DMA::onTimerOverflow(int fifo) {
         channel[2].control |= 0x8000;
         channel[2]._length = 4;
         startTransfer(2);
-
-        // core.scheduler.addEvent(channel[2].event, [this](u64 late) { 
-        //     channel[2].active = true;
-        
-        //     core.scheduler.addEvent(channel[2].event, [this](u64) {
-        //         transfer2(2);
-        //     }, 10 - late);
-        // }, 2);
     }
 }
 
 void DMA::startTransfer(int dma_n) {
-    u32 length = channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : channel[dma_n].length;
-    u32 transfer_time = 6 + (length - 1) * 2; //2N + 2(n - 1)S + xI (+ 2 cycles before the transfer starts)
-    bool transfer_size = bits::get_bit<10>(channel[dma_n].control);
+    // u32 length = channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : channel[dma_n].length;
+    // u32 transfer_time = 6 + (length - 1) * 2; //2N + 2(n - 1)S + xI (+ 2 cycles before the transfer starts)
+    // bool transfer_size = bits::get_bit<10>(channel[dma_n].control);
 
-    core.scheduler.addEvent(channel[dma_n].event, [this, dma_n, transfer_size, transfer_time](u64 late) {
+    core.scheduler.addEvent(channel[dma_n].event, 2, [this, dma_n](u64 late) {
         channel[dma_n].active = true;
-        LOG_TRACE("DMA started on cycle: {}", core.scheduler.getCurrentTimestamp());
-    
-        core.scheduler.addEvent(channel[dma_n].event, [this, dma_n, transfer_size](u64) {
-            // if(transfer_size) {
-            //     transfer<u32>(dma_n);
-            // } else {
-            //     transfer<u16>(dma_n);
-            // }
-            LOG_TRACE("Should've finished cycle: {}", core.scheduler.getCurrentTimestamp());
-        }, transfer_time - 2 - late);
-    }, 2);
+        LOG_TRACE("DMA {} started on cycle: {}", dma_n, core.scheduler.getCurrentTimestamp());
+    });
 }
-
-// template<typename T>
-// void DMA::transfer(int dma_n) {
-//     static_assert(sizeof(T) == 2 || sizeof(T) == 4);
-//     u32 source = channel[dma_n]._source;
-//     u32 destination = channel[dma_n]._destination;
-//     u32 control = source >= 0x08000000 ? channel[dma_n].control & ~0x180 : channel[dma_n].control;
-//     u32 length = channel[dma_n]._length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : channel[dma_n]._length & LENGTH_MASK[dma_n];
-//     LOG_TRACE("Completing DMA transfer from {:08X} to {:08X} with word count {} and transfer size {} bytes", source, destination, length, sizeof(T));
-
-//     for(u32 i = 0; i < length; i++) {
-//         if constexpr(sizeof(T) == 2) {
-//             core.bus.debugWrite16(destination, core.bus.debugRead16(source));
-//             adjustAddress(source, bits::get<7, 2>(control), 2);
-//             adjustAddress(destination, bits::get<5, 2>(control), 2);
-//         } else if constexpr(sizeof(T) == 4) {
-//             core.bus.debugWrite32(destination, core.bus.debugRead32(source));
-//             adjustAddress(source, bits::get<7, 2>(control), 4);
-//             adjustAddress(destination, bits::get<5, 2>(control), 4);
-//         }
-//     }
-
-//     channel[dma_n]._source = source;
-//     channel[dma_n]._destination = destination;
-//     channel[dma_n].active = false;
-
-//     if(bits::get_bit<9>(control)) {
-//         if(bits::get<5, 2>(control) == 3) {
-//             channel[dma_n]._destination = channel[dma_n].destination & ~(sizeof(T) == 4 ? 3 : 1);
-//         }
-//         channel[dma_n]._length = channel[dma_n].length;
-//     } else {
-//         channel[dma_n].control &= ~0x8000;
-//     }
-
-
-//     if(bits::get_bit<14>(control)) {
-//         core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << dma_n));
-//     }
-// }
-
-// void DMA::transfer2(int dma_n) {
-//     u32 source = channel[dma_n]._source & SOURCE_ADDRESS_MASK[dma_n];
-//     u32 destination = channel[dma_n]._destination & DESTINATION_ADDRESS_MASK[dma_n];
-//     u32 control = source >= 0x08000000 ? channel[dma_n].control & ~0x180 : channel[dma_n].control;
-
-//     for(size_t i = 0; i < 4; i++) {
-//         core.bus.debugWrite32(destination, core.bus.debugRead32(source));
-//         adjustAddress(source, bits::get<7, 2>(control), 4);
-//     }
-
-//     channel[dma_n]._source = source;
-//     channel[dma_n]._destination = destination;
-//     channel[dma_n].active = false;
-
-//     if(bits::get_bit<14>(control)) {
-//         core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << dma_n));
-//     }
-// }
 
 } //namespace emu

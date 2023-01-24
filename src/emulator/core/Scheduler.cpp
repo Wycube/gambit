@@ -18,7 +18,7 @@ auto Scheduler::generateHandle() -> EventHandle {
     return next_handle++;
 }
 
-void Scheduler::addEvent(const EventHandle handle, EventFunc callback, u64 cycles_from_now) {
+void Scheduler::addEvent(const EventHandle handle, u64 cycles_from_now, EventFunc callback) {
     events.push_back(Event{handle, callback, current_timestamp + cycles_from_now});
     std::sort(events.begin(), events.end(), [](const Event &a, const Event &b) {
         return a.scheduled_timestamp > b.scheduled_timestamp;

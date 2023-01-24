@@ -10,11 +10,13 @@ public:
 
     void setHostTimes(const float *times);
     void setEmulatorTimes(const float *times);
+    void setCPUUsage(const float *times);
 
 private:
 
     float host_ms[100];
     float emu_ms[100];
+    float cpu_usage[100];
 
     void draw() override;
 };

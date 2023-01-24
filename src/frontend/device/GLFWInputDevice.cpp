@@ -79,8 +79,7 @@ void GLFWInputDevice::keyCallback(GLFWwindow *window, int key, int scancode, int
     CallbackUserData *user_data = reinterpret_cast<CallbackUserData*>(glfwGetWindowUserPointer(window));
 
     if(user_data != nullptr && action != GLFW_REPEAT) {
-        emu::GBA *core = reinterpret_cast<emu::GBA*>(user_data->core);
-        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(core->input_device);
+        GLFWInputDevice &device = dynamic_cast<GLFWInputDevice&>(user_data->core->input_device);
 
         if(device.joystick_connected) {
             return;

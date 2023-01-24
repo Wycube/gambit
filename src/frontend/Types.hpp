@@ -1,7 +1,9 @@
 #pragma once
 
+#include "emulator/core/GBA.hpp"
+
 
 struct CallbackUserData {
     void *frontend;
-    void *core;
+    std::shared_ptr<emu::GBA> core;
 };

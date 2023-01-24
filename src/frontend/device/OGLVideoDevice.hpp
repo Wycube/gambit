@@ -15,7 +15,7 @@ public:
 
     void clear(u32 color) override;
     void setPixel(int x, int y, u32 color) override;
-    void setLine(int y, u32 *colors) override;
+    void setLine(int y, const u32 *colors) override;
     void presentFrame() override;
 
     auto getTextureID() -> GLuint;

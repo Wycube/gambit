@@ -29,8 +29,8 @@ inline auto get_mode_str(u8 mode_bits) -> std::string {
 class DebuggerUI {
 public:
 
-    DebuggerUI(emu::GBA &gba) : m_debugger(gba.debugger), m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba.video_device)) {
-        m_region_sizes[7] = m_gba.getGamePak().size();
+    DebuggerUI(std::shared_ptr<emu::GBA> gba) : m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba->video_device)) {
+        m_region_sizes[7] = m_gba->getGamePak().size();
         
         //Metroid: Fusion
         // m_debugger.addBreakpoint(0x0800D558); //Jump to address 0, sometimes
@@ -51,6 +51,7 @@ public:
         // m_debugger.addBreakpoint(0x0800D8BC);
 
         // m_debugger.addBreakpoint(0x08000b22);
+        // m_gba->debug.setBreakpoint(0x08000000);
     }
 
     void drawScreen() {
@@ -71,55 +72,13 @@ public:
         ImGui::Image((void*)(intptr_t)m_video_device.getTextureID(), ImVec2(new_width, new_height));
     }
 
-    void drawPPUState() {
-        ImGui::Text("Mode: %i", m_debugger.read8(0x4000000) & 0x7);
-        ImGui::Text("DSPCNT: %04X", m_debugger.read16(0x4000000));
-        ImGui::Text("WININ: %04X", m_debugger.read16(0x40000048));
-        ImGui::Text("WINOUT: %04X", m_debugger.read16(0x400004A));
-    }
-
-    void drawBreakpoints(bool running) {
-        if(running) {
-            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-        }
-
-        const std::vector<u32> &bkpts = m_debugger.getBreakpoints();
-
-        ImGui::Text("Breakpoints");
-        ImGui::Separator();
-
-        static u32 address_input;
-        ImGui::InputScalar("##NewBreakpointAddress_InputU32", ImGuiDataType_U32, &address_input, 0, 0, "%08X", ImGuiInputTextFlags_CharsHexadecimal);
-        address_input &= ~1;
-        ImGui::SameLine();
-
-        if(ImGui::Button("Add")) {
-            m_debugger.addBreakpoint(address_input);
-        }
-        ImGui::Separator();
-
-        for(size_t i = bkpts.size() - 1; i >= 0; i--) {
-            if(ImGui::Button("Delete")) {
-                m_debugger.removeBreakpoint(bkpts[i]);
-                continue;
-            }
-
-            ImGui::SameLine();
-            ImGui::Text("%zu : 0x%08X", i, bkpts[i]);
-        }
-
-        if(running) {
-            ImGui::PopItemFlag();
-        }
-    }
-
     void drawCPUDebugger(bool running) {
         if(running) {
             ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         }
 
         if(ImGui::Button("Step")) {
-            m_gba.step();
+            m_gba->step();
         }
 
         if(running) {
@@ -143,10 +102,10 @@ public:
 
             for(u8 i = 0; i < 8; i++) {
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", i, m_debugger.getCPURegister(i));
+                ImGui::Text("r%-2i: %08X", i, m_gba->debug.getRegister(i, mode));
                 
                 ImGui::TableNextColumn();
-                ImGui::Text("r%-2i: %08X", 8 + i, m_debugger.getCPURegister(8 + i));
+                ImGui::Text("r%-2i: %08X", 8 + i, m_gba->debug.getRegister(8 + i, mode));
             }
 
             ImGui::EndTable();
@@ -154,8 +113,8 @@ public:
 
         ImGui::Spacing();
 
-        u32 cpsr = m_debugger.getCPUCPSR();
-        u32 spsr = m_debugger.getCPUSPSR(mode);
+        u32 cpsr = m_gba->debug.getCurrentStatus().asInt(); //.getCPUCPSR();
+        u32 spsr = m_gba->debug.getSavedStatus(mode).asInt(); //m_debugger.getCPUSPSR(mode);
         static constexpr char flag_name[7] = {'N', 'Z', 'C', 'V', 'I', 'F', 'T'};
         static constexpr u8 flag_bit[7] = {31, 30, 29, 28, 7, 6, 5};
 
@@ -189,14 +148,14 @@ public:
             if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
         }
 
-        ImGui::Spacing();
+        // ImGui::Spacing();
 
-        if(!running) {
-            u32 sp = m_debugger.getCPURegister(13);
-            for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
-                ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
-            }
-        }
+        // if(!running) {
+        //     u32 sp = m_gba.debug.getRegister(13, mode);
+        //     for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
+        //         ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
+        //     }
+        // }
 
         ImGui::PopFont();
 
@@ -310,11 +269,13 @@ public:
             ImGui::SameLine();
         }
 
+        u32 pc = m_gba->debug.getRegister(15);
+
         if(follow_pc || ImGui::Button("Go to PC")) {
-            address_input = m_debugger.getCPURegister(15) - (use_thumb ? 2 : 4);
+            address_input = pc - (use_thumb ? 2 : 4);
         }
 
-        emu::GamePak &pak = m_gba.getGamePak();
+        emu::GamePak &pak = m_gba->getGamePak();
 
         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
 
@@ -342,32 +303,33 @@ public:
 
                     ImGui::TableNextColumn();
 
-                    if(address == m_debugger.getCPURegister(15)) { 
+                    if(address == pc) { 
                         //Fetch
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
-                    } else if(address == m_debugger.getCPURegister(15) - instr_size) {
+                    } else if(address == pc - instr_size) {
                         //Decode
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
-                    } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
+                    } else if(address == pc - instr_size * 2) {
                         //Execute
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
                     }
 
                     //Instruction in hexadecimal
-                    u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
+                    auto debugger = m_gba->debugger;
+                    u32 bytes = thumb ? debugger.read16(address) : debugger.read32(address);
                     if(instr_size == 2) {
                         ImGui::Text("%s", fmt::format("{2:02X} {3:02X}", 
-                            m_debugger.read8(address + 3), m_debugger.read8(address + 2), 
-                            m_debugger.read8(address + 1), m_debugger.read8(address + 0)).c_str());
+                            debugger.read8(address + 3), debugger.read8(address + 2), 
+                            debugger.read8(address + 1), debugger.read8(address + 0)).c_str());
                     } else {
                         ImGui::Text("%s", fmt::format("{:02X} {:02X} {:02X} {:02X}", 
-                            m_debugger.read8(address + 3), m_debugger.read8(address + 2), 
-                            m_debugger.read8(address + 1), m_debugger.read8(address + 0)).c_str());
+                            debugger.read8(address + 3), debugger.read8(address + 2), 
+                            debugger.read8(address + 1), debugger.read8(address + 0)).c_str());
                     }
 
                     //Actual disassembly
                     ImGui::TableNextColumn();
-                    std::string disassembled = thumb ? emu::thumbDecodeInstruction(bytes, address, m_debugger.read16(address - 2)).disassembly : emu::armDecodeInstruction(bytes, address).disassembly;
+                    std::string disassembled = thumb ? emu::thumbDecodeInstruction(bytes, address, debugger.read16(address - 2)).disassembly : emu::armDecodeInstruction(bytes, address).disassembly;
 
                     //Seperate mnemonic and registers
                     size_t space = disassembled.find_first_of(' ');
@@ -428,7 +390,7 @@ public:
                         }
 
                         ImGui::SameLine();
-                        ImGui::Text("%02X", m_debugger.read8(region_start + line_address + j));
+                        ImGui::Text("%02X", m_gba->debugger.read8(region_start + line_address + j));
                     }
 
                     ImGui::TableNextColumn();
@@ -438,7 +400,7 @@ public:
                             break;
                         }
 
-                        char c = static_cast<char>(m_debugger.read8(region_start + line_address + j));
+                        char c = static_cast<char>(m_gba->debugger.read8(region_start + line_address + j));
                         ascii += common::is_printable(c) ? c : '.';
                     }
                     ImGui::Text(" %-16s", ascii.c_str());
@@ -451,16 +413,15 @@ public:
     }
 
     void drawSchedulerViewer() {
-        ImGui::Text("Cycle: %zu", m_debugger.getCurrentCycle());
-        for(u32 i = 0; i < m_debugger.numEvents(); i++) {
-            ImGui::Text("%u : %u -> %zu cycles", i, m_debugger.getEventHandle(i), m_debugger.getEventCycles(i));
+        ImGui::Text("Cycle: %zu", m_gba->debugger.getCurrentCycle());
+        for(u32 i = 0; i < m_gba->debugger.numEvents(); i++) {
+            ImGui::Text("%u : %u -> %zu cycles", i, m_gba->debugger.getEventHandle(i), m_gba->debugger.getEventCycles(i));
         }
     }
 
 private:
 
-    emu::dbg::Debugger &m_debugger;
-    emu::GBA &m_gba;
+    std::shared_ptr<emu::GBA> m_gba;
     OGLVideoDevice &m_video_device;
 
     //CPU Registers mode
