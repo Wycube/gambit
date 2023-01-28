@@ -39,11 +39,12 @@ void CPU::armPSRTransfer(u32 instruction) {
             operand = getRegister(bits::get<0, 4>(instruction));
         }
 
-        //Control Field (Bits 0-7: Mode, IRQ disable, FIQ disable, Thumb bit cannot be changed)
+        //Control Field (Bits 0-7: Mode, IRQ disable, FIQ disable)
         if(bits::get<0, 1>(fields) && privileged()) {
             psr.i = bits::get_bit<7>(operand);
             psr.f = bits::get_bit<6>(operand);
-            psr.mode = bits::get<0, 5>(operand) | 0x10;
+            psr.t = bits::get_bit<5>(operand);
+            psr.mode = bits::get<0, 4>(operand) | 0x10;
         }
         //Status Field (Bits 8-15: Reserved bits)
         if(bits::get<1, 1>(fields) && privileged()) {
@@ -408,7 +409,7 @@ void CPU::armSingleTransfer(u32 instruction) {
 
 void CPU::armUndefined(u32 instruction) {
     LOG_TRACE("Undefined ARM Instruction at Address: {:08X}", state.pc - 8);
-
+    
     // setRegister(14, getRegister(15) - 4, MODE_UNDEFINED);
     // getSpsr(MODE_UNDEFINED) = state.cpsr;
     // state.cpsr.mode = MODE_UNDEFINED;
