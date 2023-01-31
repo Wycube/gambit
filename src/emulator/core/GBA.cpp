@@ -13,6 +13,7 @@ GBA::GBA(VideoDevice &video_device, InputDevice &input_device, AudioDevice &audi
 
 void GBA::reset() {
     scheduler.reset();
+    debug.reset();
     keypad.reset();
     timer.reset();
     dma.reset();

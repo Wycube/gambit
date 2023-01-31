@@ -93,7 +93,7 @@ void EmuThread::processCommands() {
         Command cmd;
         if(fastforward.load()) {
             // auto start = std::chrono::steady_clock::now();
-            u32 actual = m_core->run(16777216 / 64);
+            m_core->run(16777216 / 64);
             // LOG_INFO("Ran {} cycles in {}ms", actual, (std::chrono::steady_clock::now() - start).count() / 1000000.0f);
 
             if(cmd_queue.size() == 0) {
@@ -222,7 +222,7 @@ void Frontend::drawInterface() {
         if(ImGui::MenuItem("Reset")) {
             m_audio_device.stop();
             m_emu_thread.stop();
-            m_core.reset();
+            m_core->reset();
             m_emu_thread.start();
             m_audio_device.start();
         }

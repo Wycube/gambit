@@ -24,6 +24,9 @@ public:
 
     explicit DebugInterface(GBA &core);
 
+    void reset();
+
+    void forceBreak();
     auto getBreakpoint(u32 address) -> Breakpoint;
     void setBreakpoint(u32 address, ConditionFunc condition = nullptr);
     void removeBreakpoint(u32 address);
@@ -37,16 +40,17 @@ public:
     auto getCPUUsage() const -> const common::ThreadSafeRingBuffer<float, 100>&;
     void onVblank();
 
-    auto getRegister(u8 reg, u8 mode = 0) -> u32;
+    auto getRegister(u8 reg, u8 mode = 0) const -> u32;
     // void setRegister(u8 reg, u8 mode, u32 value);
-    auto getCurrentStatus() -> StatusRegister;
-    auto getSavedStatus(u8 mode) -> StatusRegister;
+    auto getCurrentStatus() const -> StatusRegister;
+    auto getSavedStatus(u8 mode) const -> StatusRegister;
 
 private:
 
     GBA &core;
     std::unordered_map<u32, Breakpoint> breakpoints;
     std::function<void ()> on_break;
+    bool force_break;
     common::ThreadSafeRingBuffer<float, 100> cpu_usage;
     u64 frame_start;
 };

@@ -16,14 +16,12 @@
 
 
 auto initialize() -> GLFWwindow* {
-    LOG_INFO("GBA struct size: {} bytes", sizeof(emu::GBA));
-
     //Initialize GLFW and create window
     if(glfwInit() == GLFW_FALSE) {
         LOG_FATAL("GLFW failed to initialize!");
     }
 
-    GLFWwindow *window = glfwCreateWindow(1080, 720, "", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(1080, 760, "", nullptr, nullptr);
     glfwMakeContextCurrent(window);
 
     //Load OpenGL functions with glad and GLFW

@@ -31,27 +31,6 @@ public:
 
     DebuggerUI(std::shared_ptr<emu::GBA> gba) : m_gba(gba), m_video_device(dynamic_cast<OGLVideoDevice&>(gba->video_device)) {
         m_region_sizes[7] = m_gba->getGamePak().size();
-        
-        //Metroid: Fusion
-        // m_debugger.addBreakpoint(0x0800D558); //Jump to address 0, sometimes
-
-        //Final Fantasy VI Advance
-        // m_debugger.addBreakpoint(0x00001812);
-        // m_debugger.addBreakpoint(0x000016FC);
-        // m_debugger.addBreakpoint(0x0000013C);
-        // m_debugger.addBreakpoint(0x08136A16);
-        // m_debugger.addBreakpoint(0x03004584);
-        // m_debugger.addBreakpoint(0x00000C08);
-        // m_debugger.addBreakpoint(0x08136354);
-        // m_debugger.addBreakpoint(0x03004594);
-        // m_debugger.addBreakpoint(0x030044D8);
-        // m_debugger.addBreakpoint(0x08132E26);
-
-        // m_debugger.addBreakpoint(0x0800D8C2);
-        // m_debugger.addBreakpoint(0x0800D8BC);
-
-        // m_debugger.addBreakpoint(0x08000b22);
-        // m_gba->debug.setBreakpoint(0x08000000);
     }
 
     void drawScreen() {

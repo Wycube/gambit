@@ -5,7 +5,19 @@
 
 namespace emu {
 
-DebugInterface::DebugInterface(GBA &core) : core(core) { }
+DebugInterface::DebugInterface(GBA &core) : core(core) {
+    reset();
+}
+
+void DebugInterface::reset() {
+    cpu_usage.clear();
+    frame_start = 0;
+    force_break = false;
+}
+
+void DebugInterface::forceBreak() {
+    force_break = true;
+}
 
 auto DebugInterface::getBreakpoint(u32 address) -> Breakpoint {
     if(breakpoints.count(address) != 0) {
@@ -66,6 +78,12 @@ void DebugInterface::setCallback(std::function<void ()> &&callback) {
 auto DebugInterface::onStep() -> bool {
     u32 pc = core.cpu.state.pc - (core.cpu.state.cpsr.t ? 2 : 4);
 
+    if(force_break) {
+        force_break = false;
+        if(on_break) { on_break(); }
+        return true;
+    }
+
     if(breakpoints.count(pc) != 0 && breakpoints[pc].enabled) {
         //Unconditional Breakpoints do not have a condition function defined
         Breakpoint &bkpt = breakpoints[pc];
@@ -90,7 +108,7 @@ void DebugInterface::onVblank() {
     core.cycles_active = 0;
 }
 
-auto DebugInterface::getRegister(u8 reg, u8 mode) -> u32 {
+auto DebugInterface::getRegister(u8 reg, u8 mode) const -> u32 {
     assert(reg < 16 && "Requested invalid register!");
 
     if(mode == 0) {
@@ -111,11 +129,11 @@ auto DebugInterface::getRegister(u8 reg, u8 mode) -> u32 {
 
 //void DebugInterface::setRegister(u8 reg, u8 mode, u32 value) {}
 
-auto DebugInterface::getCurrentStatus() -> StatusRegister {
+auto DebugInterface::getCurrentStatus() const -> StatusRegister {
     return core.cpu.state.cpsr;
 }
 
-auto DebugInterface::getSavedStatus(u8 mode) -> StatusRegister {
+auto DebugInterface::getSavedStatus(u8 mode) const -> StatusRegister {
     if(mode == 0) {
         mode = core.cpu.state.cpsr.mode;
     }

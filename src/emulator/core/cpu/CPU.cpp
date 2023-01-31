@@ -24,7 +24,7 @@ void CPU::reset() {
     setRegister(13, 0x03007FA0, MODE_IRQ);
     setRegister(13, 0x03007FE0, MODE_SUPERVISOR);
     setRegister(14, 0x08000000);
-    state.pc = 0x08000000;
+    state.pc = 0x00000000;
 }
 
 void CPU::halt() {
@@ -72,9 +72,6 @@ void CPU::step() {
         
         execute_thumb(instruction);
     }
-
-    history[history_index] = state.pc;
-    history_index = (history_index + 1) % 128;
 }
 
 void CPU::flushPipeline() {
@@ -261,14 +258,6 @@ void CPU::setRegister(u8 reg, u32 value, u8 mode) {
     //Automatically align PC
     if(reg == 15) {
         value = state.cpsr.t ? bits::align<u16>(value) : bits::align<u32>(value);
-
-        if(value == 0) {
-            for(int i = 0; i < 128; i++) {
-                LOG_INFO("PC History [{}] : 0x{:08X}", i, history[(history_index + i) % 128]);
-            }
-
-            LOG_FATAL("Jump to BIOS at PC=0x{:08X}, Cycle {}", state.pc, core.scheduler.getCurrentTimestamp());
-        }
     }
 
     if(mode == 0) {
