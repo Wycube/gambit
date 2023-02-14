@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Types.hpp"
 #include "emulator/core/Scheduler.hpp"
 #include "save/Save.hpp"
 #include "common/Types.hpp"
@@ -31,9 +32,9 @@ public:
     explicit GamePak(Scheduler &scheduler);
 
     template<typename T>
-    auto read(u32 address) -> T;
+    auto read(u32 address, AccessType access) -> T;
     template<typename T>
-    void write(u32 address, T value);
+    void write(u32 address, T value, AccessType access);
     
     void updateWaitstates(u16 waitcnt);
     auto getHeader() -> const GamePakHeader&;
@@ -46,6 +47,7 @@ private:
 
     [[maybe_unused]] Scheduler &scheduler;
     u8 sram_waitstate;
+    u32 ws0_n, ws0_s;
     std::vector<u8> rom;
     GamePakHeader header;
     std::string title;

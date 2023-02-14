@@ -7,21 +7,23 @@
 #include "common/Bits.hpp"
 
 constexpr u32 SRAM_WAIT_CYCLES[4] = {4, 3, 2, 8};
+constexpr u32 WS0N_WAIT_CYCLES[4] = {4, 3, 2, 8};
+constexpr u32 WS0S_WAIT_CYCLES[2] = {2, 1};
 
 
 namespace emu {
 
-template auto GamePak::read<u8>(u32 address) -> u8;
-template auto GamePak::read<u16>(u32 address) -> u16;
-template auto GamePak::read<u32>(u32 address) -> u32;
-template void GamePak::write<u8>(u32 address, u8 value);
-template void GamePak::write<u16>(u32 address, u16 value);
-template void GamePak::write<u32>(u32 address, u32 value);
+template auto GamePak::read<u8>(u32 address, AccessType access) -> u8;
+template auto GamePak::read<u16>(u32 address, AccessType access) -> u16;
+template auto GamePak::read<u32>(u32 address, AccessType access) -> u32;
+template void GamePak::write<u8>(u32 address, u8 value, AccessType access);
+template void GamePak::write<u16>(u32 address, u16 value, AccessType access);
+template void GamePak::write<u32>(u32 address, u32 value, AccessType access);
 
 GamePak::GamePak(Scheduler &scheduler) : scheduler(scheduler) { }
 
 template<typename T>
-auto GamePak::read(u32 address) -> T {
+auto GamePak::read(u32 address, AccessType access) -> T {
     u32 sub_address = address & 0xFFFFFF;
     u32 aligned = bits::align<T>(address) & 0x1FFFFFF;
 
@@ -44,6 +46,11 @@ auto GamePak::read(u32 address) -> T {
     }
 
     T value = 0;
+    // if(sizeof(T) == 4) {
+    //     scheduler.step(ws0_s + ws0_n);
+    // } else {
+    //     scheduler.step(access == SEQUENTIAL ? ws0_s : ws0_n);
+    // }
     for(size_t i = 0; i < sizeof(T); i++) {
         value |= (rom[aligned + i] << i * 8);
     }
@@ -52,7 +59,7 @@ auto GamePak::read(u32 address) -> T {
 }
 
 template<typename T>
-void GamePak::write(u32 address, T value) {
+void GamePak::write(u32 address, T value, AccessType access) {
     u32 sub_address = address & 0xFFFFFF;
 
     switch(address >> 24) {
@@ -64,10 +71,11 @@ void GamePak::write(u32 address, T value) {
         case 0xE :
         case 0xF : //SRAM or Flash
             if(save->getType() == SRAM_32K || save->getType() == FLASH_64K || save->getType() == FLASH_128K) {
+                u32 mask = save->getType() == SRAM_32K ? 0x7FFF : save->getType() == FLASH_64K ? 0xFFFF : 0x1FFFF;
                 if constexpr(sizeof(T) == 2) value >>= (address & 1) * 8;
                 if constexpr(sizeof(T) == 4) value >>= (address & 3) * 8;
 
-                return save->write(sub_address, value & 0xFF);
+                return save->write(sub_address & mask, value & 0xFF);
             }
             break;
     }
@@ -75,7 +83,9 @@ void GamePak::write(u32 address, T value) {
 
 void GamePak::updateWaitstates(u16 waitcnt) {
     sram_waitstate = SRAM_WAIT_CYCLES[waitcnt & 3];
-    // ws1_waits = 
+    ws0_n = WS0N_WAIT_CYCLES[(waitcnt >> 2) & 3];
+    ws0_s = WS0S_WAIT_CYCLES[(waitcnt >> 3) & 1];
+    // LOG_INFO("Updated waitstate sram: {}, WS0 1st: {}, WS0 2nd: {}", sram_waitstate, ws0_n, ws0_s);
 }
 
 auto GamePak::getHeader() -> const GamePakHeader& {

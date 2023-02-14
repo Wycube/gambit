@@ -10,6 +10,7 @@
 namespace emu {
 
 CPU::CPU(GBA &core) : core(core) {
+    setupRegisterBanks();
     reset();
 }
 
@@ -19,12 +20,11 @@ void CPU::reset() {
     state.cpsr.mode = MODE_SYSTEM;
     std::memset(state.spsr, 0, sizeof(state.spsr));
     std::memset(state.regs, 0, sizeof(state.regs));
-    setupRegisterBanks();
     setRegister(13, 0x03007F00);
     setRegister(13, 0x03007FA0, MODE_IRQ);
     setRegister(13, 0x03007FE0, MODE_SUPERVISOR);
     setRegister(14, 0x08000000);
-    state.pc = 0x00000000;
+    state.pc = 0x08000000;
 }
 
 void CPU::halt() {
@@ -36,10 +36,7 @@ auto CPU::halted() -> bool {
 }
 
 void CPU::checkForInterrupt() {
-    u16 IE = core.bus.debugRead16(0x04000200);
-    u16 IF = core.bus.debugRead16(0x04000202);
-
-    if(IE && IF) {
+    if(int_enable && int_flag.load()) {
         state.halted = false;
     }
 }
@@ -52,11 +49,11 @@ void CPU::step() {
     if(!state.cpsr.t) {
         u32 instruction = state.pipeline[0];
         state.pipeline[0] = state.pipeline[1];
-        state.pipeline[1] = core.bus.read32(state.pc + 4);
+        state.pipeline[1] = core.bus.read32(state.pc + 4, SEQUENTIAL);
         state.pc += 4;
 
-        // ArmInstruction decoded = armDecodeInstruction(instruction, m_state.pc - 8);
-        // LOG_TRACE("PC: {:08X} | Instruction: {:08X}", m_state.pc - 8, instruction);
+        // ArmInstruction decoded = armDecodeInstruction(instruction, state.pc - 8);
+        // LOG_TRACE("PC: {:08X} | Instruction: {:08X}", state.pc - 8, instruction);
 
         if(passed(instruction >> 28)) {
             execute_arm(instruction);
@@ -64,24 +61,25 @@ void CPU::step() {
     } else {
         u16 instruction = state.pipeline[0];
         state.pipeline[0] = state.pipeline[1];
-        state.pipeline[1] = core.bus.read16(state.pc + 2);
+        state.pipeline[1] = core.bus.read16(state.pc + 2, SEQUENTIAL);
         state.pc += 2;
 
-        // ThumbInstruction decoded = thumbDecodeInstruction(instruction, m_state.pc - 4, m_bus.debugRead16(m_state.pc - 6));
-        // LOG_TRACE("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", m_state.pc - 4, instruction, decoded.disassembly);
+        // ThumbInstruction decoded = thumbDecodeInstruction(instruction, state.pc - 4, state.pipeline[0]);
+        // LOG_TRACE("PC: {:08X} | Instruction: {:04X} | Disassembly: {}", state.pc - 4, instruction, decoded.disassembly);
         
         execute_thumb(instruction);
     }
 }
 
+//TODO: Proper pipeline timings N/S cycles
 void CPU::flushPipeline() {
     if(!state.cpsr.t) {
-        state.pipeline[0] = core.bus.read32(state.pc);
-        state.pipeline[1] = core.bus.read32(state.pc + 4);
+        state.pipeline[0] = core.bus.read32(state.pc, NONSEQUENTIAL);
+        state.pipeline[1] = core.bus.read32(state.pc + 4, SEQUENTIAL);
         state.pc += 4;
     } else {
-        state.pipeline[0] = core.bus.read16(state.pc);
-        state.pipeline[1] = core.bus.read16(state.pc + 2);
+        state.pipeline[0] = core.bus.read16(state.pc, NONSEQUENTIAL);
+        state.pipeline[1] = core.bus.read16(state.pc + 2, SEQUENTIAL);
         state.pc += 2;
     }
 }
@@ -90,8 +88,8 @@ auto CPU::readIO(u32 address) -> u8 {
     switch(address) {
         case 0x200 : return int_enable & 0xFF;
         case 0x201 : return int_enable >> 8;
-        case 0x202 : return int_flag & 0xFF;
-        case 0x203 : return int_flag >> 8;
+        case 0x202 : return int_flag.load() & 0xFF;
+        case 0x203 : return int_flag.load() >> 8;
         case 0x208 : return master_enable;
     }
 
@@ -102,10 +100,14 @@ void CPU::writeIO(u32 address, u8 value) {
     switch(address) {
         case 0x200 : int_enable = (int_enable & 0xFF00) | value; break;
         case 0x201 : int_enable = (int_enable & 0x00FF) | (value << 8); break;
-        case 0x202 : int_flag &= ~value; break;
-        case 0x203 : int_flag &= ~(value << 8); break;
+        case 0x202 : int_flag.store(int_flag.load() & ~value); break;
+        case 0x203 : int_flag.store(int_flag.load() & ~(value << 8)); break;
         case 0x208 : master_enable = value & 1;
     }
+}
+
+void CPU::requestInterrupt(InterruptSource source) {
+    int_flag.store(int_flag.load() | source);
 }
 
 void CPU::setupRegisterBanks() {
@@ -168,7 +170,6 @@ void CPU::execute_arm(u32 instruction) {
         case ARM_COPROCESSOR_DATA_OPERATION :
         case ARM_COPROCESSOR_REGISTER_TRANSFER : armUndefined(instruction); break;
         case ARM_SOFTWARE_INTERRUPT : armSoftwareInterrupt(instruction); break;
-        default: armUnimplemented(instruction);
     }
 }
 
@@ -197,13 +198,12 @@ void CPU::execute_thumb(u16 instruction) {
         case THUMB_UNCONDITIONAL_BRANCH : thumbUnconditionalBranch(instruction); break;
         case THUMB_LONG_BRANCH : thumbLongBranch(instruction); break;
         case THUMB_UNDEFINED : thumbUndefined(instruction); break;
-        default: thumbUnimplemented(instruction);
     }
 }
 
 auto CPU::service_interrupt() -> bool {
     //IE & IF
-    u16 interrupts = int_enable & core.bus.debugRead16(0x04000202);
+    u16 interrupts = int_enable & int_flag.load();
 
     if(!master_enable || interrupts == 0 || state.cpsr.i) {
         return false;

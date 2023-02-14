@@ -21,9 +21,9 @@ public:
 
     Debugger(GBA &core);
 
-    auto read8(u32 address) -> u8;
-    auto read16(u32 address) -> u16;
-    auto read32(u32 address) -> u32;
+    // auto read8(u32 address) -> u8;
+    // auto read16(u32 address) -> u16;
+    // auto read32(u32 address) -> u32;
     // auto armDisassembleAt(u32 address) -> std::string;
     // auto thumbDisassembleAt(u32 address) -> std::string;
 
@@ -47,9 +47,6 @@ public:
     // void forceBreak();
 
 private:
-
-    std::vector<u32> breakpoints;
-    std::function<void ()> on_break;
 
     //Pointer to CPU state
     // const CPUState *cpu_state = nullptr;

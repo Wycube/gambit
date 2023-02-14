@@ -170,7 +170,7 @@ void Timer::timerOverflow(u8 timer) {
 
     //Request Interrupt if enabled
     if(bits::get_bit<6>(tmcnt[timer])) {
-        core.bus.requestInterrupt(static_cast<InterruptSource>(INT_TIM_0 << timer));
+        core.cpu.requestInterrupt(static_cast<InterruptSource>(INT_TIM_0 << timer));
     }
 }
 

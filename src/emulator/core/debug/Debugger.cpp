@@ -12,17 +12,17 @@ namespace dbg {
 
 Debugger::Debugger(GBA &core) : core(core) { }
 
-auto Debugger::read8(u32 address) -> u8 {
-    return core.bus.debugRead8(address);
-}
+// auto Debugger::read8(u32 address) -> u8 {
+//     return core.bus.debugRead8(address);
+// }
 
-auto Debugger::read16(u32 address) -> u16 {
-    return core.bus.debugRead16(address);
-}
+// auto Debugger::read16(u32 address) -> u16 {
+//     return core.bus.debugRead16(address);
+// }
 
-auto Debugger::read32(u32 address) -> u32 {
-    return core.bus.debugRead32(address);
-}
+// auto Debugger::read32(u32 address) -> u32 {
+//     return core.bus.debugRead32(address);
+// }
 
 // auto Debugger::armDisassembleAt(u32 address) -> std::string {
 //     return armDecodeInstruction(core.bus.debugRead32(address), address).disassembly;

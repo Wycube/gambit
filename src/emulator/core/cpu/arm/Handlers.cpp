@@ -5,14 +5,9 @@
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
 
+//TODO: Proper timings N/S cycles
 
 namespace emu {
-
-void CPU::armUnimplemented(u32 instruction) {
-    ArmInstruction decoded = armDecodeInstruction(instruction, state.pc - 8);
-
-    LOG_FATAL("Unimplemented ARM Instruction: (PC:{:08X} Type:{}) {}", state.pc - 8, decoded.type, decoded.disassembly);
-}
 
 void CPU::armBranchExchange(u32 instruction) {
     const u32 rn = bits::get<0, 4>(instruction);
@@ -253,12 +248,12 @@ void CPU::armSingleDataSwap(u32 instruction) {
     const u8 rn = bits::get<16, 4>(instruction);
     const u8 rd = bits::get<12, 4>(instruction);
     const u8 rm = bits::get<0, 4>(instruction);
-    const u32 data_32 = core.bus.readRotated32(getRegister(rn));
+    const u32 data_32 = core.bus.readRotated32(getRegister(rn), SEQUENTIAL);
 
     if(b) {
-        core.bus.write8(getRegister(rn), getRegister(rm) & 0xFF);
+        core.bus.write8(getRegister(rn), getRegister(rm) & 0xFF, SEQUENTIAL);
     } else {
-        core.bus.write32(getRegister(rn), getRegister(rm));
+        core.bus.write32(getRegister(rn), getRegister(rm), SEQUENTIAL);
     }
 
     setRegister(rd, b ? data_32 & 0xFF : data_32);
@@ -290,10 +285,10 @@ void CPU::armHalfwordTransfer(u32 instruction) {
     }
 
     if(sh != 2) {
-        data = l ? core.bus.readRotated16(address) : getRegister(rd);
+        data = l ? core.bus.readRotated16(address, SEQUENTIAL) : getRegister(rd);
     } else {
         //Should not happen with a store
-        data = core.bus.read8(address);
+        data = core.bus.read8(address, SEQUENTIAL);
     }
 
     if(l) {
@@ -317,7 +312,7 @@ void CPU::armHalfwordTransfer(u32 instruction) {
             setRegister(rn, offset_address);
         }
 
-        core.bus.write16(address, data);
+        core.bus.write16(address, data, SEQUENTIAL);
     }
 }
 
@@ -373,9 +368,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         u32 value;
 
         if(b) {
-            value = core.bus.read8(address);
+            value = core.bus.read8(address, SEQUENTIAL);
         } else {
-            value = core.bus.readRotated32(address);
+            value = core.bus.readRotated32(address, SEQUENTIAL);
         }
 
         //Writeback is optional with pre-indexed addressing
@@ -396,9 +391,9 @@ void CPU::armSingleTransfer(u32 instruction) {
         }
 
         if(b) {
-            core.bus.write8(address, value & 0xFF);
+            core.bus.write8(address, value & 0xFF, SEQUENTIAL);
         } else {
-            core.bus.write32(address, value);
+            core.bus.write32(address, value, SEQUENTIAL);
         }
 
         if(!p || w) {
@@ -440,13 +435,13 @@ void CPU::armBlockTransfer(u32 instruction) {
     if(l) {
         for(size_t i = 0; i < 15; i++) {
             if(bits::get_bit(registers, i)) {
-                setRegister(i, core.bus.read32(address), mode);
+                setRegister(i, core.bus.read32(address, SEQUENTIAL), mode);
                 address += 4;
             }
         }
 
         if(registers == 0 || bits::get<15, 1>(registers)) {
-            state.pc = core.bus.read32(address) & ~3;
+            state.pc = core.bus.read32(address, SEQUENTIAL) & ~3;
             flushPipeline();
 
             if(registers && s) {
@@ -471,9 +466,9 @@ void CPU::armBlockTransfer(u32 instruction) {
             if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && w && lowest_set) {
-                    core.bus.write32(address, writeback);
+                    core.bus.write32(address, writeback, SEQUENTIAL);
                 } else {
-                    core.bus.write32(address, getRegister(i, mode));
+                    core.bus.write32(address, getRegister(i, mode), SEQUENTIAL);
                 }
 
                 address += 4;
@@ -487,7 +482,7 @@ void CPU::armBlockTransfer(u32 instruction) {
                 address += (pu == 0 || pu == 3) ? 4 : 0;
             }
 
-            core.bus.write32(address, state.pc + 4);
+            core.bus.write32(address, state.pc + 4, SEQUENTIAL);
         }
 
         if(w && !s) {

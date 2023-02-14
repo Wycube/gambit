@@ -2,7 +2,7 @@
 
 #include "Types.hpp"
 #include "common/Types.hpp"
-#include <array>
+#include <atomic>
 
 
 namespace emu {
@@ -29,15 +29,16 @@ public:
 
     auto readIO(u32 address) -> u8;
     void writeIO(u32 address, u8 value);
+    void requestInterrupt(InterruptSource source);
 
 private:
 
     GBA &core;
-    u32 history[128];
-    int history_index = 0;
 
     u16 int_enable;
-    u16 int_flag;
+    //Make access to IF atomic so requesting an interrupt
+    //from another thread (i.e. InputDevice) is safe.
+    std::atomic<u16> int_flag;
     bool master_enable;
 
     void setupRegisterBanks();

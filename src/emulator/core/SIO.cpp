@@ -50,7 +50,7 @@ void SIO::scheduleDummyTransfer() {
         siocnt &= ~0x80;
 
         if(bits::get_bit<14>(siocnt)) {
-            core.bus.requestInterrupt(INT_SERIAL);
+            core.cpu.requestInterrupt(INT_SERIAL);
         }
     });
 }

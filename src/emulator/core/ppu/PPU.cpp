@@ -305,7 +305,7 @@ void PPU::setHblankFlag(u64 late) {
 
     //Request H-Blank interrupt if enabled
     if(bits::get_bit<4>(state.dispstat)) {
-        core.bus.requestInterrupt(INT_LCD_HB);
+        core.cpu.requestInterrupt(INT_LCD_HB);
     }
 
     core.scheduler.addEvent(update_event, 226 - late, [this](u64 late) { hblankEnd(late); });
@@ -332,7 +332,7 @@ void PPU::hblankEnd(u64 late) {
     bool vcount_reached = state.line == bits::get<8, 8>(state.dispstat);
     if(vcount_reached && !(state.dispstat & 4)) {
         if(bits::get_bit<5>(state.dispstat)) {
-            core.bus.requestInterrupt(INT_LCD_VC);
+            core.cpu.requestInterrupt(INT_LCD_VC);
         }
     }
     state.dispstat &= ~4;
@@ -346,7 +346,7 @@ void PPU::hblankEnd(u64 late) {
         core.dma.onVBlank();
 
         if(bits::get_bit<3>(state.dispstat)) {
-            core.bus.requestInterrupt(INT_LCD_VB);
+            core.cpu.requestInterrupt(INT_LCD_VB);
         }
     }
 

@@ -63,12 +63,13 @@ void DMA::step(u32 cycles) {
         bool transfer_size = bits::get_bit<10>(channel[current].control) | audio_dma;
         u32 control = channel[current]._source >= 0x08000000 ? channel[current].control & ~0x180 : channel[current].control;
 
+        //TODO: Proper timings N/S cycles
         if(transfer_size) {
-            core.bus.write32(channel[current]._destination, core.bus.read32(channel[current]._source));
+            core.bus.write32(channel[current]._destination, core.bus.read32(channel[current]._source, SEQUENTIAL), SEQUENTIAL);
             adjustAddress(channel[current]._source, bits::get<7, 2>(control), 4);
             adjustAddress(channel[current]._destination, audio_dma ? 2 : bits::get<5, 2>(control), 4);
         } else {
-            core.bus.write16(channel[current]._destination, core.bus.read16(channel[current]._source));
+            core.bus.write16(channel[current]._destination, core.bus.read16(channel[current]._source, SEQUENTIAL), SEQUENTIAL);
             adjustAddress(channel[current]._source, bits::get<7, 2>(control), 2);
             adjustAddress(channel[current]._destination, bits::get<5, 2>(control), 2);
         }
@@ -90,7 +91,7 @@ void DMA::step(u32 cycles) {
             }
 
             if(bits::get_bit<14>(control)) {
-                core.bus.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << current));
+                core.cpu.requestInterrupt(static_cast<InterruptSource>(INT_DMA_0 << current));
             }
         }
     }
@@ -205,10 +206,6 @@ void DMA::onTimerOverflow(int fifo) {
 }
 
 void DMA::startTransfer(int dma_n) {
-    // u32 length = channel[dma_n].length == 0 ? dma_n == 3 ? 0x10000 : 0x4000 : channel[dma_n].length;
-    // u32 transfer_time = 6 + (length - 1) * 2; //2N + 2(n - 1)S + xI (+ 2 cycles before the transfer starts)
-    // bool transfer_size = bits::get_bit<10>(channel[dma_n].control);
-
     core.scheduler.addEvent(channel[dma_n].event, 2, [this, dma_n](u64 late) {
         channel[dma_n].active = true;
         LOG_TRACE("DMA {} started on cycle: {}", dma_n, core.scheduler.getCurrentTimestamp());

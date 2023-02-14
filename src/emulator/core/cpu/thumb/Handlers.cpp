@@ -6,13 +6,9 @@
 #include "common/Bits.hpp"
 
 
+//TODO: Proper timings N/S cycles
+
 namespace emu {
-
-void CPU::thumbUnimplemented(u16 instruction) {
-    ThumbInstruction decoded = thumbDecodeInstruction(instruction, state.pc - 4, core.bus.debugRead16(state.pc - 6));
-
-    LOG_FATAL("Unimplemented THUMB Instruction: (PC:{:08X} Type:{}) {}", state.pc - 4, decoded.type, decoded.disassembly);
-}
 
 void CPU::thumbMoveShifted(u16 instruction) {
     const u8 opcode = bits::get<11, 2>(instruction);
@@ -219,7 +215,7 @@ void CPU::thumbPCRelativeLoad(u16 instruction) {
     const u16 offset = bits::get<0, 8>(instruction) * 4;
     const u32 address = bits::align<u32>(getRegister(15)) + offset;
     
-    setRegister(rd, core.bus.read32(address));
+    setRegister(rd, core.bus.read32(address, SEQUENTIAL));
 }
 
 void CPU::thumbLoadStoreRegister(u16 instruction) {
@@ -232,15 +228,15 @@ void CPU::thumbLoadStoreRegister(u16 instruction) {
 
     if(l) {
         if(b) {
-            setRegister(rd, core.bus.read8(address));
+            setRegister(rd, core.bus.read8(address, SEQUENTIAL));
         } else {
-            setRegister(rd, core.bus.readRotated32(address));
+            setRegister(rd, core.bus.readRotated32(address, SEQUENTIAL));
         }
     } else {
         if(b) {
-            core.bus.write8(address, getRegister(rd) & 0xFF);
+            core.bus.write8(address, getRegister(rd) & 0xFF, SEQUENTIAL);
         } else {
-            core.bus.write32(address, getRegister(rd));
+            core.bus.write32(address, getRegister(rd), SEQUENTIAL);
         }
     }
 }
@@ -253,10 +249,10 @@ void CPU::thumbLoadStoreSigned(u16 instruction) {
     const u32 address = getRegister(rn) + getRegister(rm);
 
     switch(opcode) {
-        case 0 : core.bus.write16(address, getRegister(rd)); break;
-        case 1 : setRegister(rd, bits::sign_extend<8, u32>(core.bus.read8(address))); break;
-        case 2 : setRegister(rd, core.bus.readRotated16(address)); break;
-        case 3 : setRegister(rd, (address & 1) ? bits::sign_extend<8, u32>(core.bus.readRotated16(address) & 0xFF) : bits::sign_extend<16, u32>(core.bus.readRotated16(address))); break;
+        case 0 : core.bus.write16(address, getRegister(rd), SEQUENTIAL); break;
+        case 1 : setRegister(rd, bits::sign_extend<8, u32>(core.bus.read8(address, SEQUENTIAL))); break;
+        case 2 : setRegister(rd, core.bus.readRotated16(address, SEQUENTIAL)); break;
+        case 3 : setRegister(rd, (address & 1) ? bits::sign_extend<8, u32>(core.bus.readRotated16(address, SEQUENTIAL) & 0xFF) : bits::sign_extend<16, u32>(core.bus.readRotated16(address, SEQUENTIAL))); break;
     }
 }
 
@@ -270,15 +266,15 @@ void CPU::thumbLoadStoreImmediate(u16 instruction) {
 
     if(l) {
         if(b) {
-            setRegister(rd, core.bus.read8(address));
+            setRegister(rd, core.bus.read8(address, SEQUENTIAL));
         } else {
-            setRegister(rd, core.bus.readRotated32(address));
+            setRegister(rd, core.bus.readRotated32(address, SEQUENTIAL));
         }
     } else {
         if(b) {
-            core.bus.write8(address, getRegister(rd) & 0xFF);
+            core.bus.write8(address, getRegister(rd) & 0xFF, SEQUENTIAL);
         } else {
-            core.bus.write32(address, getRegister(rd));
+            core.bus.write32(address, getRegister(rd), SEQUENTIAL);
         }
     }
 }
@@ -291,9 +287,9 @@ void CPU::thumbLoadStoreHalfword(u16 instruction) {
     const u32 address = getRegister(rn) + offset;
 
     if(l) {
-        setRegister(rd, core.bus.readRotated16(address));
+        setRegister(rd, core.bus.readRotated16(address, SEQUENTIAL));
     } else {
-        core.bus.write16(address, getRegister(rd));
+        core.bus.write16(address, getRegister(rd), SEQUENTIAL);
     }
 }
 
@@ -304,9 +300,9 @@ void CPU::thumbSPRelativeLoadStore(u16 instruction) {
     const u32 address = getRegister(13) + offset;
 
     if(l) {
-        setRegister(rd, core.bus.readRotated32(address));
+        setRegister(rd, core.bus.readRotated32(address, SEQUENTIAL));
     } else {
-        core.bus.write32(address, getRegister(rd));
+        core.bus.write32(address, getRegister(rd), SEQUENTIAL);
     }
 }
 
@@ -336,14 +332,14 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
 
         for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                setRegister(i, core.bus.read32(address));
+                setRegister(i, core.bus.read32(address, SEQUENTIAL));
                 address += 4;
             }
         }
 
         //Set PC
         if(r) {
-            setRegister(15, core.bus.read32(address));
+            setRegister(15, core.bus.read32(address, SEQUENTIAL));
             flushPipeline();
         }
 
@@ -353,14 +349,14 @@ void CPU::thumbPushPopRegisters(u16 instruction) {
 
         for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                core.bus.write32(address, getRegister(i));
+                core.bus.write32(address, getRegister(i), SEQUENTIAL);
                 address += 4;
             }
         }
 
         //Store LR
         if(r) {
-            core.bus.write32(address, getRegister(14));
+            core.bus.write32(address, getRegister(14), SEQUENTIAL);
         }
 
         setRegister(13, getRegister(13) - 4 * (bits::popcount<u16>(registers) + r));
@@ -377,13 +373,13 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
     if(l) {
         for(size_t i = 0; i < 8; i++) {
             if(bits::get_bit(registers, i)) {
-                setRegister(i, core.bus.read32(address));
+                setRegister(i, core.bus.read32(address, SEQUENTIAL));
                 address += 4;
             }
         }
 
         if(registers == 0) {
-            setRegister(15, core.bus.read32(address));
+            setRegister(15, core.bus.read32(address, SEQUENTIAL));
             flushPipeline();
             writeback = getRegister(rn) + 0x40;
         }
@@ -399,9 +395,9 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
             if(bits::get_bit(registers, i)) {
                 //If rn is in the list and is not the lowest set bit, then the new writeback value is written to memory
                 if(i == rn && lowest_set) {
-                    core.bus.write32(address, writeback);
+                    core.bus.write32(address, writeback, SEQUENTIAL);
                 } else {
-                    core.bus.write32(address, getRegister(i));
+                    core.bus.write32(address, getRegister(i), SEQUENTIAL);
                 }
 
                 address += 4;
@@ -410,7 +406,7 @@ void CPU::thumbLoadStoreMultiple(u16 instruction) {
         }
 
         if(registers == 0) {
-            core.bus.write32(address, getRegister(15) + 2);
+            core.bus.write32(address, getRegister(15) + 2, SEQUENTIAL);
             writeback = getRegister(rn) + 0x40;
         }
 

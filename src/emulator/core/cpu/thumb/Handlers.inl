@@ -1,4 +1,3 @@
-void thumbUnimplemented(u16 instruction);
 void thumbMoveShifted(u16 instruction);
 void thumbAddSubtract(u16 instruction);
 void thumbProcessImmediate(u16 instruction);

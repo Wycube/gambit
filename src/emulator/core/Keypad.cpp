@@ -57,7 +57,7 @@ void Keypad::checkForInterrupt() {
         //m_core.setStop(false);
 
         if(bits::get_bit<14>(keycnt)) {
-            core.bus.requestInterrupt(INT_KEYPAD);
+            core.cpu.requestInterrupt(INT_KEYPAD);
         }
     }
 

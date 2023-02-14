@@ -70,6 +70,7 @@ public:
     void loadBIOS(const std::vector<u8> &bios);
     void loadSave(const std::string &filename);
     void writeSave(const std::string &filename);
+    void refreshGameList();
 
     void drawInterface();
 
@@ -98,6 +99,7 @@ private:
     bool m_show_scheduler_debug;
     bool m_show_pak_info;
     bool m_show_settings;
+    std::vector<std::string> game_list;
 
     common::FixedRingBuffer<float, 100> m_frame_times;
     common::FixedRingBuffer<float, 100> m_audio_buffer_size;

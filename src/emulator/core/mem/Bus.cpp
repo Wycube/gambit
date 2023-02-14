@@ -14,53 +14,44 @@ void Bus::reset() {
     std::memset(iwram, 0, sizeof(iwram));
 }
 
-void Bus::cycle(u32 cycles) {
-    core.scheduler.step(cycles);
+auto Bus::read8(u32 address, AccessType access) -> u8 {
+    core.scheduler.step(1);
+    return read<u8>(address, access);
 }
 
-auto Bus::read8(u32 address) -> u8 {
-    cycle();
-    return read<u8>(address);
+auto Bus::read16(u32 address, AccessType access) -> u16 {
+    core.scheduler.step(1);
+    return read<u16>(address, access);
 }
 
-auto Bus::read16(u32 address) -> u16 {
-    cycle();
-    return read<u16>(address);
+auto Bus::readRotated16(u32 address, AccessType access) -> u32 {
+    core.scheduler.step(1);
+    return bits::ror(read<u16>(address, access), (address & 1) * 8);
 }
 
-auto Bus::readRotated16(u32 address) -> u32 {
-    cycle();
-    return bits::ror(read<u16>(address), (address & 1) * 8);
+auto Bus::read32(u32 address, AccessType access) -> u32 {
+    core.scheduler.step(1);
+    return read<u32>(address, access);
 }
 
-auto Bus::read32(u32 address) -> u32 {
-    cycle();
-    return read<u32>(address);
+auto Bus::readRotated32(u32 address, AccessType access) -> u32 {
+    core.scheduler.step(1);
+    return bits::ror(read<u32>(address, access), (address & 3) * 8);
 }
 
-auto Bus::readRotated32(u32 address) -> u32 {
-    cycle();
-    return bits::ror(read<u32>(address), (address & 3) * 8);
+void Bus::write8(u32 address, u8 value, AccessType access) {
+    core.scheduler.step(1);
+    write<u8>(address, value, access);
 }
 
-void Bus::write8(u32 address, u8 value) {
-    cycle();
-    write<u8>(address, value);
+void Bus::write16(u32 address, u16 value, AccessType access) {
+    core.scheduler.step(1);
+    write<u16>(address, value, access);
 }
 
-void Bus::write16(u32 address, u16 value) {
-    cycle();
-    write<u16>(address, value);
-}
-
-void Bus::write32(u32 address, u32 value) {
-    cycle();
-    write<u32>(address, value);
-}
-
-void Bus::requestInterrupt(InterruptSource source) {
-    //Set the flag in IF at address 0x04000202
-    int_flags.store(int_flags.load() | source);
+void Bus::write32(u32 address, u32 value, AccessType access) {
+    core.scheduler.step(1);
+    write<u32>(address, value, access);
 }
 
 auto Bus::getLoadedPak() -> GamePak& {
@@ -82,32 +73,32 @@ void Bus::loadBIOS(const std::vector<u8> &data) {
     bios_open_bus = 0xE129F000;
 }
 
-auto Bus::debugRead8(u32 address) -> u8 {
-    return read<u8>(address);
-}
+// auto Bus::debugRead8(u32 address) -> u8 {
+//     return read<u8>(address);
+// }
 
-auto Bus::debugRead16(u32 address) -> u16 {
-    return read<u16>(address);
-}
+// auto Bus::debugRead16(u32 address) -> u16 {
+//     return read<u16>(address);
+// }
 
-auto Bus::debugRead32(u32 address) -> u32 {
-    return read<u32>(address);
-}
+// auto Bus::debugRead32(u32 address) -> u32 {
+//     return read<u32>(address);
+// }
 
-void Bus::debugWrite8(u32 address, u8 value) {
-    write<u8>(address, value);
-}
+// void Bus::debugWrite8(u32 address, u8 value) {
+//     write<u8>(address, value);
+// }
 
-void Bus::debugWrite16(u32 address, u16 value) {
-    write<u16>(address, value);
-}
+// void Bus::debugWrite16(u32 address, u16 value) {
+//     write<u16>(address, value);
+// }
 
-void Bus::debugWrite32(u32 address, u32 value) {
-    write<u32>(address, value);
-}
+// void Bus::debugWrite32(u32 address, u32 value) {
+//     write<u32>(address, value);
+// }
 
 template<typename T>
-auto Bus::read(u32 address) -> T {
+auto Bus::read(u32 address, AccessType access) -> T {
     static_assert(std::is_integral_v<T>);
     static_assert(sizeof(T) <= 4);
     
@@ -157,7 +148,7 @@ auto Bus::read(u32 address) -> T {
         case 0xC :
         case 0xD :
         case 0xE :
-        case 0xF : return pak.read<T>(address); //Cartridge
+        case 0xF : return pak.read<T>(address, access); //Cartridge
     }
 
     if(memory_region == nullptr) {
@@ -173,7 +164,7 @@ auto Bus::read(u32 address) -> T {
 }
 
 template<typename T>
-void Bus::write(u32 address, T value) {
+void Bus::write(u32 address, T value, AccessType access) {
     static_assert(std::is_integral_v<T>);
     static_assert(sizeof(T) <= 4);
 
@@ -213,7 +204,7 @@ void Bus::write(u32 address, T value) {
         case 0xC :
         case 0xD :
         case 0xE :
-        case 0xF : pak.write<T>(address, value); //Cartridge
+        case 0xF : pak.write<T>(address, value, access); //Cartridge
         break;
     }
 
@@ -252,14 +243,6 @@ auto Bus::readIO(u32 address) -> u8 {
     }
     if(address >= 0x134 && address <= 0x15B) {
         return core.sio.read8(address);
-    }
-
-    //IF
-    if(address == 0x202) {
-        return int_flags.load() & 0xFF;
-    }
-    if(address == 0x203) {
-        return (int_flags.load() >> 8) & 0xFF;
     }
 
     //Post-boot flag
@@ -306,16 +289,6 @@ void Bus::writeIO(u32 address, u8 value) {
         return;
     }
 
-    //IF
-    if(address == 0x202) {
-        int_flags.store(int_flags.load() & ~value);
-        return;
-    }
-    if(address == 0x203) {
-        int_flags.store(int_flags.load() & ~(value << 8));
-        return;
-    }
-
     //WAITCNT
     if(address == 0x204) {
         // LOG_INFO("Write to WAITCNT");
@@ -325,7 +298,7 @@ void Bus::writeIO(u32 address, u8 value) {
         // static u8 cycles[] = {4, 3, 2, 8};
 
         // LOG_ERROR("SRAM waits: {}", cycles[waitcnt & 3]);
-        // pak.updateWaitstates(waitcnt);
+        pak.updateWaitstates(waitcnt);
     }
     if(address == 0x205) {
         // LOG_INFO("Write to WAITCNT");

@@ -6,6 +6,8 @@
 #include <imgui_internal.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <filesystem>
+#include <fstream>
 
 
 EmuThread::EmuThread(std::shared_ptr<emu::GBA> core) : m_core(core) {
@@ -159,6 +161,8 @@ void Frontend::init() {
     m_emu_thread.start();
 
     m_audio_device.start();
+
+    refreshGameList();
 }
 
 void Frontend::shutdown() {
@@ -190,6 +194,17 @@ void Frontend::loadSave(const std::string &filename) {
 
 void Frontend::writeSave(const std::string &filename) {
     m_core->writeSave(filename);
+}
+
+void Frontend::refreshGameList() {
+    std::filesystem::directory_iterator iter(std::filesystem::current_path());
+    game_list.clear();
+
+    for(const auto &entry : iter) {
+        if(entry.is_regular_file() && entry.path().extension() == ".gba") {
+            game_list.push_back(entry.path().filename().string());
+        }
+    }
 }
 
 void Frontend::drawInterface() {
@@ -306,10 +321,10 @@ void Frontend::drawInterface() {
         ImGui::End();
     }
 
-    if(m_show_disasm_debug) {
-        if(ImGui::Begin("Disassembly", &m_show_disasm_debug)) m_debug_ui.drawDisassembly();
-        ImGui::End();
-    }
+    // if(m_show_disasm_debug) {
+    //     if(ImGui::Begin("Disassembly", &m_show_disasm_debug)) m_debug_ui.drawDisassembly();
+    //     ImGui::End();
+    // }
 
     if(m_show_scheduler_debug) {
         if(ImGui::Begin("Scheduler", &m_show_scheduler_debug)) m_debug_ui.drawSchedulerViewer();
@@ -350,6 +365,54 @@ void Frontend::drawInterface() {
         ImGui::Combo("Input Devices", &current, devices.c_str());
     }
     ImGui::End();
+
+    // WIP Game List thing
+    // ImGui::SetNextWindowBgAlpha(1.0f);
+    // if(ImGui::Begin("Game List")) {
+    //     if(ImGui::Button("Refresh")) {
+    //         refreshGameList();
+    //     }
+
+    //     ImGui::SameLine();
+    //     ImGui::Text("Size: %zu", game_list.size());
+    //     ImGui::Separator();
+
+    //     ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg;
+    //     ImGui::BeginTable("##GameList_Table", 2, table_flags);
+        
+    //     ImGuiListClipper clipper(game_list.size());            
+    //     while(clipper.Step()) {
+    //         for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+    //             ImGui::TableNextRow();
+    //             ImGui::TableSetColumnIndex(0);
+
+    //             if(ImGui::Selectable(fmt::format("{:<30}", game_list[i]).c_str(), false, ImGuiSelectableFlags_SpanAllColumns)) {
+    //                 m_audio_device.stop();
+    //                 m_emu_thread.stop();
+    //                 std::ifstream file(game_list[i], std::ios_base::binary);
+
+    //                 size_t rom_size = std::filesystem::file_size(game_list[i]);
+    //                 std::vector<u8> rom_data(rom_size);
+    //                 file.read(reinterpret_cast<char*>(rom_data.data()), rom_size);
+    //                 file.close();
+
+    //                 loadROM(std::move(rom_data));
+    //                 m_core->reset();
+    //                 m_emu_thread.start();
+    //                 m_audio_device.start();
+
+    //             }
+
+    //             ImGui::TableNextColumn();
+
+    //             float size = std::filesystem::file_size(game_list[i]) / 1_KiB;
+    //             ImGui::Text("%.1f KiB", size);
+    //         }
+    //     }
+
+    //     ImGui::EndTable();
+    // }
+    // ImGui::End();
 
 
     // ---------- Settings (Under Construction) ----------

@@ -127,269 +127,124 @@ public:
             if(i % 4 != 3 && i != sizeof(flag_name) - 1) ImGui::SameLine();
         }
 
-        // ImGui::Spacing();
-
-        // if(!running) {
-        //     u32 sp = m_gba.debug.getRegister(13, mode);
-        //     for(u32 i = 0; i < (0x3007FFF - sp + 4 ) / 4; i++) {
-        //         ImGui::Text("%08X : %08X", 0x3007FFF - i * 4 & ~3, m_debugger.read32(0x3007FFF - i * 4 & ~3));
-        //     }
-        // }
-
         ImGui::PopFont();
-
-        
-        ImGui::EndGroup();
-        //ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0xFF0000FF);
-    
-        ImGui::SameLine();
-        ImGui::Dummy(ImVec2(0.0f, ImGui::GetContentRegionAvail().y));
-        ImGui::SameLine();
-        // ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-        ImGui::SameLine();
-
-
-        // ImGui::BeginGroup();
-
-        // ImGui::Text("Disassembly");
-        // ImGui::Separator();
-
-        // bool go_to_pc = ImGui::Button("Go to PC");
-
-        // if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
-        //     ImGui::BeginTable("##Disassembly_Table", 4);
-        //     ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-        //     ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-        //     ImGui::TableSetupColumn("col_2", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-        //     ImGui::TableSetupColumn("col_3");
-         
-        //     //THUMB or ARM
-        //     bool thumb = (m_debugger.getCPUCPSR() >> 5) & 1;
-        //     u8 instr_size = thumb ? 2 : 4;
-
-        //     ImGuiListClipper clipper(101);
-            
-        //     while(clipper.Step()) {
-        //         for(u32 i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-        //             ImGui::TableNextRow();
-        //             ImGui::TableSetColumnIndex(0);
-
-        //             u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
-        //             ImGui::Text("%08X: ", address);
-
-        //             ImGui::TableNextColumn();
-
-        //             if(address == m_debugger.getCPURegister(15)) { 
-        //                 //Fetch
-        //                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
-        //             } else if(address == m_debugger.getCPURegister(15) - instr_size) {
-        //                 //Decode
-        //                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
-        //             } else if(address == m_debugger.getCPURegister(15) - instr_size * 2) {
-        //                 //Execute
-        //                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
-        //             }
-
-        //             //Instruction in hexadecimal
-        //             u32 bytes = thumb ? m_debugger.read16(address) : m_debugger.read32(address);
-        //             ImGui::Text(fmt::format("%0{}X ", thumb ? 4 : 8).c_str(), bytes);
-
-        //             //Actual disassembly
-        //             ImGui::TableNextColumn();
-        //             std::string disassembled = thumb ? m_debugger.thumbDisassembleAt(address) : m_debugger.armDisassembleAt(address);
-
-        //             //Seperate mnemonic and registers
-        //             size_t space = disassembled.find_first_of(' ');
-        //             ImGui::Text("%s", disassembled.substr(0, space).c_str());
-        //             ImGui::TableNextColumn();
-        //             if(space < disassembled.size()) ImGui::Text("%s", disassembled.substr(space).c_str());
-        //         }
-        //     }
-
-        //     ImGui::EndTable();
-            
-        //     if(go_to_pc) {
-        //         //Scroll to 3 instructions before the current PC
-        //         ImGui::SetScrollY(47.5f * clipper.ItemsHeight);
-        //     }
-            
-        // }
-        // ImGui::EndChild();
-
-        // ImGui::EndGroup();
-    }
-
-    void drawDisassembly() {
-        ImGui::BeginGroup();
-
-        ImGui::Text("Disassembly");
-        ImGui::Separator();
-
-        // bool go_to_pc = ImGui::Button("Go to PC");
-        static bool use_thumb; 
-        ImGui::Checkbox("Thumb", &use_thumb);
-
-        static bool scroll_to_center;
-        static bool follow_pc;
-        static u32 address_input;
-
-        ImGui::SameLine();
-        if(ImGui::InputScalar("Go to", ImGuiDataType_U32, &address_input, 0, 0, "%X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_AlwaysInsertMode)) {
-            scroll_to_center = true;
-        }
-
-        // if(ImGui::Button("Go to button")) {
-        //     go_to_address = true;
-        // }
-
-        ImGui::Checkbox("Follow PC", &follow_pc);
-
-        if(!follow_pc) {
-            ImGui::SameLine();
-        }
-
-        u32 pc = m_gba->debug.getRegister(15);
-
-        if(follow_pc || ImGui::Button("Go to PC")) {
-            address_input = pc - (use_thumb ? 2 : 4);
-        }
-
-        emu::GamePak &pak = m_gba->getGamePak();
-
-        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-
-        if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
-            ImGui::BeginTable("##Disassembly_Table", 4);
-            ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-            ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(use_thumb ? "xx xx " : "xx xx xx xx ").x);
-            ImGui::TableSetupColumn("col_2", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
-            ImGui::TableSetupColumn("col_3");
-         
-            //THUMB or ARM
-            bool thumb = use_thumb; //(m_debugger.getCPUCPSR() >> 5) & 1;
-            const u8 instr_size = thumb ? 2 : 4;
-
-            ImGuiListClipper clipper(101);
-            
-            while(clipper.Step()) {
-                for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-
-                    //u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
-                    u32 address = address_input + (i - 50) * instr_size;
-                    ImGui::Text("%08X: ", address);
-
-                    ImGui::TableNextColumn();
-
-                    if(address == pc) { 
-                        //Fetch
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
-                    } else if(address == pc - instr_size) {
-                        //Decode
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
-                    } else if(address == pc - instr_size * 2) {
-                        //Execute
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
-                    }
-
-                    //Instruction in hexadecimal
-                    auto debugger = m_gba->debugger;
-                    u32 bytes = thumb ? debugger.read16(address) : debugger.read32(address);
-                    if(instr_size == 2) {
-                        ImGui::Text("%s", fmt::format("{2:02X} {3:02X}", 
-                            debugger.read8(address + 3), debugger.read8(address + 2), 
-                            debugger.read8(address + 1), debugger.read8(address + 0)).c_str());
-                    } else {
-                        ImGui::Text("%s", fmt::format("{:02X} {:02X} {:02X} {:02X}", 
-                            debugger.read8(address + 3), debugger.read8(address + 2), 
-                            debugger.read8(address + 1), debugger.read8(address + 0)).c_str());
-                    }
-
-                    //Actual disassembly
-                    ImGui::TableNextColumn();
-                    std::string disassembled = thumb ? emu::thumbDecodeInstruction(bytes, address, debugger.read16(address - 2)).disassembly : emu::armDecodeInstruction(bytes, address).disassembly;
-
-                    //Seperate mnemonic and registers
-                    size_t space = disassembled.find_first_of(' ');
-                    ImGui::Text("%s", disassembled.substr(0, space).c_str());
-                    ImGui::TableNextColumn();
-                    if(space < disassembled.size()) ImGui::Text("%s", disassembled.substr(space).c_str());
-                }
-            }
-
-            ImGui::EndTable();
-
-            if(scroll_to_center) {
-                ImGui::SetScrollY(45 * clipper.ItemsHeight);
-                scroll_to_center = false;
-            }
-            
-        }
-        ImGui::EndChild();
-
-        ImGui::PopFont();
-
         ImGui::EndGroup();
     }
 
-    void drawMemoryViewer() {
-        ImGui::Text("Memory Region");
-        ImGui::SameLine();
-        ImGui::Combo("##Memory_Region_Combo", &m_memory_region, m_regions);
+    //TODO: Redo this
+    // void drawDisassembly() {
+    //     ImGui::BeginGroup();
 
-        if(ImGui::BeginChild("##MemoryTable_Child")) {
-            u32 region_start = m_region_start[m_memory_region];
-            u32 region_size = m_region_sizes[m_memory_region];
+    //     ImGui::Text("Disassembly");
+    //     ImGui::Separator();
 
-            ImGui::BeginTable("##MemoryViewer_Table", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH);
-            ImGui::TableHeadersRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("Address");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::Text("Hex (16 Bytes)");
-            ImGui::TableSetColumnIndex(2);
-            ImGui::Text("ASCII");
+    //     // bool go_to_pc = ImGui::Button("Go to PC");
+    //     static bool use_thumb; 
+    //     ImGui::Checkbox("Thumb", &use_thumb);
 
-            ImGuiListClipper clipper(std::round((float)region_size / 16.0f));
+    //     static bool scroll_to_center;
+    //     static bool follow_pc;
+    //     static u32 address_input;
 
-            while(clipper.Step()) {
-                for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
+    //     ImGui::SameLine();
+    //     if(ImGui::InputScalar("Go to", ImGuiDataType_U32, &address_input, 0, 0, "%X", ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_AlwaysInsertMode)) {
+    //         scroll_to_center = true;
+    //     }
 
-                    u32 line_address = i * 16;
-                    ImGui::Text("%08X ", region_start + line_address);
+    //     // if(ImGui::Button("Go to button")) {
+    //     //     go_to_address = true;
+    //     // }
 
-                    ImGui::TableNextColumn();
+    //     ImGui::Checkbox("Follow PC", &follow_pc);
 
-                    for(size_t j = 0; j < 16; j++) {
-                        if(line_address + j >= region_size) {
-                            break;
-                        }
+    //     if(!follow_pc) {
+    //         ImGui::SameLine();
+    //     }
 
-                        ImGui::SameLine();
-                        ImGui::Text("%02X", m_gba->debugger.read8(region_start + line_address + j));
-                    }
+    //     u32 pc = m_gba->debug.getRegister(15);
 
-                    ImGui::TableNextColumn();
-                    std::string ascii;
-                    for(size_t j = 0; j < 16; j++) {
-                        if(line_address + j >= region_size) {
-                            break;
-                        }
+    //     if(follow_pc || ImGui::Button("Go to PC")) {
+    //         address_input = pc - (use_thumb ? 2 : 4);
+    //     }
 
-                        char c = static_cast<char>(m_gba->debugger.read8(region_start + line_address + j));
-                        ascii += common::is_printable(c) ? c : '.';
-                    }
-                    ImGui::Text(" %-16s", ascii.c_str());
-                }
-            }
+    //     emu::GamePak &pak = m_gba->getGamePak();
 
-            ImGui::EndTable();
-        }
-        ImGui::EndChild();
-    }
+    //     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+
+    //     if(ImGui::BeginChild("##DebuggerDisassemblyList_Child", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+    //         ImGui::BeginTable("##Disassembly_Table", 4);
+    //         ImGui::TableSetupColumn("col_0", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+    //         ImGui::TableSetupColumn("col_1", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(use_thumb ? "xx xx " : "xx xx xx xx ").x);
+    //         ImGui::TableSetupColumn("col_2", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("xxxxxxxxx").x);
+    //         ImGui::TableSetupColumn("col_3");
+         
+    //         //THUMB or ARM
+    //         bool thumb = use_thumb; //(m_debugger.getCPUCPSR() >> 5) & 1;
+    //         const u8 instr_size = thumb ? 2 : 4;
+
+    //         ImGuiListClipper clipper(101);
+            
+    //         while(clipper.Step()) {
+    //             for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+    //                 ImGui::TableNextRow();
+    //                 ImGui::TableSetColumnIndex(0);
+
+    //                 //u32 address = m_debugger.getCPURegister(15) + (i - 50) * instr_size;
+    //                 u32 address = address_input + (i - 50) * instr_size;
+    //                 ImGui::Text("%08X: ", address);
+
+    //                 ImGui::TableNextColumn();
+
+    //                 if(address == pc) { 
+    //                     //Fetch
+    //                     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF950000);
+    //                 } else if(address == pc - instr_size) {
+    //                     //Decode
+    //                     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF008500);
+    //                 } else if(address == pc - instr_size * 2) {
+    //                     //Execute
+    //                     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, 0xFF000085);
+    //                 }
+
+    //                 //Instruction in hexadecimal
+    //                 auto debugger = m_gba->debugger;
+    //                 u32 bytes = thumb ? debugger.read16(address) : debugger.read32(address);
+    //                 if(instr_size == 2) {
+    //                     ImGui::Text("%s", fmt::format("{2:02X} {3:02X}", 
+    //                         debugger.read8(address + 3), debugger.read8(address + 2), 
+    //                         debugger.read8(address + 1), debugger.read8(address + 0)).c_str());
+    //                 } else {
+    //                     ImGui::Text("%s", fmt::format("{:02X} {:02X} {:02X} {:02X}", 
+    //                         debugger.read8(address + 3), debugger.read8(address + 2), 
+    //                         debugger.read8(address + 1), debugger.read8(address + 0)).c_str());
+    //                 }
+
+    //                 //Actual disassembly
+    //                 ImGui::TableNextColumn();
+    //                 std::string disassembled = thumb ? emu::thumbDecodeInstruction(bytes, address, debugger.read16(address - 2)).disassembly : emu::armDecodeInstruction(bytes, address).disassembly;
+
+    //                 //Seperate mnemonic and registers
+    //                 size_t space = disassembled.find_first_of(' ');
+    //                 ImGui::Text("%s", disassembled.substr(0, space).c_str());
+    //                 ImGui::TableNextColumn();
+    //                 if(space < disassembled.size()) ImGui::Text("%s", disassembled.substr(space).c_str());
+    //             }
+    //         }
+
+    //         ImGui::EndTable();
+
+    //         if(scroll_to_center) {
+    //             ImGui::SetScrollY(45 * clipper.ItemsHeight);
+    //             scroll_to_center = false;
+    //         }
+            
+    //     }
+    //     ImGui::EndChild();
+
+    //     ImGui::PopFont();
+
+    //     ImGui::EndGroup();
+    // }
 
     void drawSchedulerViewer() {
         ImGui::Text("Cycle: %zu", m_gba->debugger.getCurrentCycle());
