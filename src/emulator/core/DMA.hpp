@@ -28,6 +28,8 @@ public:
 
 private:
 
+    void startTransfer(int dma_n);
+    
     GBA &core;
 
     struct DMAChannel {
@@ -41,8 +43,6 @@ private:
 
         EventHandle event;
     } channel[4];
-
-    void startTransfer(int dma_n);
 };
 
 } //namespace emu

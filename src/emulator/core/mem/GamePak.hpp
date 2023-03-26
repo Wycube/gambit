@@ -39,11 +39,14 @@ public:
     void updateWaitstates(u16 waitcnt);
     auto getHeader() -> const GamePakHeader&;
     auto getTitle() -> const std::string&;
-    auto getSave() -> std::shared_ptr<Save>;
     auto size() -> u32;
-    void loadROM(std::vector<u8> &&rom);
+    auto loadFile(const std::string &path) -> bool;
+    void unload();
 
 private:
+
+    void parseHeader();
+    auto findSaveType(const std::string &path) -> bool;
 
     [[maybe_unused]] Scheduler &scheduler;
     u8 sram_waitstate;
@@ -51,10 +54,7 @@ private:
     std::vector<u8> rom;
     GamePakHeader header;
     std::string title;
-    std::shared_ptr<Save> save;
-
-    void parseHeader();
-    auto findSaveType() -> bool;
+    std::unique_ptr<Save> save;
 };
 
 } //namespace emu

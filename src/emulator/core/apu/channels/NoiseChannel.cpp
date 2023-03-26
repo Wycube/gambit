@@ -1,18 +1,19 @@
 #include "NoiseChannel.hpp"
+#include "common/Bits.hpp"
 #include "common/Log.hpp"
 
 
 namespace emu {
 
-NoiseChannel::NoiseChannel(Scheduler &scheduler) : scheduler(scheduler) { }
+NoiseChannel::NoiseChannel(Scheduler &scheduler) : scheduler(scheduler) {
+    frequency_event = scheduler.generateHandle();
+    LOG_DEBUG("Noise channel has event handle: {}", frequency_event);
+}
 
 void NoiseChannel::reset() {
     snd4cnt_l = 0;
     snd4cnt_h = 0;
     enabled = false;
-
-    frequency_event = scheduler.generateHandle();
-    LOG_DEBUG("Noise channel has event handle: {}", frequency_event);
 }
 
 auto NoiseChannel::read(u32 address) -> u8 {

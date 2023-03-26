@@ -9,6 +9,11 @@ constexpr u32 PRESCALER_SELECTIONS[4] = {1, 64, 256, 1024};
 namespace emu {
 
 Timer::Timer(GBA &core) : core(core) {
+    for(size_t i = 0; i < 4; i++) {
+        timer_events[i] = core.scheduler.generateHandle();
+        LOG_DEBUG("Timer {} has event handle: {}", i, timer_events[i]);
+    }
+
     reset();
 }
 
@@ -17,11 +22,6 @@ void Timer::reset() {
     std::memset(timer_counter, 0, sizeof(timer_counter));
     std::memset(timer_reload, 0, sizeof(timer_reload));
     std::memset(tmcnt, 0, sizeof(tmcnt));
-
-    for(size_t i = 0; i < 4; i++) {
-        timer_events[i] = core.scheduler.generateHandle();
-        LOG_DEBUG("Timer {} has event handle: {}", i, timer_events[i]);
-    }
 }
 
 auto Timer::read8(u32 address) -> u8 {

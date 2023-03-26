@@ -16,8 +16,6 @@ class GBA;
 class CPU final {
 public:
 
-    CPUState state;
-
     explicit CPU(GBA &core);
 
     void reset();
@@ -30,16 +28,10 @@ public:
     auto readIO(u32 address) -> u8;
     void writeIO(u32 address, u8 value);
     void requestInterrupt(InterruptSource source);
+    
+    CPUState state;
 
 private:
-
-    GBA &core;
-
-    u16 int_enable;
-    //Make access to IF atomic so requesting an interrupt
-    //from another thread (i.e. InputDevice) is safe.
-    std::atomic<u16> int_flag;
-    bool master_enable;
 
     void setupRegisterBanks();
     void execute_arm(u32 instruction);
@@ -56,6 +48,14 @@ private:
     
     #include "arm/Handlers.inl"
     #include "thumb/Handlers.inl"
+    
+    GBA &core;
+
+    u16 int_enable;
+    //Make access to IF atomic so requesting an interrupt
+    //from another thread (i.e. InputDevice) is safe.
+    std::atomic<u16> int_flag;
+    bool master_enable;
 };
 
 } //namespace emu

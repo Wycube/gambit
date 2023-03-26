@@ -2,8 +2,7 @@
 #include "common/Types.hpp"
 #include "common/Log.hpp"
 #include "Frontend.hpp"
-#include "fonts/RubikRegular.hpp"
-#include "fonts/NotoSansMonoMedium.hpp"
+#include "common/File.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -36,28 +35,10 @@ auto initialize() -> GLFWwindow* {
     LOG_DEBUG("OpenGL Version   : {}", glGetString(GL_VERSION));
     LOG_DEBUG("Shading Language : {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-    //Initialize Dear ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    ImGui::StyleColorsDark();
-
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 130");
-
-    io.Fonts->AddFontFromMemoryCompressedTTF(rubik_regular_compressed_data, rubik_regular_compressed_size, 15);
-    io.Fonts->AddFontFromMemoryCompressedTTF(noto_sans_mono_medium_compressed_data, noto_sans_mono_medium_compressed_size, 15);
-    io.Fonts->Build();
-
     return window;
 }
 
 void cleanup(GLFWwindow *window) {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
     glfwDestroyWindow(window);
     glfwTerminate();
 }
@@ -125,10 +106,6 @@ int main(int argc, char *argv[]) {
 
     common::log::set_log_filter(log_filter);
 
-    if(!has_rom_path) {
-        LOG_FATAL("No ROM file provided!");
-    }
-
     if(!has_bios_path) {
         LOG_WARNING("No BIOS file specified! Using default: bios.bin");
         bios_path = "bios.bin";
@@ -138,48 +115,29 @@ int main(int argc, char *argv[]) {
     LOG_DEBUG("Branch  : {}", common::GIT_BRANCH);
     LOG_DEBUG("Commit  : {}", common::GIT_COMMIT);
 
-    std::ifstream rom_file(rom_path, std::ios_base::binary);
-    std::ifstream bios_file(bios_path, std::ios_base::binary);
+    std::vector<u8> rom_data = common::loadFileBytes(rom_path.c_str());
+    std::vector<u8> bios_data = common::loadFileBytes(bios_path.c_str());
 
-    if(!rom_file.is_open()) {
+    if(has_rom_path && rom_data.empty()) {
         LOG_FATAL("Unable to open ROM file {}!", rom_path);
     }
 
-    if(!bios_file.is_open()) {
+    if(bios_data.empty()) {
         LOG_FATAL("Unable to open BIOS file {}!", bios_path);
     }
 
     GLFWwindow *window = initialize();
     Frontend app(window);
     
-    {
-        size_t rom_size = std::filesystem::file_size(rom_path);
-        size_t bios_size = std::filesystem::file_size(bios_path);
-        
-        std::vector<u8> rom(rom_size);
-        std::vector<u8> bios(bios_size);
-        
-        rom_file.read(reinterpret_cast<char*>(rom.data()), rom_size);
-        bios_file.read(reinterpret_cast<char*>(bios.data()), bios_size);
+    app.loadBIOS(bios_data);
 
-        LOG_INFO("ROM file {} ({} bytes) read", rom_path, rom_size);
-        LOG_INFO("BIOS file {} ({} bytes) read", bios_path, bios_size);
-
-        app.loadBIOS(bios);
-        app.loadROM(std::move(rom));
+    if(has_rom_path) {
+        app.resetAndLoad(rom_path.c_str());
     }
 
-    rom_file.close();
-    bios_file.close();
-
-    std::string save_path = rom_path.substr(0, rom_path.find_last_of(".")) + ".sav";
-    app.loadSave(save_path);
     app.init();
-
     app.mainloop();
-
     app.shutdown();
-    app.writeSave(save_path);
 
     cleanup(window);
 }

@@ -21,6 +21,9 @@ public:
 
 private:
 
+    void sample(u64 late);
+    void restart();
+    
     u8 snd3cnt_l;  //NR30
     u16 snd3cnt_h; //NR31, NR32
     u16 snd3cnt_x; //NR33, NR34
@@ -32,9 +35,6 @@ private:
 
     Scheduler &scheduler;
     EventHandle sample_event;
-
-    void sample(u64 late);
-    void restart();
 };
 
 } //namespace emu

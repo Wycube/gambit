@@ -1,6 +1,5 @@
 #pragma once
 
-#include "emulator/core/debug/Debugger.hpp"
 #include "common/Types.hpp"
 #include <functional>
 
@@ -33,8 +32,6 @@ public:
     void runToNext();
     auto nextEventTime() -> u64;
     auto getCurrentTimestamp() -> u64;
-
-    void attachDebugger(dbg::Debugger &debugger);
 
 private:
 

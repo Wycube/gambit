@@ -18,7 +18,7 @@ enum Command : u8 {
 class Flash final : public Save {
 public:
 
-    explicit Flash(SaveType save_type);
+    explicit Flash(SaveType save_type, const std::string &path);
     ~Flash() = default;
 
     void reset() override;

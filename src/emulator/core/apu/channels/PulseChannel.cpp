@@ -18,15 +18,16 @@ static constexpr s8 WAVE_DUTY[4][8] = {
 
 namespace emu {
 
-PulseChannel::PulseChannel(Scheduler &scheduler) : scheduler(scheduler) { }
+PulseChannel::PulseChannel(Scheduler &scheduler) : scheduler(scheduler) {
+    frequency_event = scheduler.generateHandle();
+    LOG_DEBUG("Pulse channel has event handle: {}", frequency_event);
+}
 
 void PulseChannel::reset() {
     sndcnt_h = 0;
     sndcnt_l = 0;
     sndcnt_x = 0;
     enabled = false;
-    frequency_event = scheduler.generateHandle();
-    LOG_DEBUG("Pulse channel has event handle: {}", frequency_event);
 }
 
 auto PulseChannel::read(u32 address) -> u8 {

@@ -21,6 +21,9 @@ public:
 
 private:
 
+    void tick(u64 late);
+    void restart();
+    
     u16 snd4cnt_l; //NR41, NR42
     u16 snd4cnt_h; //NR43, NR44
     bool enabled;
@@ -32,9 +35,6 @@ private:
 
     Scheduler &scheduler;
     EventHandle frequency_event;
-
-    void tick(u64 late);
-    void restart();
 };
 
 } //namespace emu

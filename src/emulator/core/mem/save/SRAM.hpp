@@ -8,7 +8,7 @@ namespace emu {
 class SRAM final : public Save {
 public:
 
-    SRAM();
+    SRAM(const std::string &path);
     ~SRAM() = default;
 
     void reset() override;

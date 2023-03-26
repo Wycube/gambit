@@ -5,12 +5,13 @@
 namespace emu {
 
 Scheduler::Scheduler() {
+    next_handle = 1;
+
     reset();
 }
 
 void Scheduler::reset() {
     current_timestamp = 0;
-    next_handle = 1;
     events.clear();
 }
 
@@ -63,10 +64,6 @@ auto Scheduler::nextEventTime() -> u64 {
 
 auto Scheduler::getCurrentTimestamp() -> u64 {
     return current_timestamp;
-}
-
-void Scheduler::attachDebugger(dbg::Debugger &debugger) {
-    debugger.attachScheduler(&events, &current_timestamp);
 }
 
 } //namespace emu

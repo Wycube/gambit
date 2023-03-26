@@ -8,7 +8,10 @@ static constexpr u8 VOLUMES[4] = {0, 4, 2, 1};
 
 namespace emu {
 
-WaveChannel::WaveChannel(Scheduler &scheduler) : scheduler(scheduler) { }
+WaveChannel::WaveChannel(Scheduler &scheduler) : scheduler(scheduler) {
+    sample_event = scheduler.generateHandle();
+    LOG_DEBUG("Wave channel has event handle: {}", sample_event);
+}
 
 void WaveChannel::reset() {
     snd3cnt_l = 0;
@@ -16,9 +19,6 @@ void WaveChannel::reset() {
     snd3cnt_x = 0;
     std::memset(wave_ram, 0, sizeof(wave_ram));
     enabled = false;
-
-    sample_event = scheduler.generateHandle();
-    LOG_DEBUG("Wave channel has event handle: {}", sample_event);
 }
 
 auto WaveChannel::read(u32 address) -> u8 {

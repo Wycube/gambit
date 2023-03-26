@@ -33,6 +33,9 @@ constexpr int OBJECT_HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 
 
 
 PPU::PPU(GBA &core) : core(core) {
+    update_event = core.scheduler.generateHandle();
+    LOG_DEBUG("PPU has event handle: {}", update_event);
+
     reset();
 }
 
@@ -55,9 +58,7 @@ void PPU::reset() {
     std::memset(state.palette, 0, sizeof(state.palette));
     std::memset(state.oam, 0, sizeof(state.oam));
     
-    update_event = core.scheduler.generateHandle();
     core.scheduler.addEvent(update_event, 960, [this](u64 late) { hblankStart(late); });
-    LOG_DEBUG("PPU has event handle: {}", update_event);
 }
 
 auto PPU::readIO(u32 address) -> u8 {

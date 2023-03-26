@@ -19,13 +19,13 @@ public:
 
 private:
 
+    void scheduleDummyTransfer();
+    
     GBA &core;
     EventHandle event;
 
     u16 siocnt;
     u16 rcnt;
-
-    void scheduleDummyTransfer();
 };
 
 } //namespace emu

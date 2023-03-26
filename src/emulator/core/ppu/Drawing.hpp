@@ -44,9 +44,9 @@ struct Background {
 
 private:
 
-    s32 internal_x, internal_y;
-
     void getAffineCoords(int &x, int &y);
+    
+    s32 internal_x, internal_y;
 };
 
 struct Object {

@@ -6,14 +6,15 @@
 namespace emu {
 
 SIO::SIO(GBA &core) : core(core) {
+    event = core.scheduler.generateHandle();
+    LOG_DEBUG("SIO has event handle: {}", event);
+
     reset();
 }
 
 void SIO::reset() {
     siocnt = 0;
     rcnt = 0;
-    event = core.scheduler.generateHandle();
-    LOG_DEBUG("SIO has event handle: {}", event);
 }
 
 auto SIO::read8(u32 address) -> u8 {

@@ -26,8 +26,6 @@ public:
     void write16(u32 address, u16 value, AccessType access);
     void write32(u32 address, u32 value, AccessType access);
 
-    auto getLoadedPak() -> GamePak&;
-    void loadROM(std::vector<u8> &&rom);
     void loadBIOS(const std::vector<u8> &data);
 
     //Same as other read/writes but doesn't tick the scheduler
@@ -37,8 +35,17 @@ public:
     // void debugWrite8(u32 address, u8 value);
     // void debugWrite16(u32 address, u16 value);
     // void debugWrite32(u32 address, u32 value);
+    GamePak pak;
 
 private:
+
+    template<typename T>
+    auto read(u32 address, AccessType access) -> T;
+    template<typename T>
+    void write(u32 address, T value, AccessType access);
+
+    auto readIO(u32 address) -> u8;
+    void writeIO(u32 address, u8 value);
 
     u8 bios[16_KiB];   //00000000 - 00003FFF
     u8 ewram[256_KiB]; //02000000 - 0203FFFF
@@ -48,15 +55,6 @@ private:
     // u32 cpu_open_bus;
     u16 waitcnt;
     GBA &core;
-    GamePak pak;
-
-    template<typename T>
-    auto read(u32 address, AccessType access) -> T;
-    template<typename T>
-    void write(u32 address, T value, AccessType access);
-
-    auto readIO(u32 address) -> u8;
-    void writeIO(u32 address, u8 value);
 };
 
 } //namespace emu

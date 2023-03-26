@@ -3,6 +3,7 @@
 #include "common/Types.hpp"
 #include <string>
 #include <vector>
+#include <fstream>
 
 
 namespace emu {
@@ -24,14 +25,20 @@ public:
     virtual void reset() = 0;
     virtual auto read(u32 address) -> u8 = 0;
     virtual void write(u32 address, u8 value) = 0;
-    void loadFromFile(const std::string &filename);
-    void writeToFile(const std::string &filename);
     auto getType() -> SaveType;
 
 protected:
 
-    std::vector<u8> data;
+    void openFile(const std::string &path, size_t size);
+    auto readFile(u32 index) -> u8;
+    void writeFile(u32 index, u8 value);
+
     SaveType type;
+
+private:
+
+    std::vector<u8> data;
+    std::fstream file;
 };
 
 class None final : public Save {

@@ -5,7 +5,7 @@
 
 namespace emu {
 
-Bus::Bus(GBA &core) : core(core), pak(core.scheduler) {
+Bus::Bus(GBA &core) : pak(core.scheduler), core(core) {
     reset();
 }
 
@@ -52,14 +52,6 @@ void Bus::write16(u32 address, u16 value, AccessType access) {
 void Bus::write32(u32 address, u32 value, AccessType access) {
     core.scheduler.step(1);
     write<u32>(address, value, access);
-}
-
-auto Bus::getLoadedPak() -> GamePak& {
-    return pak;
-}
-
-void Bus::loadROM(std::vector<u8> &&rom) {
-    pak.loadROM(std::move(rom));
 }
 
 void Bus::loadBIOS(const std::vector<u8> &data) {

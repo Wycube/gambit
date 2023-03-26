@@ -36,6 +36,11 @@ void MAAudioDevice::stop() {
     }
 }
 
+void MAAudioDevice::clear() {
+    samples_l.clear();
+    samples_r.clear();
+}
+
 void MAAudioDevice::pushSample(float left, float right) {
     samples_l.push(left);
     samples_r.push(right);

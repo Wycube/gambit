@@ -21,6 +21,9 @@ public:
 
 private:
 
+    void tick(u64 late);
+    void restart();
+    
     u8 sndcnt_l;  //NR10
     u16 sndcnt_h; //NR11, NR12 / NR23, NR24
     u16 sndcnt_x; //NR13, NR14 / NR23, NR24 
@@ -34,9 +37,6 @@ private:
 
     Scheduler &scheduler;
     EventHandle frequency_event;
-
-    void tick(u64 late);
-    void restart();
 };
 
 } //namespace emu

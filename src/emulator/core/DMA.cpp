@@ -12,6 +12,11 @@ static constexpr u16 LENGTH_MASK[4] = {0x3FFF, 0x3FFF, 0x3FFF, 0xFFFF};
 namespace emu {
 
 DMA::DMA(GBA &core) : core(core) {
+    for(size_t i = 0; i < 4; i++) {
+        channel[i].event = core.scheduler.generateHandle();
+        LOG_DEBUG("DMA {} has event handle: {}", i, channel[i].event);
+    }
+
     reset();
 }
 
@@ -22,8 +27,6 @@ void DMA::reset() {
         channel[i].destination = 0;
         channel[i].length = 0;
         channel[i].control = 0;
-        channel[i].event = core.scheduler.generateHandle();
-        LOG_DEBUG("DMA {} has event handle: {}", i, channel[i].event);
     }
 }
 

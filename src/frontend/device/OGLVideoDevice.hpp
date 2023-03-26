@@ -13,7 +13,7 @@ public:
     OGLVideoDevice();
     ~OGLVideoDevice();
 
-    void clear(u32 color) override;
+    void clear(u32 color);
     void setPixel(int x, int y, u32 color) override;
     void setLine(int y, const u32 *colors) override;
     void presentFrame() override;
@@ -28,7 +28,8 @@ private:
     void createTexture();
     void updateTexture(u32 *pixels);
 
-    u32 *present_framebuffer = new u32[sizeof(internal_framebuffer)];
+    u32 *internal_framebuffer = new u32[240 * 160];
+    u32 *present_framebuffer = new u32[240 * 160];
     GLuint texture_id;
     std::mutex update_mutex;
     bool new_frame;

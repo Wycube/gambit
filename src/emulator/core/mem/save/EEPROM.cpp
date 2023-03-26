@@ -4,13 +4,13 @@
 
 namespace emu {
 
-EEPROM::EEPROM(SaveType save_type) {
+EEPROM::EEPROM(SaveType save_type, const std::string &path) {
     if(save_type != EEPROM_512 && save_type != EEPROM_8K) {
         LOG_FATAL("Invalid SaveType: {}, for EEPROM!", save_type);
     }
 
     type = save_type;
-    data.resize(type == EEPROM_512 ? 512 : 8192);
+    openFile(path, type == EEPROM_512 ? 512 : 8192);
     bus_size = type == EEPROM_512 ? 6 : 14;
     reset();
 }
@@ -36,7 +36,7 @@ auto EEPROM::read(u32 address) -> u8 {
             break;
         case READ :
             //MSB first
-            data_out = (data[address_latch * 8 + (buffer_size / 8)] >> (7 - buffer_size % 8)) & 1;
+            data_out = (readFile(address_latch * 8 + (buffer_size / 8)) >> (7 - buffer_size % 8)) & 1;
             buffer_size++;
 
             if(buffer_size == 64) {
@@ -89,7 +89,7 @@ void EEPROM::write(u32 address, u8 value) {
         case WRITE_GET_DATA :
             if(buffer_size == 64) {
                 for(size_t i = 0; i < 8; i++) {
-                    data[address_latch * 8 + i] = (serial_buffer >> (7 - i) * 8) & 0xFF;
+                    writeFile(address_latch * 8 + i, (serial_buffer >> (7 - i) * 8) & 0xFF);
                 }
 
                 state = WRITE_END;

@@ -27,6 +27,9 @@ public:
 
 private:
 
+    void step(u64 late);
+    void sample(u64 late);
+    
     GBA &core;
     EventHandle update_event;
 
@@ -43,9 +46,6 @@ private:
     std::deque<s8> fifo_a;
     std::deque<s8> fifo_b;
     s8 fifo_sample_a, fifo_sample_b;
-
-    void step(u64 late);
-    void sample(u64 late);
 };
 
 } //namespace emu

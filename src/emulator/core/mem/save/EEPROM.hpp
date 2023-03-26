@@ -8,7 +8,7 @@ namespace emu {
 class EEPROM final : public Save {
 public:
 
-    explicit EEPROM(SaveType save_type);
+    explicit EEPROM(SaveType save_type, const std::string &path);
     ~EEPROM() = default;
 
     void reset() override;

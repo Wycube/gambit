@@ -7,6 +7,9 @@
 namespace emu {
 
 APU::APU(GBA &core) : core(core), pulse1(core.scheduler), pulse2(core.scheduler), wave(core.scheduler), noise(core.scheduler) {
+    update_event = core.scheduler.generateHandle();
+    LOG_DEBUG("APU has event handle: {}", update_event);
+
     reset();
 }
 
@@ -20,11 +23,10 @@ void APU::reset() {
     sndcnt_h = 0xE;
     sndcnt_x = 0;
     sndbias = 0x200;
+    core.audio_device.setSampleRate(bits::get<14, 2>(sndbias));
 
-    update_event = core.scheduler.generateHandle();
     core.scheduler.addEvent(update_event, 32768, [this](u64 late) { step(late); });
     core.scheduler.addEvent(update_event, 512, [this](u64 late) { sample(late); });
-    LOG_DEBUG("APU has event handle: {}", update_event);
 }
 
 auto APU::read(u32 address) -> u8 {

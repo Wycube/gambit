@@ -6,8 +6,7 @@ namespace emu {
 
 GBA::GBA(VideoDevice &video_device, InputDevice &input_device, AudioDevice &audio_device) 
         : video_device(video_device), input_device(input_device), audio_device(audio_device),
-        debugger(*this), debug(*this), keypad(*this), timer(*this), dma(*this), sio(*this), ppu(*this), apu(*this), bus(*this), cpu(*this) {
-    scheduler.attachDebugger(debugger);
+        debug(*this), keypad(*this), timer(*this), dma(*this), sio(*this), ppu(*this), apu(*this), bus(*this), cpu(*this) {
     cycles_active = 0;
 }
 
@@ -70,35 +69,8 @@ auto GBA::run(u32 cycles) -> u32 {
     return scheduler.getCurrentTimestamp() - (target - cycles);
 }
 
-auto GBA::getGamePak() -> GamePak& {
-    return bus.getLoadedPak();
-}
-
-void GBA::loadROM(std::vector<u8> &&rom) {
-    bus.loadROM(std::move(rom));
-    cpu.flushPipeline();
-}
-
 void GBA::loadBIOS(const std::vector<u8> &bios) {
     bus.loadBIOS(bios);
-}
-
-void GBA::loadSave(const std::string &filename) {
-    auto save = bus.getLoadedPak().getSave();
-    if(save->getType() != NONE) {
-        save->loadFromFile(filename);
-    } else {
-        LOG_INFO("No save file loaded because save type was NONE");
-    }
-}
-
-void GBA::writeSave(const std::string &filename) {
-    auto save = bus.getLoadedPak().getSave();
-    if(save->getType() != NONE) {
-        save->writeToFile(filename);
-    } else {
-        LOG_INFO("No save file written because save type was NONE");
-    }
 }
 
 } //namespace emu

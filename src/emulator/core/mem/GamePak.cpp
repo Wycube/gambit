@@ -5,6 +5,7 @@
 #include "save/SRAM.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
+#include "common/File.hpp"
 
 constexpr u32 SRAM_WAIT_CYCLES[4] = {4, 3, 2, 8};
 constexpr u32 WS0N_WAIT_CYCLES[4] = {4, 3, 2, 8};
@@ -96,23 +97,33 @@ auto GamePak::getTitle() -> const std::string& {
     return title;
 }
 
-auto GamePak::getSave() -> std::shared_ptr<Save> {
-    return save;
-}
-
 auto GamePak::size() -> u32 {
     return rom.size();
 }
 
-void GamePak::loadROM(std::vector<u8> &&rom) {
-    this->rom = rom;
+auto GamePak::loadFile(const std::string &path) -> bool {
+    std::vector<u8> file_data = common::loadFileBytes(path.c_str());
+
+    if(file_data.empty()) {
+        return false;
+    }
+
+    rom = std::move(file_data);
     parseHeader();
 
     //Get save type, only a string match so far
-    if(!findSaveType()) {
-        save = std::make_shared<None>();
+    if(!findSaveType(path.substr(0, path.find_last_of(".")) + ".sav")) {
+        save = std::make_unique<None>();
         LOG_DEBUG("No save type detected!");
     }
+
+    return true;
+}
+
+void GamePak::unload() {
+    //This is the equivilent of pulling the game cartridge out, essentially
+    rom.clear();
+    save.reset();
 }
 
 void GamePak::parseHeader() {
@@ -135,7 +146,7 @@ void GamePak::parseHeader() {
     title = title_str;
 }
 
-auto GamePak::findSaveType() -> bool {
+auto GamePak::findSaveType(const std::string &path) -> bool {
     for(size_t i = 0; i < rom.size(); i++) {
         char byte = static_cast<char>(rom[i]);
 
@@ -145,8 +156,8 @@ auto GamePak::findSaveType() -> bool {
                 static_cast<char>(rom[i + 2]), static_cast<char>(rom[i + 3]), 
                 static_cast<char>(rom[i + 4]), static_cast<char>(rom[i + 5]), '\0'};
             if(strcmp(next, "EPROM") == 0) {
-                save = std::make_shared<EEPROM>(EEPROM_8K);
                 LOG_DEBUG("EEPROM save type detected, assuming 8k");
+                save = std::make_unique<EEPROM>(EEPROM_8K, path);
 
                 return true;
             }
@@ -154,8 +165,8 @@ auto GamePak::findSaveType() -> bool {
             const char next[4] = {static_cast<char>(rom[i + 1]),
                 static_cast<char>(rom[i + 2]), static_cast<char>(rom[i + 3]), '\0'};
             if(strcmp(next, "RAM") == 0) {
-                save = std::make_shared<SRAM>();
                 LOG_DEBUG("SRAM save type detected");
+                save = std::make_unique<SRAM>(path);
 
                 return true;
             }
@@ -168,24 +179,24 @@ auto GamePak::findSaveType() -> bool {
                     char size = static_cast<char>(rom[i + 5]);
 
                     if(size == '5') {
-                        save = std::make_shared<Flash>(FLASH_64K);
                         LOG_DEBUG("Flash 64k save type detected");
+                        save = std::make_unique<Flash>(FLASH_64K, path);
                     
                         return true;
                     } else if(size == '1') {
-                        save = std::make_shared<Flash>(FLASH_128K);
                         LOG_DEBUG("Flash 128k save type detected");
+                        save = std::make_unique<Flash>(FLASH_128K, path);
 
                         return true;
                     } else {
-                        save = std::make_shared<Flash>(FLASH_64K);
+                        save = std::make_unique<Flash>(FLASH_64K, path);
                         LOG_DEBUG("Flash save type detected, assuming 64k");
 
                         return true;
                     }
                 } else {
-                    save = std::make_shared<Flash>(FLASH_64K);
                     LOG_DEBUG("Flash save type detected, assuming 64k");
+                    save = std::make_unique<Flash>(FLASH_64K, path);
 
                     return true;
                 }

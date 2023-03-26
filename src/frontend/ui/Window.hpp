@@ -1,37 +1,40 @@
 #pragma once
 
 
+class Frontend;
+
 namespace ui {
 
-class Window {
-public:
+struct Window {
+    bool active = false;
 
-    void update() {
-        if(!active) {
-            return;
-        }
+    virtual void draw(Frontend &frontend) = 0;
+};
 
-        draw();
-    }
+struct AboutDialog final : public Window {
+    void open();
+    void draw(Frontend &frontend) override;
 
-    auto getActive() -> bool* {
-        return &active;
-    }
+private:
 
-    auto isActive() -> bool {
-        return active;
-    }
+    bool open_popup = false;
+};
 
-    auto getName() -> const char* {
-        return name;
-    }
+struct FileDialog final : public Window {
+    void open();
+    void draw(Frontend &frontend) override;
 
-protected:
+private:
 
-    bool active;
-    const char *name;
+    bool open_popup = false;
+};
 
-    virtual void draw() = 0;
+struct MetricsWindow final : public Window {
+    void draw(Frontend &frontend) override;
+
+private:
+
+    
 };
 
 } //namespace ui

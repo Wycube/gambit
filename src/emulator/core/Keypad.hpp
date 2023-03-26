@@ -33,11 +33,11 @@ public:
 
 private:
 
+    void checkForInterrupt();
+    
     GBA &core;
     u16 keycnt;
     std::mutex keycnt_mutex;
-
-    void checkForInterrupt();
 };
 
 } //namespace emu

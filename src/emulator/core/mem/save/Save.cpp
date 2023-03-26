@@ -7,39 +7,40 @@
 
 namespace emu {
 
-//TODO: Validation on save files based on detected save type (size)
-void Save::loadFromFile(const std::string &filename) {
-    std::ifstream file(filename, std::ios_base::binary);
-
-    if(!file.is_open()) {
-        LOG_ERROR("Failed to open save file {} for reading!", filename);
-        return;
-    }
-
-    size_t size = std::min(data.size(), std::filesystem::file_size(filename));
-    file.read(reinterpret_cast<char*>(data.data()), size);
-    file.close();
-
-    LOG_INFO("Save file {} ({} bytes) loaded", filename, size);
-}
-
-void Save::writeToFile(const std::string &filename) {
-    std::ofstream file(filename, std::ios_base::binary);
-
-    if(!file.is_open()) {
-        LOG_ERROR("Failed to open save file {} for writing!", filename);
-        return;
-    }
-
-    size_t size = data.size();
-    file.write(reinterpret_cast<char*>(data.data()), size);
-    file.close();
-
-    LOG_INFO("Save file {} ({} bytes) written", filename, size);
-}
-
 auto Save::getType() -> SaveType {
     return type;
+}
+
+void Save::openFile(const std::string &path, size_t size) {
+    if(std::filesystem::exists(path) && std::filesystem::is_regular_file(path)) {
+        size_t file_size = std::filesystem::file_size(path);
+        
+        if(file_size != size) {
+            file.open(path, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+            std::filesystem::resize_file(path, size);
+            LOG_DEBUG("Created new save file '{}'", path);
+        } else {
+            file.open(path, std::ios::binary | std::ios::in | std::ios::out);
+            LOG_DEBUG("Opened save file '{}'", path);
+        }
+    } else {
+        file.open(path, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        std::filesystem::resize_file(path, size);
+        LOG_DEBUG("Created new save file '{}'", path);
+    }
+}
+
+auto Save::readFile(u32 index) -> u8 {
+    u8 value;
+    file.seekg(index);
+    file.read(reinterpret_cast<char*>(&value), 1);
+    
+    return value;
+}
+
+void Save::writeFile(u32 index, u8 value) {
+    file.seekp(index);
+    file.write(reinterpret_cast<char*>(&value), 1);
 }
 
 } //namespace emu
