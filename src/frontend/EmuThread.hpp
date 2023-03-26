@@ -20,13 +20,11 @@ public:
 
     void start();
     void stop();
-    void pause();
     void sendCommand(Command cmd);
     void setFastforward(bool enable);
     auto fastforwarding() -> bool;
 
     auto running() const -> bool;
-    auto getClockSpeed() const -> u64;
 
 private:
 

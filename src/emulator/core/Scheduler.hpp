@@ -2,6 +2,7 @@
 
 #include "common/Types.hpp"
 #include <functional>
+#include <vector>
 
 
 namespace emu {
