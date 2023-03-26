@@ -4,7 +4,7 @@
 
 constexpr u8 CHIP_IDS[2][2] = {
     {0x32, 0x1B}, //Panasonic 64Kib Manufacturer and Device ID
-    {0x62, 0x13}  //Sonya 128Kib Manufaturer and Device ID
+    {0x62, 0x13}  //Sonya 128Kib Manufacturer and Device ID
 };
 
 namespace emu {
@@ -76,7 +76,7 @@ void Flash::write(u32 address, u8 value) {
                 //Read the command and do the stuff
                 if(erase_next) {
                     if(value == ERASE_CHIP) {
-                        u32 size = FLASH_64K ? 64_KiB : 128_KiB;
+                        u32 size = type == FLASH_64K ? 64_KiB : 128_KiB;
                         for(u32 i = 0; i < size; i++) {
                             writeFile(i, 0xFF);
                         }

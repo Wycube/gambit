@@ -3,6 +3,8 @@
 #include "emulator/core/GBA.hpp"
 #include "common/Types.hpp"
 #include <memory>
+#include <thread>
+#include <condition_variable>
 
 
 enum Command {
