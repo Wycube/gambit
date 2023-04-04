@@ -314,6 +314,7 @@ void Frontend::endFrame() {
         m_gba_fps += gba_frame_times.peek(i);
     }
     m_gba_fps = (1000.0f * (float)gba_frame_times.size()) / m_gba_fps;
+    LOG_INFO("Speed: {}%", (m_gba_fps / 59.7275f) * 100.0f);
 }
 
 void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {

@@ -14,7 +14,7 @@
 #include <vector>
 
 
-auto initialize() -> GLFWwindow* {
+auto init() -> GLFWwindow* {
     //Initialize GLFW and create window
     if(glfwInit() == GLFW_FALSE) {
         LOG_FATAL("GLFW failed to initialize!");
@@ -30,10 +30,10 @@ auto initialize() -> GLFWwindow* {
     }
 
     LOG_DEBUG("Loaded OpenGL {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
-    LOG_DEBUG("Vender           : {}", glGetString(GL_VENDOR));
-    LOG_DEBUG("Renderer         : {}", glGetString(GL_RENDERER));
-    LOG_DEBUG("OpenGL Version   : {}", glGetString(GL_VERSION));
-    LOG_DEBUG("Shading Language : {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
+    LOG_DEBUG(" Vender           : {}", glGetString(GL_VENDOR));
+    LOG_DEBUG(" Renderer         : {}", glGetString(GL_RENDERER));
+    LOG_DEBUG(" OpenGL Version   : {}", glGetString(GL_VERSION));
+    LOG_DEBUG(" Shading Language : {}", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     return window;
 }
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
         LOG_FATAL("Unable to open BIOS file {}!", bios_path);
     }
 
-    GLFWwindow *window = initialize();
+    GLFWwindow *window = init();
     Frontend app(window);
     
     app.loadBIOS(bios_data);

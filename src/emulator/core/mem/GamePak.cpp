@@ -8,8 +8,10 @@
 #include "common/File.hpp"
 
 constexpr u32 SRAM_WAIT_CYCLES[4] = {4, 3, 2, 8};
-constexpr u32 WS0N_WAIT_CYCLES[4] = {4, 3, 2, 8};
+constexpr u32 WSN_WAIT_CYCLES[4] = {4, 3, 2, 8};
 constexpr u32 WS0S_WAIT_CYCLES[2] = {2, 1};
+constexpr u32 WS1S_WAIT_CYCLES[2] = {4, 1};
+constexpr u32 WS2S_WAIT_CYCLES[2] = {8, 1};
 
 
 namespace emu {
@@ -39,19 +41,43 @@ auto GamePak::read(u32 address, AccessType access) -> T {
             if(save->getType() == SRAM_32K || save->getType() == FLASH_64K || save->getType() == FLASH_128K) {
                 return save->read(sub_address) * 0x01010101;
             }
-            return 0;
+            return 0xFF;
     }
 
     if(aligned >= rom.size()) {
        return 0;
     }
 
+    switch(address >> 24) {
+        case 0x8 :
+        case 0x9 :
+            if(sizeof(T) == 4) {
+                scheduler.step(ws0_s + (access == SEQUENTIAL ? ws0_s : ws0_n));
+            } else {
+                scheduler.step(access == SEQUENTIAL ? ws0_s : ws0_n);
+            }
+            break;
+
+        case 0xA :
+        case 0xB :
+            if(sizeof(T) == 4) {
+                scheduler.step(ws1_s + (access == SEQUENTIAL ? ws1_s : ws1_n));
+            } else {
+                scheduler.step(access == SEQUENTIAL ? ws1_s : ws1_n);
+            }
+            break;
+        
+        case 0xC :
+        case 0xD :
+            if(sizeof(T) == 4) {
+                scheduler.step(ws2_s + (access == SEQUENTIAL ? ws2_s : ws2_n));
+            } else {
+                scheduler.step(access == SEQUENTIAL ? ws2_s : ws2_n);
+            }
+            break;
+    }
+
     T value = 0;
-    // if(sizeof(T) == 4) {
-    //     scheduler.step(ws0_s + ws0_n);
-    // } else {
-    //     scheduler.step(access == SEQUENTIAL ? ws0_s : ws0_n);
-    // }
     for(size_t i = 0; i < sizeof(T); i++) {
         value |= (rom[aligned + i] << i * 8);
     }
@@ -84,8 +110,12 @@ void GamePak::write(u32 address, T value, AccessType access) {
 
 void GamePak::updateWaitstates(u16 waitcnt) {
     sram_waitstate = SRAM_WAIT_CYCLES[waitcnt & 3];
-    ws0_n = WS0N_WAIT_CYCLES[(waitcnt >> 2) & 3];
-    ws0_s = WS0S_WAIT_CYCLES[(waitcnt >> 3) & 1];
+    ws0_n = WSN_WAIT_CYCLES[(waitcnt >> 2) & 3];
+    ws0_s = WS0S_WAIT_CYCLES[(waitcnt >> 4) & 1];
+    ws1_n = WSN_WAIT_CYCLES[(waitcnt >> 5) & 3];
+    ws1_s = WS1S_WAIT_CYCLES[(waitcnt >> 7) & 1];
+    ws2_n = WSN_WAIT_CYCLES[(waitcnt >> 8) & 3];
+    ws2_s = WS2S_WAIT_CYCLES[(waitcnt >> 10) & 1];
     // LOG_INFO("Updated waitstate sram: {}, WS0 1st: {}, WS0 2nd: {}", sram_waitstate, ws0_n, ws0_s);
 }
 

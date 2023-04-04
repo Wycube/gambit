@@ -50,7 +50,7 @@ private:
 
     [[maybe_unused]] Scheduler &scheduler;
     u8 sram_waitstate;
-    u32 ws0_n, ws0_s;
+    u32 ws0_n, ws0_s, ws1_n, ws1_s, ws2_n, ws2_s;
     std::vector<u8> rom;
     GamePakHeader header;
     std::string title;

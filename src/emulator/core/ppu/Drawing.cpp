@@ -51,7 +51,7 @@ auto Background::read(u32 address, bool regular) -> u8 {
 auto Background::getTextPixel(int x, int y, const u8 *vram, const PPUState &state) -> u8 {
     const u16 map_width = 32 << (screen_size & 1);
     const u16 map_height = 32 << (screen_size >> 1);
-    const u8 tile_width = color_mode ? 8 : 4;
+    const u8 tile_width = 4 << color_mode; //color_mode ? 8 : 4;
 
     if(mosaic) {
         int mosaic_w = (bits::get<0, 4>(state.mosaic) + 1);
@@ -62,21 +62,21 @@ auto Background::getTextPixel(int x, int y, const u8 *vram, const PPUState &stat
 
     x += h_offset;
     y += v_offset;
-    x %= map_width * 8;
-    y %= map_height * 8;
+    x &= (map_width << 3) - 1; //%= map_width * 8;
+    y &= (map_height << 3) - 1; //%= map_height * 8;
 
 
-    const u8 tile_x = x / 8;
-    const u8 tile_y = y / 8;
-    const u8 screen_block = (tile_x / 32) + (tile_y / 32) * (map_width / 32);
+    const u8 tile_x = x >> 3; //x / 8;
+    const u8 tile_y = y >> 3; //y / 8;
+    const u8 screen_block = (tile_x >> 5) + (tile_y >> 5) * (map_width >> 5); //(tile_x / 32) + (tile_y / 32) * (map_width / 32);
 
-    const u32 tile_index = screen_block * 1024 + (tile_x % 32) + (tile_y % 32) * 32;
+    const u32 tile_index = screen_block * 1024 + (tile_x & 0x1F) + ((tile_y & 0x1F) << 5);//(tile_x % 32) + (tile_y % 32) * 32;
     const u32 map_data_address = 0x800 * scr_base_block + tile_index * 2;
     const u16 tile_entry = (vram[map_data_address + 1] << 8) | vram[map_data_address];
     const bool mirror_x = bits::get_bit<10>(tile_entry);
     const bool mirror_y = bits::get_bit<11>(tile_entry);
-    u8 tile_pixel_x = x % 8;
-    u8 tile_pixel_y = y % 8;
+    u8 tile_pixel_x = x & 7;//x % 8;
+    u8 tile_pixel_y = y & 7;//y % 8;
 
     if(mirror_x) tile_pixel_x = 7 - tile_pixel_x;
     if(mirror_y) tile_pixel_y = 7 - tile_pixel_y;
@@ -99,32 +99,27 @@ auto Background::getTextPixel(int x, int y, const u8 *vram, const PPUState &stat
 }
 
 auto Background::getAffinePixel(int x, int y, const u8 *vram) -> u8 {
-    const int map_size = 16 << screen_size;
+    const int map_size = (16 << screen_size) * 8;
     getAffineCoords(x, y);
 
-    if(x < 0 || x >= map_size * 8 || y < 0 || y >= map_size * 8) {
+    if(x < 0 || x >= map_size || y < 0 || y >= map_size) {
         if(disp_overflow) {
-            x %= map_size * 8;
-            y %= map_size * 8;
+            x %= map_size;
+            y %= map_size;
 
-            if(x < 0) {
-                x = map_size * 8 + x;
-            }
-
-            if(y < 0) {
-                y = map_size * 8 + y;
-            }
+            if(x < 0) x = map_size + x;
+            if(y < 0) y = map_size + y;
         } else {
             return 0;
         }
     }
 
-    const u8 tile_x = x / 8;
-    const u8 tile_y = y / 8;
-    const u8 tile_pixel_x = x % 8;
-    const u8 tile_pixel_y = y % 8;
+    const u8 tile_x = x >> 3;
+    const u8 tile_y = y >> 3;
+    const u8 tile_pixel_x = x & 7;
+    const u8 tile_pixel_y = y & 7;
 
-    const u32 tile_index = tile_x + tile_y * map_size;
+    const u32 tile_index = tile_x + tile_y * (map_size / 8);
     const u8 tile_entry = vram[0x800 * scr_base_block + tile_index];
     const u8 palette_index = vram[0x4000 * char_base_block + tile_entry * 64 + tile_pixel_x + tile_pixel_y * 8];
 

@@ -12,6 +12,58 @@ GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {
     joystick_connected = false;
     memset(pressed, 0, sizeof(pressed));
     keyinput.store(0x3FF);
+
+    // tas_input.store(0x3FF);
+    // frame_counter = 0;
+    // movie = movie::loadVBMMovie("alttp.vbm");
+}
+
+//TODO: This can be done in a better way
+void GLFWInputDevice::onFrameStart() {
+    // u16 last = tas_input.load();
+    // u16 next = ~(movie.inputs[frame_counter * 2] | (movie.inputs[frame_counter * 2 + 1] << 8)) & 0x3FF;
+    // tas_input.store(next);
+
+    // if(movie.inputs[frame_counter * 2 + 1] & 0x8) {
+    //     LOG_FATAL("Reset TAS input not implemented!");
+    // }
+
+
+    // frame_counter++;
+
+    // u16 diff = last ^ next;
+
+    // for(int i = 0; i < 16; i++) {
+    //     bool different = (diff >> i) & 1;
+
+    //     if(different) {
+    //         bool pressed = (last >> i) & 1;
+    //         std::string button = "";
+
+    //         switch(i) {
+    //             case 0 : button = "A"; break;
+    //             case 1 : button = "B"; break;
+    //             case 2 : button = "SELECT"; break;
+    //             case 3 : button = "START"; break;
+    //             case 4 : button = "RIGHT"; break;
+    //             case 5 : button = "LEFT"; break;
+    //             case 6 : button = "UP"; break;
+    //             case 7 : button = "DOWN"; break;
+    //             case 8 : button = "R"; break;
+    //             case 9 : button = "L"; break;
+    //         }
+
+    //         if(pressed) {
+    //             LOG_INFO("{} pressed", button);
+    //         } else {
+    //             LOG_INFO("{} released", button);
+    //         }
+    //     }
+    // }
+
+    // if(diff) {
+    //     callback();
+    // }
 }
 
 void GLFWInputDevice::update() {
@@ -72,6 +124,7 @@ void GLFWInputDevice::update() {
 }
 
 auto GLFWInputDevice::getKeys() -> u16 {
+    // return tas_input.load();
     return keyinput.load();
 }
 
