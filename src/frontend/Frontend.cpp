@@ -88,6 +88,7 @@ void Frontend::resetEmulation() {
     }
 
     m_core->reset();
+    m_video_device.reset();
 
     if(running) {
         startEmulation();
@@ -99,6 +100,7 @@ void Frontend::resetAndLoad(const std::string &path) {
     
     if(loadROM(path)) {
         m_core->reset();
+        m_video_device.reset();
     }
     startEmulation();
 }
@@ -151,8 +153,6 @@ void Frontend::drawInterface() {
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
-
-    bool open_file_popup = false;
 
     if(ImGui::BeginMainMenuBar()) {
         if(ImGui::BeginMenu("File")) {
@@ -301,20 +301,26 @@ void Frontend::endFrame() {
 
     //Calculate framerate as a moving average of the last 100 frames
     m_average_fps = 0;
+    size_t host_size = 0;
     for(size_t i = 0; i < 100; i++) {
-        m_average_fps += m_frame_times.peek(i);
+        if(m_frame_times.peek(i) != 0) {
+            m_average_fps += m_frame_times.peek(i);
+            host_size++;
+        }
     }
     // (1 / (average / 100)) * 1000
-    m_average_fps = 100000.0f / m_average_fps;
+    m_average_fps = (1000.0f * host_size) / m_average_fps;
 
     //Calculate framerate as a moving average of the last 100 frames
     const auto &gba_frame_times = m_video_device.getFrameTimes();
     m_gba_fps = 0;
     for(size_t i = 0; i < gba_frame_times.size(); i++) {
-        m_gba_fps += gba_frame_times.peek(i);
+        if(gba_frame_times.peek(i) != 0) {
+            m_gba_fps += gba_frame_times.peek(i);
+        }
     }
-    m_gba_fps = (1000.0f * (float)gba_frame_times.size()) / m_gba_fps;
-    LOG_INFO("Speed: {}%", (m_gba_fps / 59.7275f) * 100.0f);
+    m_gba_fps = (1000.0f * gba_frame_times.size()) / m_gba_fps;
+    // LOG_INFO("Speed: {}%", (m_gba_fps / 59.7275f) * 100.0f);
 }
 
 void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {

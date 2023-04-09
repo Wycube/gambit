@@ -20,7 +20,7 @@ auto init() -> GLFWwindow* {
         LOG_FATAL("GLFW failed to initialize!");
     }
 
-    GLFWwindow *window = glfwCreateWindow(1080, 760, "", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(960, 661, "", nullptr, nullptr);
     glfwMakeContextCurrent(window);
 
     //Load OpenGL functions with glad and GLFW

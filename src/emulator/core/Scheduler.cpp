@@ -5,8 +5,6 @@
 namespace emu {
 
 Scheduler::Scheduler() {
-    next_handle = 1;
-
     reset();
 }
 
@@ -15,33 +13,26 @@ void Scheduler::reset() {
     events.clear();
 }
 
-auto Scheduler::generateHandle() -> EventHandle {
-    return next_handle++;
+auto Scheduler::registerEvent(EventFunc callback) -> EventHandle {
+    registered.push_back(callback);
+    return registered.size() - 1;
 }
 
-void Scheduler::addEvent(const EventHandle handle, u64 cycles_from_now, EventFunc callback) {
-    events.push_back(Event{handle, callback, current_timestamp + cycles_from_now});
-    std::sort(events.begin(), events.end(), [](const Event &a, const Event &b) {
-        return a.scheduled_timestamp > b.scheduled_timestamp;
-    });
+void Scheduler::addEvent(const EventHandle handle, u64 cycles_from_now) {
+    events.insert(Event{handle, current_timestamp + cycles_from_now});
 }
 
 void Scheduler::removeEvent(const EventHandle handle) {
-    for(auto iter = events.begin(); iter != events.end(); iter++) {
-        if(iter->handle == handle) {
-            events.erase(iter);
-            break;
-        }
-    }
+    events.remove(Event{handle, 0});
 }
 
 void Scheduler::step(u32 cycles) {
     current_timestamp += cycles;
 
     while(true) {
-        if(events.size() > 0 && events.back().scheduled_timestamp <= current_timestamp) {
-            events.back().callback(current_timestamp - events.back().scheduled_timestamp);
-            events.pop_back();
+        if(events.size() > 0 && events.peek().scheduled_timestamp <= current_timestamp) {
+            Event event = events.extract_min();
+            registered[event.handle](current_timestamp - event.scheduled_timestamp);
         } else {
             break;
         }
@@ -50,7 +41,7 @@ void Scheduler::step(u32 cycles) {
 
 void Scheduler::runToNext() {
     if(!events.empty()) {
-        step(events.back().scheduled_timestamp - current_timestamp);
+        step(events.peek().scheduled_timestamp - current_timestamp);
     }
 }
 
@@ -59,7 +50,7 @@ auto Scheduler::nextEventTime() -> u64 {
         return 0;
     }
 
-    return events.back().scheduled_timestamp;
+    return events.peek().scheduled_timestamp;
 }
 
 auto Scheduler::getCurrentTimestamp() -> u64 {

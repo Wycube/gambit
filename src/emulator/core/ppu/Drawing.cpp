@@ -62,21 +62,21 @@ auto Background::getTextPixel(int x, int y, const u8 *vram, const PPUState &stat
 
     x += h_offset;
     y += v_offset;
-    x &= (map_width << 3) - 1; //%= map_width * 8;
-    y &= (map_height << 3) - 1; //%= map_height * 8;
+    x %= map_width * 8;
+    y %= map_height * 8;
 
 
-    const u8 tile_x = x >> 3; //x / 8;
-    const u8 tile_y = y >> 3; //y / 8;
-    const u8 screen_block = (tile_x >> 5) + (tile_y >> 5) * (map_width >> 5); //(tile_x / 32) + (tile_y / 32) * (map_width / 32);
+    const u8 tile_x = x >> 3;
+    const u8 tile_y = y >> 3;
+    const u8 screen_block = (tile_x >> 5) + (tile_y >> 5) * (map_width >> 5);
 
-    const u32 tile_index = screen_block * 1024 + (tile_x & 0x1F) + ((tile_y & 0x1F) << 5);//(tile_x % 32) + (tile_y % 32) * 32;
+    const u32 tile_index = screen_block * 1024 + (tile_x & 0x1F) + ((tile_y & 0x1F) << 5);
     const u32 map_data_address = 0x800 * scr_base_block + tile_index * 2;
     const u16 tile_entry = (vram[map_data_address + 1] << 8) | vram[map_data_address];
     const bool mirror_x = bits::get_bit<10>(tile_entry);
     const bool mirror_y = bits::get_bit<11>(tile_entry);
-    u8 tile_pixel_x = x & 7;//x % 8;
-    u8 tile_pixel_y = y & 7;//y % 8;
+    u8 tile_pixel_x = x & 7;
+    u8 tile_pixel_y = y & 7;
 
     if(mirror_x) tile_pixel_x = 7 - tile_pixel_x;
     if(mirror_y) tile_pixel_y = 7 - tile_pixel_y;

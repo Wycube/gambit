@@ -7,8 +7,9 @@
 namespace emu {
 
 APU::APU(GBA &core) : core(core), pulse1(core.scheduler), pulse2(core.scheduler), wave(core.scheduler), noise(core.scheduler) {
-    update_event = core.scheduler.generateHandle();
-    LOG_DEBUG("APU has event handle: {}", update_event);
+    step_event = core.scheduler.registerEvent([this](u64 late) { step(late); });
+    sample_event = core.scheduler.registerEvent([this](u64 late) { sample(late); });
+    LOG_DEBUG("APU has event handle: {} and {}", step_event, sample_event);
 
     reset();
 }
@@ -25,8 +26,8 @@ void APU::reset() {
     sndbias = 0x200;
     core.audio_device.setSampleRate(bits::get<14, 2>(sndbias));
 
-    core.scheduler.addEvent(update_event, 32768, [this](u64 late) { step(late); });
-    core.scheduler.addEvent(update_event, 512, [this](u64 late) { sample(late); });
+    core.scheduler.addEvent(step_event, 32768);
+    core.scheduler.addEvent(sample_event, 512);
 }
 
 auto APU::read(u32 address) -> u8 {
@@ -136,9 +137,7 @@ void APU::step(u64 late) {
     wave.step();
     noise.step();
 
-    core.scheduler.addEvent(update_event, 32768 - late, [this](u64 late) {
-        this->step(late);
-    });
+    core.scheduler.addEvent(step_event, 32768 - late);
 }
 
 void APU::sample(u64 late) {
@@ -170,9 +169,7 @@ void APU::sample(u64 late) {
 
     core.audio_device.pushSample(sample_l / (float)0x800, sample_r / (float)0x800);
 
-    core.scheduler.addEvent(update_event, (512 >> bits::get<14, 2>(sndbias)) - late, [this](u64 late) {
-        sample(late);
-    });
+    core.scheduler.addEvent(sample_event, (512 >> bits::get<14, 2>(sndbias)) - late);
 }
 
 } //namespace emu

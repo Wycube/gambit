@@ -34,6 +34,7 @@ private:
     u16 tmcnt[4];
 
     GBA &core;
+    EventHandle timer_start_events[4];
     EventHandle timer_events[4];
 };
 

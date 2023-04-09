@@ -19,7 +19,7 @@ static constexpr s8 WAVE_DUTY[4][8] = {
 namespace emu {
 
 PulseChannel::PulseChannel(Scheduler &scheduler) : scheduler(scheduler) {
-    frequency_event = scheduler.generateHandle();
+    frequency_event = scheduler.registerEvent([this](u64 late) { tick(late); });
     LOG_DEBUG("Pulse channel has event handle: {}", frequency_event);
 }
 
@@ -139,9 +139,7 @@ void PulseChannel::tick(u64 late) {
     const u16 frequency = (2048 - shadow_freq) * 16;
 
     if(enabled) {
-        scheduler.addEvent(frequency_event, frequency - late, [this](u64 late) {
-            tick(late);
-        });
+        scheduler.addEvent(frequency_event, frequency - late);
     }
 }
 
@@ -159,9 +157,7 @@ void PulseChannel::restart() {
     //TODO: Sweep overflow check if sweep time is not zero (i.e. is enabled)
 
     scheduler.removeEvent(frequency_event);
-    scheduler.addEvent(frequency_event, frequency, [this](u64 late) {
-        tick(late);
-    });
+    scheduler.addEvent(frequency_event, frequency);
 }
 
 } //namespace emu

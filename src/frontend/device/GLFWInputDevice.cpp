@@ -15,19 +15,31 @@ GLFWInputDevice::GLFWInputDevice(GLFWwindow *window) {
 
     // tas_input.store(0x3FF);
     // frame_counter = 0;
-    // movie = movie::loadVBMMovie("alttp.vbm");
+    // // movie = movie::loadBK2Movie("C:/Users/sburt/Desktop/fusion_tas.bk2");
+    // movie = movie::loadVBMMovie("advance.vbm");
+
+    // lagged.store(true);
+    // lag_counter = 0;
 }
 
 //TODO: This can be done in a better way
 void GLFWInputDevice::onFrameStart() {
+    // u32 frame = frame_counter - lag_counter;
+
     // u16 last = tas_input.load();
-    // u16 next = ~(movie.inputs[frame_counter * 2] | (movie.inputs[frame_counter * 2 + 1] << 8)) & 0x3FF;
+    // u16 next = ~(movie.inputs[frame * 2] | (movie.inputs[frame * 2 + 1] << 8)) & 0x3FF;
+    // // u16 next = ~movie.inputs[frame] & 0x3FF;
     // tas_input.store(next);
 
-    // if(movie.inputs[frame_counter * 2 + 1] & 0x8) {
+    // if(movie.inputs[frame] & (1 << 10)) {
     //     LOG_FATAL("Reset TAS input not implemented!");
     // }
 
+    // if(lagged.load()) {
+    //     lag_counter++;
+    //     LOG_INFO("Lag Frame");
+    // }
+    // lagged.store(true);
 
     // frame_counter++;
 
@@ -124,6 +136,8 @@ void GLFWInputDevice::update() {
 }
 
 auto GLFWInputDevice::getKeys() -> u16 {
+    // lagged.store(false);
+
     // return tas_input.load();
     return keyinput.load();
 }

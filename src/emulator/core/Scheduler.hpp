@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/Types.hpp"
+#include "common/Heap.hpp"
 #include <functional>
 #include <vector>
 
@@ -12,11 +13,16 @@ using EventHandle = u32;
 
 struct Event {
     EventHandle handle;
-    EventFunc callback;
     u64 scheduled_timestamp;
-};
 
-class GBA;
+    auto operator==(const Event &other) -> bool {
+        return handle == other.handle;
+    }
+
+    auto operator<(const Event &other) -> bool {
+        return scheduled_timestamp < other.scheduled_timestamp;
+    }
+};
 
 class Scheduler final {
 public:
@@ -25,9 +31,9 @@ public:
 
     void reset();
 
-    auto generateHandle() -> EventHandle;
-    void addEvent(const EventHandle handle, u64 cycles_from_now, EventFunc callback);
-    void removeEvent(const EventHandle handle);
+    auto registerEvent(EventFunc callback) -> EventHandle;
+    void addEvent(EventHandle handle, u64 cycles_from_now);
+    void removeEvent(EventHandle handle);
 
     void step(u32 cycles);
     void runToNext();
@@ -39,9 +45,9 @@ private:
     //Using a 64-bit unsigned integer, means that the scheduler's global
     //timestamp should not overflow for ~35,000 years at 100% speed,
     //which is good enough for me.
-    std::vector<Event> events;
+    common::MinHeap<Event> events;
+    std::vector<EventFunc> registered;
     u64 current_timestamp;
-    u32 next_handle;
 };
 
 } //namespace emu

@@ -44,6 +44,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib/glfw/include)
 include_directories(${PROJECT_SOURCE_DIR}/lib/imgui-docking)
 include_directories(${PROJECT_SOURCE_DIR}/lib/glad/include)
 include_directories(${PROJECT_SOURCE_DIR}/lib/miniaudio/include)
+include_directories(${PROJECT_SOURCE_DIR}/lib/zip-0.2.6/src)
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)

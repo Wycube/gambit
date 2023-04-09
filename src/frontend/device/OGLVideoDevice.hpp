@@ -17,6 +17,7 @@ public:
     void setPixel(int x, int y, u32 color) override;
     void setLine(int y, const u32 *colors) override;
     void presentFrame() override;
+    void reset();
 
     auto getTextureID() -> GLuint;
     auto getFrameTimes() -> const common::ThreadSafeRingBuffer<float, 100>& {

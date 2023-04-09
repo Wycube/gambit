@@ -10,9 +10,7 @@ OGLVideoDevice::OGLVideoDevice() {
     clear(0);
     updateTexture(present_framebuffer);
 
-    for(size_t i = 0; i < frame_times.capacity(); i++) {
-        frame_times.push(0);
-    }
+    frame_times.clear();
 }
 
 OGLVideoDevice::~OGLVideoDevice() {
@@ -57,6 +55,10 @@ void OGLVideoDevice::presentFrame() {
     std::lock_guard lock(update_mutex);
     std::memcpy(present_framebuffer, internal_framebuffer, 240 * 160 * sizeof(u32));
     new_frame = true;
+}
+
+void OGLVideoDevice::reset() {
+    start = std::chrono::steady_clock::now();
 }
 
 auto OGLVideoDevice::getTextureID() -> GLuint {

@@ -10,8 +10,15 @@ namespace emu {
 
 Timer::Timer(GBA &core) : core(core) {
     for(size_t i = 0; i < 4; i++) {
-        timer_events[i] = core.scheduler.generateHandle();
-        LOG_DEBUG("Timer {} has event handle: {}", i, timer_events[i]);
+        timer_events[i] = core.scheduler.registerEvent([this, i](u64 late) {
+            timerOverflowEvent(i, late);
+        });
+        timer_start_events[i] = core.scheduler.registerEvent([this, i](u64 late) {
+            u64 cycles_till_overflow = (0x10000 - timer_counter[i]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[i])];
+            timer_start[i] = this->core.scheduler.getCurrentTimestamp();
+            this->core.scheduler.addEvent(timer_events[i], cycles_till_overflow);
+        });
+        LOG_DEBUG("Timer {} has event handle: {} and {}", i, timer_events[i], timer_start_events[i]);
     }
 
     reset();
@@ -128,13 +135,7 @@ void Timer::startTimer(u8 timer) {
     }
 
     //2-cycle delay before timer starts
-    core.scheduler.addEvent(timer_events[timer], 2, [this, timer](u64 late) {
-        u64 cycles_till_overflow = (0x10000 - timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[timer])];
-        timer_start[timer] = core.scheduler.getCurrentTimestamp();
-        core.scheduler.addEvent(timer_events[timer], cycles_till_overflow, [this, timer](u64 late) {
-            timerOverflowEvent(timer, late);
-        });
-    });
+    core.scheduler.addEvent(timer_start_events[timer], 2);
 }
 
 void Timer::stopTimer(u8 timer) {
@@ -142,6 +143,7 @@ void Timer::stopTimer(u8 timer) {
 
     core.scheduler.step(2);
     timer_counter[timer] = getTimerIntermediateValue(timer, true);
+    core.scheduler.removeEvent(timer_start_events[timer]);
     core.scheduler.removeEvent(timer_events[timer]);
 }
 
@@ -150,9 +152,7 @@ void Timer::timerOverflowEvent(u8 timer, u64 late) {
 
     u64 cycles_till_overflow = (0x10000 - timer_counter[timer]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[timer])];
     timer_start[timer] = core.scheduler.getCurrentTimestamp();
-    core.scheduler.addEvent(timer_events[timer], cycles_till_overflow - late, [this, timer](u64 late) {
-        timerOverflowEvent(timer, late);
-    });
+    core.scheduler.addEvent(timer_events[timer], cycles_till_overflow - late);
 }
 
 void Timer::timerOverflow(u8 timer) {

@@ -5,6 +5,7 @@ EmuThread::EmuThread(std::shared_ptr<emu::GBA> core) : m_core(core) {
     m_cycle_diff = 0;
     fastforward = false;
     m_running.store(false);
+    fastforward.store(false);
 
     m_core->debug.setCallback([this]() {
         m_mutex.lock();

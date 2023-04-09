@@ -31,7 +31,7 @@ private:
     void sample(u64 late);
     
     GBA &core;
-    EventHandle update_event;
+    EventHandle step_event, sample_event;
 
     PulseChannel pulse1;
     PulseChannel pulse2;

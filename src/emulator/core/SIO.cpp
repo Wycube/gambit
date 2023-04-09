@@ -6,7 +6,14 @@
 namespace emu {
 
 SIO::SIO(GBA &core) : core(core) {
-    event = core.scheduler.generateHandle();
+    event = core.scheduler.registerEvent([this](u64) {
+        //Disable start bit
+        siocnt &= ~0x80;
+
+        if(bits::get_bit<14>(siocnt)) {
+            this->core.cpu.requestInterrupt(INT_SERIAL);
+        }
+    });
     LOG_DEBUG("SIO has event handle: {}", event);
 
     reset();
@@ -46,14 +53,7 @@ void SIO::scheduleDummyTransfer() {
     int transfer_length = bits::get_bit<12>(siocnt) ? 32 : 8;
     u64 cycles = (bits::get_bit<0>(siocnt) ? 64 : 8) * transfer_length;
     
-    core.scheduler.addEvent(event, cycles, [this](u64) {
-        //Disable start bit
-        siocnt &= ~0x80;
-
-        if(bits::get_bit<14>(siocnt)) {
-            core.cpu.requestInterrupt(INT_SERIAL);
-        }
-    });
+    core.scheduler.addEvent(event, cycles);
 }
 
 } //namespace emu

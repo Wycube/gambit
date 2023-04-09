@@ -53,7 +53,7 @@ private:
     u8 obj_info[240];
 
     GBA &core;
-    EventHandle update_event;
+    EventHandle hblank_start_event, hblank_flag_event, hblank_end_event;
 };
 
 } //namespace emu

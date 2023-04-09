@@ -13,7 +13,10 @@ namespace emu {
 
 DMA::DMA(GBA &core) : core(core) {
     for(size_t i = 0; i < 4; i++) {
-        channel[i].event = core.scheduler.generateHandle();
+        channel[i].event = core.scheduler.registerEvent([this, i](u64 late) {
+            channel[i].active = true;
+            LOG_TRACE("DMA {} started on cycle: {}", i, this->core.scheduler.getCurrentTimestamp());
+        });
         LOG_DEBUG("DMA {} has event handle: {}", i, channel[i].event);
     }
 
@@ -209,10 +212,7 @@ void DMA::onTimerOverflow(int fifo) {
 }
 
 void DMA::startTransfer(int dma_n) {
-    core.scheduler.addEvent(channel[dma_n].event, 2, [this, dma_n](u64 late) {
-        channel[dma_n].active = true;
-        LOG_TRACE("DMA {} started on cycle: {}", dma_n, core.scheduler.getCurrentTimestamp());
-    });
+    core.scheduler.addEvent(channel[dma_n].event, 2);
 }
 
 } //namespace emu

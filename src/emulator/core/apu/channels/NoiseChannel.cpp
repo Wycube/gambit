@@ -6,7 +6,7 @@
 namespace emu {
 
 NoiseChannel::NoiseChannel(Scheduler &scheduler) : scheduler(scheduler) {
-    frequency_event = scheduler.generateHandle();
+    frequency_event = scheduler.registerEvent([this](u64 late) { tick(late); });
     LOG_DEBUG("Noise channel has event handle: {}", frequency_event);
 }
 
@@ -84,9 +84,7 @@ void NoiseChannel::tick(u64 late) {
     u8 r = bits::get<0, 4>(snd4cnt_h);
     const u32 frequency = (r == 0 ? 16 : r * 32) << (bits::get<4, 4>(snd4cnt_h) + 1);
 
-    scheduler.addEvent(frequency_event, frequency, [this](u64 late) {
-        tick(late);
-    });
+    scheduler.addEvent(frequency_event, frequency);
 }
 
 void NoiseChannel::restart() {
@@ -101,9 +99,7 @@ void NoiseChannel::restart() {
     frequency = r == 0 ? frequency / 2 : frequency * r;
 
     scheduler.removeEvent(frequency_event);
-    scheduler.addEvent(frequency_event, frequency, [this](u64 late) {
-        tick(late);
-    });
+    scheduler.addEvent(frequency_event, frequency);
 }
 
 } //namespace emu

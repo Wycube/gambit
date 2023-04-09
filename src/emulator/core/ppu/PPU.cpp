@@ -33,8 +33,10 @@ constexpr int OBJECT_HEIGHT_LUT[16] = {8, 16, 32, 64, 8, 8, 16, 32, 16, 32, 32, 
 
 
 PPU::PPU(GBA &core) : core(core) {
-    update_event = core.scheduler.generateHandle();
-    LOG_DEBUG("PPU has event handle: {}", update_event);
+    hblank_start_event = core.scheduler.registerEvent([this](u64 late) { hblankStart(late); });
+    hblank_flag_event = core.scheduler.registerEvent([this](u64 late) { setHblankFlag(late); });
+    hblank_end_event = core.scheduler.registerEvent([this](u64 late) { hblankEnd(late); });
+    LOG_DEBUG("PPU has event handle: {}, {}, and {}", hblank_start_event, hblank_flag_event, hblank_end_event);
 
     reset();
 }
@@ -58,7 +60,7 @@ void PPU::reset() {
     std::memset(state.palette, 0, sizeof(state.palette));
     std::memset(state.oam, 0, sizeof(state.oam));
     
-    core.scheduler.addEvent(update_event, 960, [this](u64 late) { hblankStart(late); });
+    core.scheduler.addEvent(hblank_start_event, 960);
 }
 
 auto PPU::readIO(u32 address) -> u8 {
@@ -298,7 +300,7 @@ void PPU::hblankStart(u64 late) {
         core.dma.onHBlank();
     }
 
-    core.scheduler.addEvent(update_event, 46 - late, [this](u64 late) { setHblankFlag(late); });
+    core.scheduler.addEvent(hblank_flag_event, 46 - late);
 }
 
 void PPU::setHblankFlag(u64 late) {
@@ -309,7 +311,7 @@ void PPU::setHblankFlag(u64 late) {
         core.cpu.requestInterrupt(INT_LCD_HB);
     }
 
-    core.scheduler.addEvent(update_event, 226 - late, [this](u64 late) { hblankEnd(late); });
+    core.scheduler.addEvent(hblank_end_event, 226 - late);
 }
 
 void PPU::hblankEnd(u64 late) {
@@ -359,7 +361,7 @@ void PPU::hblankEnd(u64 late) {
         core.dma.disableVideoCapture();
     }
 
-    core.scheduler.addEvent(update_event, 960 - late, [this](u64 late) { hblankStart(late); });
+    core.scheduler.addEvent(hblank_start_event, 960 - late);
 }
 
 void PPU::clearBuffers() {

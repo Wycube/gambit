@@ -17,3 +17,7 @@ add_subdirectory(glad)
 
 # miniaudio
 add_subdirectory(miniaudio)
+
+# zip
+set(BUILD_SHARED_LIBS OFF)
+add_subdirectory(zip-0.2.6)
