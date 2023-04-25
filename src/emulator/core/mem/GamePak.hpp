@@ -2,6 +2,7 @@
 
 #include "Types.hpp"
 #include "emulator/core/Scheduler.hpp"
+#include "gpio/GPIO.hpp"
 #include "save/Save.hpp"
 #include "common/Types.hpp"
 #include <vector>
@@ -55,6 +56,7 @@ private:
     GamePakHeader header;
     std::string title;
     std::unique_ptr<Save> save;
+    GPIO gpio;
 };
 
 } //namespace emu

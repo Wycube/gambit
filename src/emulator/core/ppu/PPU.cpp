@@ -49,6 +49,7 @@ void PPU::reset() {
     state.bldcnt = 0;
     state.bldalpha = 0;
     state.bldy = 0;
+    state.mosaic = 0;
 
     state.bg[0].reset();
     state.bg[1].reset();

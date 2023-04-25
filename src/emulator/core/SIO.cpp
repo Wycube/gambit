@@ -26,10 +26,10 @@ void SIO::reset() {
 
 auto SIO::read8(u32 address) -> u8 {
     switch(address) {
-        case 0x128: return bits::get<0, 8>(siocnt);
-        case 0x129: return bits::get<8, 8>(siocnt);
-        case 0x134: return bits::get<0, 8>(rcnt);
-        case 0x135: return bits::get<8, 8>(rcnt);
+        case 0x128 : return bits::get<0, 8>(siocnt) | 0x40;
+        case 0x129 : return bits::get<8, 8>(siocnt);
+        case 0x134 : return bits::get<0, 8>(rcnt);
+        case 0x135 : return bits::get<8, 8>(rcnt);
     }
 
     return 0;
@@ -37,14 +37,14 @@ auto SIO::read8(u32 address) -> u8 {
 
 void SIO::write8(u32 address, u8 value) {
     switch(address) {
-        case 0x128: siocnt = (siocnt & 0xFF00) | value; 
+        case 0x128 : siocnt = (siocnt & 0xFF00) | value; 
             if(value & 1 && value & 0x80) {
                 scheduleDummyTransfer();
             }
             break;
-        case 0x129: siocnt = (siocnt & 0x00FF) | ((value & 0x7F) << 8); break;
-        case 0x134: rcnt = (rcnt & 0xFF00) | value; break;
-        case 0x135: rcnt = (rcnt & 0x00FF) | ((value & 0x3E) << 8); break;
+        case 0x129 : siocnt = (siocnt & 0x00FF) | ((value & 0x7F) << 8); break;
+        case 0x134 : rcnt = (rcnt & 0xFF00) | value; break;
+        case 0x135 : rcnt = (rcnt & 0x00FF) | ((value & 0x3E) << 8); break;
     }
 }
 

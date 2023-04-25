@@ -77,6 +77,10 @@ auto GamePak::read(u32 address, AccessType access) -> T {
             break;
     }
 
+    if(gpio.readable() && address >= 0x080000C4 && address <= 0x080000C9) {
+        return gpio.read8(sub_address);
+    }
+
     T value = 0;
     for(size_t i = 0; i < sizeof(T); i++) {
         value |= (rom[aligned + i] << i * 8);
@@ -105,6 +109,10 @@ void GamePak::write(u32 address, T value, AccessType access) {
                 return save->write(sub_address & mask, value & 0xFF);
             }
             break;
+    }
+
+    if(address >= 0x080000C4 && address <= 0x080000C9) {
+        gpio.write8(sub_address, value);
     }
 }
 
