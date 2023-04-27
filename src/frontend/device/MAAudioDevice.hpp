@@ -6,12 +6,13 @@
 #define MA_NO_DECODING
 #include <miniaudio.h>
 #include <atomic>
+#include <functional>
 
 
 class MAAudioDevice final : public emu::AudioDevice {
 public:
 
-    MAAudioDevice(void (*callback)(ma_device*, void*, const void*, ma_uint32), void *userdata);
+    MAAudioDevice(std::function<void (bool, float*, size_t)> &&callback);
     ~MAAudioDevice();
 
     void start();
@@ -23,11 +24,12 @@ public:
     void setSampleRate(int resolution) override;
     void resample(float *dst, size_t size);
 
-// private:
+private:
 
     static void audioCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count);
     
     ma_device device;
+    std::function<void (bool, float*, size_t)> callback;
     common::ThreadSafeRingBuffer<float, 8192> samples_l;
     common::ThreadSafeRingBuffer<float, 8192> samples_r;
     std::atomic<int> samples;

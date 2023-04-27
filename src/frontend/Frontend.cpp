@@ -10,7 +10,8 @@
 #include <filesystem>
 
 
-Frontend::Frontend(GLFWwindow *window) : m_input_device(window), m_audio_device(audio_sync, this),
+Frontend::Frontend(GLFWwindow *window) : m_input_device(window),
+m_audio_device([this](bool new_samples, float *samples, size_t buffer_size) { audioCallback(new_samples, samples, buffer_size); }),
 m_core(std::make_shared<emu::GBA>(m_video_device, m_input_device, m_audio_device)), m_emu_thread(m_core) {
     LOG_DEBUG("Initializing Frontend...");
 
@@ -323,35 +324,20 @@ void Frontend::endFrame() {
     // LOG_INFO("Speed: {}%", (m_gba_fps / 59.7275f) * 100.0f);
 }
 
-void Frontend::audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
-    Frontend *frontend = reinterpret_cast<Frontend*>(device->pUserData);
-    frontend->m_emu_thread.sendCommand(RUN);
+void Frontend::audioCallback(bool new_samples, float *samples, size_t buffer_size) {
+    m_emu_thread.sendCommand(RUN);
+    m_audio_buffer_mutex.lock();
+    m_audio_buffer_size.push(buffer_size);
+    m_audio_buffer_mutex.unlock();
 
-    MAAudioDevice &audio_device = frontend->m_audio_device;
-
-    float *f_output = reinterpret_cast<float*>(output);
-
-    frontend->m_audio_buffer_mutex.lock();
-    frontend->m_audio_buffer_size.push(audio_device.samples_l.size());
-    frontend->m_audio_buffer_mutex.unlock();
-
-    if(audio_device.samples_l.size() < 1024) {
-        // LOG_ERROR("Not enough samples for audio callback");
+    if(!new_samples) {
         return;
     }
 
-    float samples[1500];
-    audio_device.resample(samples, 750);
-    frontend->m_audio_buffer_mutex.lock();
-    std::memcpy(frontend->m_audio_samples_l, samples, 750 * sizeof(float));
-    std::memcpy(frontend->m_audio_samples_r, samples + 750, 750 * sizeof(float));
-    frontend->m_audio_buffer_mutex.unlock();
-
-
-    for(size_t i = 0; i < frame_count; i++) {
-        f_output[i * 2 + 0] = samples[i];
-        f_output[i * 2 + 1] = samples[i + frame_count];
-    }
+    m_audio_buffer_mutex.lock();
+    std::memcpy(m_audio_samples_l, samples, 750 * sizeof(float));
+    std::memcpy(m_audio_samples_r, samples + 750, 750 * sizeof(float));
+    m_audio_buffer_mutex.unlock();
 }
 
 void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {

@@ -16,6 +16,8 @@ public:
 
 private:
 
+    void resetRegisters();
+    
     bool clock = false;
     bool select = false;
     u8 serial_buffer;
@@ -46,8 +48,6 @@ private:
         REG_IRQ,
         REG_FREE
     };
-
-    void resetRegisters();
 };
 
 class GPIO {

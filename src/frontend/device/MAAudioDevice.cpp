@@ -3,7 +3,7 @@
 #include <vector>
 
 
-MAAudioDevice::MAAudioDevice(void (*callback)(ma_device*, void*, const void*, ma_uint32), void *userdata) {
+MAAudioDevice::MAAudioDevice(std::function<void (bool, float*, size_t)> &&callback) : callback(callback) {
     LOG_DEBUG("Initializing MAAudioDevice...");
 
     samples.store(512);
@@ -11,8 +11,8 @@ MAAudioDevice::MAAudioDevice(void (*callback)(ma_device*, void*, const void*, ma
     config.playback.format = ma_format_f32;
     config.playback.channels = 2;
     config.sampleRate = 48000;
-    config.dataCallback = callback; //audioCallback;
-    config.pUserData = userdata; //this;
+    config.dataCallback = audioCallback;
+    config.pUserData = this;
     config.periodSizeInFrames = 48000 / 64;
 
     if(ma_device_init(nullptr, &config, &device) != MA_SUCCESS) {
@@ -71,33 +71,20 @@ void MAAudioDevice::resample(float *dst, size_t channel_size) {
 
 void MAAudioDevice::audioCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
     MAAudioDevice *audio_device = reinterpret_cast<MAAudioDevice*>(device->pUserData);
-    float *f_output = reinterpret_cast<float*>(output);
-
-    //Signal the emu thread
-
-
-    //Record metrics for frontend
-    // frontend->m_audio_buffer_mutex.lock();
-    // frontend->m_audio_buffer_size[frontend->m_audio_buffer_size_start] = audio_device.m_samples_l.size();
-    // frontend->m_audio_buffer_size_start = (frontend->m_audio_buffer_size_start + 1) % 100;
-    // frontend->m_audio_buffer_mutex.unlock();
 
     if(audio_device->samples_l.size() < 1024) {
-        LOG_ERROR("Not enough samples for audio callback");
+        audio_device->callback(false, nullptr, audio_device->samples_l.size());
+        // LOG_ERROR("Not enough samples for audio callback");
         return;
     }
 
-    //Resample 512 samples to 750
-    float samples[2048];
-    audio_device->samples_l.pop_many(samples, 1024);
-    audio_device->samples_r.pop_many(samples + 1024, 1024);
-    // frontend->m_audio_buffer_mutex.lock();
-    // std::memcpy(frontend->m_audio_samples, samples, 512 * sizeof(float));
-    // frontend->m_audio_buffer_mutex.unlock();
+    float samples[1500];
+    audio_device->resample(samples, 750);
+    audio_device->callback(true, samples, audio_device->samples_l.size());
 
+    float *f_output = reinterpret_cast<float*>(output);
     for(size_t i = 0; i < frame_count; i++) {
-        size_t index = (size_t)((i / (float)frame_count) * 1024);
-        f_output[i * 2 + 0] = samples[index];
-        f_output[i * 2 + 1] = samples[index + 1024];
+        f_output[i * 2 + 0] = samples[i];
+        f_output[i * 2 + 1] = samples[i + frame_count];
     }
 }

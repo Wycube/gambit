@@ -31,8 +31,7 @@ private:
     void drawInterface();
     void beginFrame();
     void endFrame();
-
-    static void audio_sync(ma_device *device, void *output, const void *input, ma_uint32 frame_count);
+    void audioCallback(bool new_samples, float *samples, size_t buffer_size);
     static void windowSizeCallback(GLFWwindow *window, int width, int height);
 
     CallbackUserData m_user_data;
