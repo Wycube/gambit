@@ -344,7 +344,6 @@ void PPU::hblankEnd(u64 late) {
 
     //VBlank Start
     if(state.line == 160) {
-        core.input_device.onFrameStart();
         state.dispstat |= 1;
         core.video_device.presentFrame();
         core.debug.onVblank();
