@@ -19,5 +19,5 @@ file(GLOB all_src
     "apu/channels/*.cpp"
 )
 add_library(gba-lib ${all_src})
-target_link_libraries(gba-lib fmt common_logging zip)
+target_link_libraries(gba-lib fmt common_logging)
 set_property(TARGET gba-lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
