@@ -67,6 +67,7 @@ auto DebugInterface::getBreakpoints() -> std::vector<Breakpoint> {
     for(const auto &b : breakpoints) {
         copy.push_back(b.second);
     }
+    
 
     return copy;
 }
@@ -87,8 +88,7 @@ auto DebugInterface::onStep() -> bool {
     if(breakpoints.count(pc) != 0 && breakpoints[pc].enabled) {
         //Unconditional Breakpoints do not have a condition function defined
         Breakpoint &bkpt = breakpoints[pc];
-        // return breakpoints[pc].condition ? breakpoints[pc].condition(core) : true;
-        if(!bkpt.condition || (bkpt.condition && bkpt.condition(core))) {
+        if(!bkpt.condition || bkpt.condition(core)) {
             if(on_break) { on_break(); }
             return true;
         }

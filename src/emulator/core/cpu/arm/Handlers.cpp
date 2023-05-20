@@ -100,7 +100,7 @@ auto CPU::addressMode1(u32 instruction, bool &carry) -> u32 {
         switch(opcode) {
             case 0 : result = bits::lsl_c(operand, shift, carry); break;
             case 1 : result = bits::lsr_c(operand, shift, carry); break;
-            case 2 : result = bits::asr_c(operand, shift, carry, !r); break;
+            case 2 : result = bits::asr_c(operand, shift, carry); break;
             case 3 : result = shift == 32 && !r ? bits::rrx_c(operand, carry) : bits::ror_c(operand, shift, carry); break;
         }
 
@@ -402,7 +402,7 @@ void CPU::armSingleTransfer(u32 instruction) {
     }
 }
 
-void CPU::armUndefined(u32 instruction) {
+void CPU::armUndefined() {
     LOG_TRACE("Undefined ARM Instruction at Address: {:08X}", state.pc - 8);
     
     // setRegister(14, getRegister(15) - 4, MODE_UNDEFINED);

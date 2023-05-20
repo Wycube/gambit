@@ -8,7 +8,7 @@ void armSingleDataSwap(u32 instruction);
 void armHalfwordTransfer(u32 instruction);
 auto addressMode2(u16 addr_mode, bool i) -> u32;
 void armSingleTransfer(u32 instruction);
-void armUndefined(u32 instruction);
+void armUndefined();
 void armBlockTransfer(u32 instruction);
 void armBranch(u32 instruction);
 void armSoftwareInterrupt(u32 instruction);

@@ -14,7 +14,7 @@
 
 
 const lest::test arm_decode_tests[] = {
-    ARM_DECODE_CASE("Branch and Exchange", 0xB12FFF1C, emu::LT, emu::ARM_BRANCH_AND_EXCHANGE, "bxlt r12"),
+    ARM_DECODE_CASE("Branch and Exchange", 0xB12FFF1C, emu::LT, emu::ARM_BRANCH_EXCHANGE, "bxlt r12"),
     ARM_DECODE_CASE("PSR Transfer", 0x836FFE77, emu::HI, emu::ARM_PSR_TRANSFER, "msrhi spsr_cxsf, #0x770"),
     ARM_DECODE_CASE("Data Procesing", 0x70E73250, emu::VC, emu::ARM_DATA_PROCESSING, "rscvc r3, r7, r0, asr r2"),
     ARM_DECODE_CASE("Multiply", 0xE0090B9F, emu::AL, emu::ARM_MULTIPLY, "mul r9, r15, r11"),
@@ -25,6 +25,6 @@ const lest::test arm_decode_tests[] = {
     ARM_DECODE_CASE("Undefined", 0x66A38F9C, emu::VS, emu::ARM_UNDEFINED, "undefined"),
     ARM_DECODE_CASE("Block Data Transfer", 0xE9A29020, emu::AL, emu::ARM_BLOCK_DATA_TRANSFER, "stmib r2!, {r5, r12, r15}"),
     ARM_DECODE_CASE("Branch", 0x0B123FEE, emu::EQ, emu::ARM_BRANCH, "bleq #0x48ffc0"),
-    //Coprocessor Instructions
+    //No tests for Coprocessor Instructions
     ARM_DECODE_CASE("Software Interrupt", 0x1F07BFAD, emu::NE, emu::ARM_SOFTWARE_INTERRUPT, "swine #507821")
 };

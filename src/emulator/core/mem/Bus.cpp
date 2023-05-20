@@ -6,10 +6,13 @@
 namespace emu {
 
 Bus::Bus(GBA &core) : pak(core.scheduler), core(core) {
+    std::memset(bios, 0, sizeof(bios));
     reset();
 }
 
 void Bus::reset() {
+    waitcnt = 0;
+    bios_open_bus = 0xE129F000;
     std::memset(ewram, 0, sizeof(ewram));
     std::memset(iwram, 0, sizeof(iwram));
 }

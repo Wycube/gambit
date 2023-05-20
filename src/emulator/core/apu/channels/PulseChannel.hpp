@@ -9,7 +9,7 @@ namespace emu {
 class PulseChannel {
 public:
 
-    PulseChannel(Scheduler &scheduler);
+    explicit PulseChannel(Scheduler &scheduler);
 
     void reset();
 

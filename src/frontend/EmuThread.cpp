@@ -1,9 +1,10 @@
 #include "EmuThread.hpp"
 
+#include "common/Log.hpp"
+
 
 EmuThread::EmuThread(std::shared_ptr<emu::GBA> core) : m_core(core) {
     m_cycle_diff = 0;
-    fastforward = false;
     m_running.store(false);
     fastforward.store(false);
 
@@ -76,6 +77,7 @@ void EmuThread::processCommands() {
             // LOG_INFO("Ran {} cycles in {}ms", actual, (std::chrono::steady_clock::now() - start).count() / 1000000.0f);
 
             if(cmd_queue.size() == 0) {
+                // std::this_thread::yield();
                 continue;
             }
 

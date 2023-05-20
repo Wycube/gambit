@@ -125,7 +125,7 @@ constexpr auto asr(u32 value, u8 shift) -> u32 {
     return (s32)value >> (shift > 31 ? 31 : shift);
 }
 
-constexpr auto asr_c(u32 value, u8 shift, bool &carry, bool i = false) -> u32 {
+constexpr auto asr_c(u32 value, u8 shift, bool &carry) -> u32 {
     if(shift == 0) {
         return value;
     }

@@ -71,7 +71,7 @@ public:
     inline auto pop() -> T {
         assert(buf_size != 0 && "Attempt to pop element from empty RingBuffer!");
 
-        T &temp = data[tail];
+        const T &temp = data[tail];
         tail = (tail + 1) % _capacity;
         buf_size--;
 

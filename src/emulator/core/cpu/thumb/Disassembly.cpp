@@ -8,33 +8,8 @@
 
 namespace emu {
 
-std::string (*thumbDisassemblyFuncs[21])(u16, u32, u16) = {
-    thumbDisassembleMoveShifted,
-    thumbDisassembleAddSubtract,
-    thumbDisassembleProcessImmediate,
-    thumbDisassembleALUOperation,
-    thumbDisassembleHiRegisterOp,
-    thumbDisassembleBranchExchange,
-    thumbDisassemblePCRelativeLoad,
-    thumbDisassembleLoadStoreRegister,
-    thumbDisassembleLoadStoreSigned,
-    thumbDisassembleLoadStoreImmediate,
-    thumbDisassembleLoadStoreHalfword,
-    thumbDisassembleSPRelativeLoadStore,
-    thumbDisassembleLoadAddress,
-    thumbDisassembleAdjustSP,
-    thumbDisassemblePushPopRegisters,
-    thumbDisassembleLoadStoreMultiple,
-    thumbDisassembleConditionalBranch,
-    thumbDisassembleSoftwareInterrupt,
-    thumbDisassembleUnconditionalBranch,
-    thumbDisassembleLongBranch,
-    thumbDisassembleUndefined
-};
-
-
 //LSL|LSR|ASR <Rd>, <Rm>, #<immed_5>
-auto thumbDisassembleMoveShifted(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleMoveShifted(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "lsl", "lsr", "asr"
     };
@@ -49,7 +24,7 @@ auto thumbDisassembleMoveShifted(u16 instruction, u32 address, u16 prev) -> std:
 
 //ADD|SUB <Rd>, <Rn>, #<immed_3>
 //ADD|SUB <Rd>, <Rn>, <Rm>
-auto thumbDisassembleAddSubtract(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleAddSubtract(u16 instruction) -> std::string {
     const bool i = bits::get_bit<10>(instruction);
     const bool s = bits::get_bit<9>(instruction);
     const u8 rm_immed = bits::get<6, 3>(instruction);
@@ -60,7 +35,7 @@ auto thumbDisassembleAddSubtract(u16 instruction, u32 address, u16 prev) -> std:
 }
 
 //MOV|CMP|ADD|SUB <Rd/Rn>, #<immed_8>
-auto thumbDisassembleProcessImmediate(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleProcessImmediate(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "mov", "cmp", "add", "sub"
     };
@@ -73,7 +48,7 @@ auto thumbDisassembleProcessImmediate(u16 instruction, u32 address, u16 prev) ->
 }
 
 //<opcode> <Rd/Rn>, <Rm>
-auto thumbDisassembleALUOperation(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleALUOperation(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "and", "eor", "lsl", "lsr", "asr", "adc", "sbc", "ror",
         "tst", "neg", "cmp", "cmn", "orr", "mul", "bic", "mvn"
@@ -87,7 +62,7 @@ auto thumbDisassembleALUOperation(u16 instruction, u32 address, u16 prev) -> std
 }
 
 //ADD|CMP|MOV <Rd/Rn>, <Rs>
-auto thumbDisassembleHiRegisterOp(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleHiRegisterOp(u16 instruction) -> std::string {
     static const char *OPCODE_MNEMONICS[] = {
         "add", "cmp", "mov"
     };
@@ -101,7 +76,7 @@ auto thumbDisassembleHiRegisterOp(u16 instruction, u32 address, u16 prev) -> std
 }
 
 //BX|BLX <Rm>
-auto thumbDisassembleBranchExchange(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleBranchExchange(u16 instruction) -> std::string {
     const bool link = bits::get_bit<7>(instruction);
     const u8 rm = bits::get<3, 4>(instruction);
 
@@ -109,7 +84,7 @@ auto thumbDisassembleBranchExchange(u16 instruction, u32 address, u16 prev) -> s
 }
 
 //LDR <Rd>, [PC, #<immed_8>*4]
-auto thumbDisassemblePCRelativeLoad(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassemblePCRelativeLoad(u16 instruction) -> std::string {
     const u8 rd = bits::get<8, 3>(instruction);
     const u16 offset = bits::get<0, 8>(instruction) << 2;
 
@@ -117,7 +92,7 @@ auto thumbDisassemblePCRelativeLoad(u16 instruction, u32 address, u16 prev) -> s
 }
 
 //STR|LDR{B} <Rd>, [<Rn>, <Rm>]
-auto thumbDisassembleLoadStoreRegister(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleLoadStoreRegister(u16 instruction) -> std::string {
     const bool l = bits::get_bit<11>(instruction);
     const bool b = bits::get_bit<10>(instruction);
     const u8 rm = bits::get<6, 3>(instruction);
@@ -128,7 +103,7 @@ auto thumbDisassembleLoadStoreRegister(u16 instruction, u32 address, u16 prev) -
 }
 
 //STRH|LDRSB|LDRH|LDRSH <Rd>, [<Rn>, <Rm>]
-auto thumbDisassembleLoadStoreSigned(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleLoadStoreSigned(u16 instruction) -> std::string {
     static const char *MNEMONICS[] = {
         "strh", "ldrsb", "ldrh", "ldrsh"
     };
@@ -143,7 +118,7 @@ auto thumbDisassembleLoadStoreSigned(u16 instruction, u32 address, u16 prev) -> 
 
 //STR|LDR <Rd>, [<Rn>, #<immed_5>*4]
 //STRB|LDRB <Rd>, [<Rn>, #<immed_5>]
-auto thumbDisassembleLoadStoreImmediate(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleLoadStoreImmediate(u16 instruction) -> std::string {
     const bool b = bits::get_bit<12>(instruction);
     const bool l = bits::get_bit<11>(instruction);
     u8 offset = bits::get<6, 5>(instruction);
@@ -158,7 +133,7 @@ auto thumbDisassembleLoadStoreImmediate(u16 instruction, u32 address, u16 prev) 
 }
 
 //STRH|LDRH <Rd>, [<Rn>, #<immed_5>*2]
-auto thumbDisassembleLoadStoreHalfword(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleLoadStoreHalfword(u16 instruction) -> std::string {
     const bool l = bits::get_bit<11>(instruction);
     const u8 offset = bits::get<6, 5>(instruction) << 1;
     const u8 rn = bits::get<3, 3>(instruction);
@@ -168,7 +143,7 @@ auto thumbDisassembleLoadStoreHalfword(u16 instruction, u32 address, u16 prev) -
 }
 
 //STR|LDR <Rd>, [SP, #<immed_8>*4]
-auto thumbDisassembleSPRelativeLoadStore(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleSPRelativeLoadStore(u16 instruction) -> std::string {
     const bool l = bits::get_bit<11>(instruction);
     const u8 rd = bits::get<8, 3>(instruction);
     const u16 offset = bits::get<0, 8>(instruction) << 2;
@@ -177,7 +152,7 @@ auto thumbDisassembleSPRelativeLoadStore(u16 instruction, u32 address, u16 prev)
 }
 
 //ADD <Rd>, PC|SP, #<immed_8>*4
-auto thumbDisassembleLoadAddress(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleLoadAddress(u16 instruction) -> std::string {
     const bool sp = bits::get_bit<11>(instruction);
     const u8 rd = bits::get<8, 3>(instruction);
     const u16 offset = bits::get<0, 8>(instruction) << 2;
@@ -186,7 +161,7 @@ auto thumbDisassembleLoadAddress(u16 instruction, u32 address, u16 prev) -> std:
 }
 
 //ADD SP, #{-}<immed_7>*4
-auto thumbDisassembleAdjustSP(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleAdjustSP(u16 instruction) -> std::string {
     const bool s = bits::get_bit<7>(instruction);
     const u16 offset = bits::get<0, 7>(instruction) << 2;
 
@@ -195,7 +170,7 @@ auto thumbDisassembleAdjustSP(u16 instruction, u32 address, u16 prev) -> std::st
 
 //PUSH <registers> - If the R bit is set then LR is in the register list
 //POP <registers>  - If the R bit is set then PC is in the register list
-auto thumbDisassemblePushPopRegisters(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassemblePushPopRegisters(u16 instruction) -> std::string {
     const bool l = bits::get_bit<11>(instruction);
     const bool r = bits::get_bit<8>(instruction);
     const u8 registers = bits::get<0, 8>(instruction);
@@ -214,7 +189,7 @@ auto thumbDisassemblePushPopRegisters(u16 instruction, u32 address, u16 prev) ->
 }
 
 //STMIA|LDMIA <Rn>!, <registers>
-auto thumbDisassembleLoadStoreMultiple(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleLoadStoreMultiple(u16 instruction) -> std::string {
     const bool l = bits::get_bit<11>(instruction);
     const u8 rn = bits::get<8, 3>(instruction);
     const u8 registers = bits::get<0, 8>(instruction);
@@ -232,7 +207,7 @@ auto thumbDisassembleLoadStoreMultiple(u16 instruction, u32 address, u16 prev) -
 }
 
 //B<cond> #<target_address>
-auto thumbDisassembleConditionalBranch(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleConditionalBranch(u16 instruction, u32 address) -> std::string {
     static const char *CONDITION_CODES[] = {
         "eq", "ne", "cs", "cc", "mi", "pl", "vs", "vc",
         "hi", "ls", "ge", "lt", "gt", "le", "",   "nv"
@@ -245,14 +220,14 @@ auto thumbDisassembleConditionalBranch(u16 instruction, u32 address, u16 prev) -
 }
 
 //SWI <immed_8>
-auto thumbDisassembleSoftwareInterrupt(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleSoftwareInterrupt(u16 instruction) -> std::string {
     const u8 comment = bits::get<0, 8>(instruction);
 
     return fmt::format("swi #{}", comment);
 }
 
 //B #<target_address>
-auto thumbDisassembleUnconditionalBranch(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleUnconditionalBranch(u16 instruction, u32 address) -> std::string {
     const s32 immediate = bits::sign_extend<12, s32>(bits::get<0, 11>(instruction) << 1);
 
     return fmt::format("b #0x{:x}", address + 4 + immediate);
@@ -270,7 +245,7 @@ auto thumbDisassembleLongBranch(u16 instruction, u32 address, u16 prev) -> std::
     }
 }
 
-auto thumbDisassembleUndefined(u16 instruction, u32 address, u16 prev) -> std::string {
+auto thumbDisassembleUndefined() -> std::string {
     return "undefined";
 }
 

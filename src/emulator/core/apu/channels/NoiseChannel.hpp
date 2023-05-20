@@ -9,7 +9,7 @@ namespace emu {
 class NoiseChannel {
 public:
 
-    NoiseChannel(Scheduler &scheduler);
+    explicit NoiseChannel(Scheduler &scheduler);
 
     void reset();
 

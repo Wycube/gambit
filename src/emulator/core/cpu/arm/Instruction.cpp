@@ -35,10 +35,35 @@ auto armDetermineType(u32 instruction) -> ArmInstructionType {
     return static_cast<ArmInstructionType>(index);
 }
 
+auto armDisassembleInstruction(u32 instruction, u32 address) -> std::string {
+    ArmInstructionType type = armDetermineType(instruction);
+    std::string disassembly;
+    
+    switch(type) {
+        case ARM_BRANCH_EXCHANGE               : disassembly = armDisassembleBranchExchange(instruction); break;
+        case ARM_PSR_TRANSFER                  : disassembly = armDisassemblePSRTransfer(instruction); break;
+        case ARM_DATA_PROCESSING               : disassembly = armDisassembleDataProcessing(instruction); break;
+        case ARM_MULTIPLY                      : disassembly = armDisassembleMultiply(instruction); break;
+        case ARM_MULTIPLY_LONG                 : disassembly = armDisassembleMultiplyLong(instruction); break;
+        case ARM_SINGLE_DATA_SWAP              : disassembly = armDisassembleSingleDataSwap(instruction); break;
+        case ARM_SINGLE_DATA_TRANSFER          : disassembly = armDisassembleSingleTransfer(instruction); break;
+        case ARM_HALFWORD_DATA_TRANSFER        : disassembly = armDisassembleHalfwordTransfer(instruction); break;
+        case ARM_UNDEFINED                     : disassembly = armDisassembleUndefined(); break;
+        case ARM_BLOCK_DATA_TRANSFER           : disassembly = armDisassembleBlockTransfer(instruction); break;
+        case ARM_BRANCH                        : disassembly = armDisassembleBranch(instruction, address); break;
+        case ARM_COPROCESSOR_DATA_TRANSFER     : disassembly = armDisassembleCoDataTransfer(instruction); break;
+        case ARM_COPROCESSOR_DATA_OPERATION    : disassembly = armDisassembleCoDataOperation(instruction); break;
+        case ARM_COPROCESSOR_REGISTER_TRANSFER : disassembly = armDisassembleCoRegisterTransfer(instruction); break;
+        case ARM_SOFTWARE_INTERRUPT            : disassembly = armDisassembleSoftwareInterrupt(instruction); break;
+    }
+
+    return disassembly;
+}
+
 auto armDecodeInstruction(u32 instruction, u32 address) -> ArmInstruction {
     ArmInstructionType type = armDetermineType(instruction);
     ConditionCode condition = static_cast<ConditionCode>(instruction >> 28);
-    std::string dissasembly = armDisassemblyFuncs[type](instruction, address);
+    std::string dissasembly = armDisassembleInstruction(instruction, address);
 
     return ArmInstruction{instruction, type, condition, dissasembly};
 }

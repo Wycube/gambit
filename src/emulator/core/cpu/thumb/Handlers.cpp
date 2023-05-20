@@ -26,7 +26,7 @@ void CPU::thumbMoveShifted(u16 instruction) {
     switch(opcode) {
         case 0 : result = bits::lsl_c(value, immed_5, carry); break;
         case 1 : result = bits::lsr_c(value, immed_5, carry); break;
-        case 2 : result = bits::asr_c(value, immed_5, carry, true); break;
+        case 2 : result = bits::asr_c(value, immed_5, carry); break;
         case 3 : return;
     }
 
@@ -461,7 +461,7 @@ void CPU::thumbLongBranch(u16 instruction) {
     }
 }
 
-void CPU::thumbUndefined(u16 instruction) {
+void CPU::thumbUndefined() {
     LOG_TRACE("Undefined THUMB Instruction at Address: {:08X}", state.pc - 4);
 
     // setRegister(14, getRegister(15) - 4, MODE_UNDEFINED);

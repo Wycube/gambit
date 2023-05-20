@@ -37,9 +37,40 @@ auto thumbDetermineType(u16 instruction) -> ThumbInstructionType {
     return static_cast<ThumbInstructionType>(common::const_match_bits<20, 9, THUMB_ENCODINGS>(decoding_bits, THUMB_UNDEFINED));
 }
 
+auto thumbDisassembleInstruction(u16 instruction, u32 address, u16 prev) -> std::string {
+    ThumbInstructionType type = thumbDetermineType(instruction);
+    std::string disassembly;
+
+    switch(type) {
+        case THUMB_MOVE_SHIFTED_REGISTER  : disassembly = thumbDisassembleMoveShifted(instruction); break;
+        case THUMB_ADD_SUBTRACT           : disassembly = thumbDisassembleAddSubtract(instruction); break;
+        case THUMB_PROCESS_IMMEDIATE      : disassembly = thumbDisassembleProcessImmediate(instruction); break;
+        case THUMB_ALU_OPERATION          : disassembly = thumbDisassembleALUOperation(instruction); break;
+        case THUMB_HI_REGISTER_OPERATION  : disassembly = thumbDisassembleHiRegisterOp(instruction); break;
+        case THUMB_BRANCH_EXCHANGE        : disassembly = thumbDisassembleBranchExchange(instruction); break;
+        case THUMB_PC_RELATIVE_LOAD       : disassembly = thumbDisassemblePCRelativeLoad(instruction); break;
+        case THUMB_LOAD_STORE_REGISTER    : disassembly = thumbDisassembleLoadStoreRegister(instruction); break;
+        case THUMB_LOAD_STORE_SIGN_EXTEND : disassembly = thumbDisassembleLoadStoreSigned(instruction); break;
+        case THUMB_LOAD_STORE_IMMEDIATE   : disassembly = thumbDisassembleLoadStoreImmediate(instruction); break;
+        case THUMB_LOAD_STORE_HALFWORD    : disassembly = thumbDisassembleLoadStoreHalfword(instruction); break;
+        case THUMB_SP_RELATIVE_LOAD_STORE : disassembly = thumbDisassembleSPRelativeLoadStore(instruction); break;
+        case THUMB_LOAD_ADDRESS           : disassembly = thumbDisassembleLoadAddress(instruction); break;
+        case THUMB_ADJUST_STACK_POINTER   : disassembly = thumbDisassembleAdjustSP(instruction); break;
+        case THUMB_PUSH_POP_REGISTERS     : disassembly = thumbDisassemblePushPopRegisters(instruction); break;
+        case THUMB_LOAD_STORE_MULTIPLE    : disassembly = thumbDisassembleLoadStoreMultiple(instruction); break;
+        case THUMB_CONDITIONAL_BRANCH     : disassembly = thumbDisassembleConditionalBranch(instruction, address); break;
+        case THUMB_SOFTWARE_INTERRUPT     : disassembly = thumbDisassembleSoftwareInterrupt(instruction); break;
+        case THUMB_UNCONDITIONAL_BRANCH   : disassembly = thumbDisassembleUnconditionalBranch(instruction, address); break;
+        case THUMB_LONG_BRANCH            : disassembly = thumbDisassembleLongBranch(instruction, address, prev); break;
+        case THUMB_UNDEFINED              : disassembly = thumbDisassembleUndefined(); break;
+    }
+
+    return disassembly;
+}
+
 auto thumbDecodeInstruction(u16 instruction, u32 address, u16 prev) -> ThumbInstruction {
     ThumbInstructionType type = thumbDetermineType(instruction);
-    std::string disassembly = thumbDisassemblyFuncs[type](instruction, address, prev);
+    std::string disassembly = thumbDisassembleInstruction(instruction, address, prev);
 
     return ThumbInstruction{instruction, type, disassembly};
 }

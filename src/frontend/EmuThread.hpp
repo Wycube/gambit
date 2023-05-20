@@ -15,7 +15,7 @@ enum Command {
 class EmuThread final {
 public:
 
-    EmuThread(std::shared_ptr<emu::GBA> core);
+    explicit EmuThread(std::shared_ptr<emu::GBA> core);
     ~EmuThread();
 
     void start();

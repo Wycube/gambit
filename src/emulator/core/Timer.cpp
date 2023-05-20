@@ -16,7 +16,7 @@ Timer::Timer(GBA &core) : core(core) {
         timer_start_events[i] = core.scheduler.registerEvent([this, i](u64 late) {
             u64 cycles_till_overflow = (0x10000 - timer_counter[i]) * PRESCALER_SELECTIONS[bits::get<0, 2>(tmcnt[i])];
             timer_start[i] = this->core.scheduler.getCurrentTimestamp();
-            this->core.scheduler.addEvent(timer_events[i], cycles_till_overflow);
+            this->core.scheduler.addEvent(timer_events[i], cycles_till_overflow - late);
         });
         LOG_DEBUG("Timer {} has event handle: {} and {}", i, timer_events[i], timer_start_events[i]);
     }

@@ -12,7 +12,7 @@
 class MAAudioDevice final : public emu::AudioDevice {
 public:
 
-    MAAudioDevice(std::function<void (bool, float*, size_t)> &&callback);
+    explicit MAAudioDevice(std::function<void (bool, float*, size_t)> &&callback);
     ~MAAudioDevice();
 
     void start();

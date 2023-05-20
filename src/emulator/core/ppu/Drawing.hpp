@@ -46,7 +46,7 @@ private:
 
     void getAffineCoords(int &x, int &y);
     
-    s32 internal_x, internal_y;
+    s32 internal_x = 0, internal_y = 0;
 };
 
 struct Object {

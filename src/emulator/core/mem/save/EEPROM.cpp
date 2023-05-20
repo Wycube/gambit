@@ -22,7 +22,7 @@ void EEPROM::reset() {
     buffer_size = 0;
 }
 
-auto EEPROM::read(u32 address) -> u8 {
+auto EEPROM::read(u32 /* address */) -> u8 {
     u8 data_out = 1;
 
     switch(state) {
@@ -50,7 +50,7 @@ auto EEPROM::read(u32 address) -> u8 {
     return data_out;
 }
 
-void EEPROM::write(u32 address, u8 value) {
+void EEPROM::write(u32 /* address */, u8 value) {
     if(state == READ_DUMMY || state == READ) {
         return;
     }

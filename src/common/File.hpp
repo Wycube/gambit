@@ -21,7 +21,7 @@ inline auto loadFileBytes(const char *path) -> std::vector<unsigned char> {
 
     size_t file_size = std::filesystem::file_size(path);
     std::vector<unsigned char> file_data(file_size);
-    file.read((char*)file_data.data(), file_size);
+    file.read(reinterpret_cast<char*>(file_data.data()), file_size);
 
     return file_data;
 }

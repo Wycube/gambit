@@ -138,6 +138,6 @@ const lest::test thumb_disassembly_tests[] = {
     },
 
     CASE("Undefined") {
-        EXPECT(emu::thumbDisassembleUndefined(0xB880) == "undefined");
+        EXPECT(emu::thumbDisassembleUndefined() == "undefined");
     }
 };

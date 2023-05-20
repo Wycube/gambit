@@ -26,7 +26,7 @@ enum ConditionCode : u8 {
 };
 
 enum ArmInstructionType {
-    ARM_BRANCH_AND_EXCHANGE,
+    ARM_BRANCH_EXCHANGE,
     ARM_PSR_TRANSFER,
     ARM_DATA_PROCESSING,
     ARM_MULTIPLY,
@@ -52,6 +52,7 @@ struct ArmInstruction {
 
 
 auto armDetermineType(u32 instruction) -> ArmInstructionType;
+auto armDisassembleInstruction(u32 instruction, u32 address = 0) -> std::string;
 auto armDecodeInstruction(u32 instruction, u32 address = 0) -> ArmInstruction;
 
 } //namespace emu

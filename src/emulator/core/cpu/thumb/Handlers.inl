@@ -18,4 +18,4 @@ void thumbConditionalBranch(u16 instruction);
 void thumbSoftwareInterrupt(u16 instruction);
 void thumbUnconditionalBranch(u16 instruction);
 void thumbLongBranch(u16 instruction);
-void thumbUndefined(u16 instruction);
+void thumbUndefined();

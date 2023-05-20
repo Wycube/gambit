@@ -92,8 +92,7 @@ const lest::test arm_disassembly_tests[] = {
     },
 
     CASE("Undefined Instructions") {
-        EXPECT(emu::armDisassembleUndefined(0x06000010) == "undefined");
-        EXPECT(emu::armDisassembleUndefined(0x66A38F9C) == "undefined");
+        EXPECT(emu::armDisassembleUndefined() == "undefined");
     },
 
     CASE("Block Data Transfer Instructions") {

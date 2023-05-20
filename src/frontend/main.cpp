@@ -128,14 +128,18 @@ int main(int argc, char *argv[]) {
 
     GLFWwindow *window = init();
     Frontend app(window);
-    
+    app.init();
     app.loadBIOS(bios_data);
+    
+    Settings settings = app.getSettings();
+    settings.bios_path = bios_path;
+    settings.rom_path = std::filesystem::current_path().string();
+    app.setSettings(settings);
 
     if(has_rom_path) {
         app.resetAndLoad(rom_path.c_str());
     }
 
-    app.init();
     app.mainloop();
     app.shutdown();
 

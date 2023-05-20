@@ -13,7 +13,7 @@ namespace emu {
 
 DMA::DMA(GBA &core) : core(core) {
     for(size_t i = 0; i < 4; i++) {
-        channel[i].event = core.scheduler.registerEvent([this, i](u64 late) {
+        channel[i].event = core.scheduler.registerEvent([this, i](u64) {
             channel[i].active = true;
             LOG_TRACE("DMA {} started on cycle: {}", i, this->core.scheduler.getCurrentTimestamp());
         });

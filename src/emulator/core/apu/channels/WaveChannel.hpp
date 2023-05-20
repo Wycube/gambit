@@ -9,7 +9,7 @@ namespace emu {
 class WaveChannel {
 public:
 
-    WaveChannel(Scheduler &scheduler);
+    explicit WaveChannel(Scheduler &scheduler);
 
     void reset();
 

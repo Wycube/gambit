@@ -47,8 +47,8 @@ public:
     None() { type = NONE; }
     
     void reset() override { }
-    auto read(u32 address) -> u8 override { return 0; }
-    void write(u32 address, u8 value) override { }
+    auto read(u32 /* address */) -> u8 override { return 0; }
+    void write(u32 /* address */, u8 /* value */) override { }
 };
 
 } //namespace emu

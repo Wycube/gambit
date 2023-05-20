@@ -15,6 +15,9 @@ CPU::CPU(GBA &core) : core(core) {
 }
 
 void CPU::reset() {
+    int_enable = 0;
+    int_flag.store(0);
+    master_enable = false;
     state.halted = false;
     state.cpsr.fromInt(0);
     state.cpsr.mode = MODE_SYSTEM;
@@ -155,7 +158,7 @@ void CPU::execute_arm(u32 instruction) {
     ArmInstructionType type = armDetermineType(instruction);
 
     switch(type) {
-        case ARM_BRANCH_AND_EXCHANGE : armBranchExchange(instruction); break;
+        case ARM_BRANCH_EXCHANGE : armBranchExchange(instruction); break;
         case ARM_PSR_TRANSFER : armPSRTransfer(instruction); break;
         case ARM_DATA_PROCESSING : armDataProcessing(instruction); break;
         case ARM_MULTIPLY : armMultiply(instruction); break;
@@ -163,12 +166,12 @@ void CPU::execute_arm(u32 instruction) {
         case ARM_SINGLE_DATA_SWAP : armSingleDataSwap(instruction); break;
         case ARM_HALFWORD_DATA_TRANSFER : armHalfwordTransfer(instruction); break;
         case ARM_SINGLE_DATA_TRANSFER : armSingleTransfer(instruction); break;
-        case ARM_UNDEFINED : armUndefined(instruction); break;
+        case ARM_UNDEFINED : armUndefined(); break;
         case ARM_BLOCK_DATA_TRANSFER : armBlockTransfer(instruction); break;
         case ARM_BRANCH : armBranch(instruction); break;
         case ARM_COPROCESSOR_DATA_TRANSFER :
         case ARM_COPROCESSOR_DATA_OPERATION :
-        case ARM_COPROCESSOR_REGISTER_TRANSFER : armUndefined(instruction); break;
+        case ARM_COPROCESSOR_REGISTER_TRANSFER : armUndefined(); break;
         case ARM_SOFTWARE_INTERRUPT : armSoftwareInterrupt(instruction); break;
     }
 }
@@ -197,7 +200,7 @@ void CPU::execute_thumb(u16 instruction) {
         case THUMB_SOFTWARE_INTERRUPT : thumbSoftwareInterrupt(instruction); break;
         case THUMB_UNCONDITIONAL_BRANCH : thumbUnconditionalBranch(instruction); break;
         case THUMB_LONG_BRANCH : thumbLongBranch(instruction); break;
-        case THUMB_UNDEFINED : thumbUndefined(instruction); break;
+        case THUMB_UNDEFINED : thumbUndefined(); break;
     }
 }
 

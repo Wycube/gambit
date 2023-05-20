@@ -84,7 +84,7 @@ void NoiseChannel::tick(u64 late) {
     u8 r = bits::get<0, 4>(snd4cnt_h);
     const u32 frequency = (r == 0 ? 16 : r * 32) << (bits::get<4, 4>(snd4cnt_h) + 1);
 
-    scheduler.addEvent(frequency_event, frequency);
+    scheduler.addEvent(frequency_event, frequency - late);
 }
 
 void NoiseChannel::restart() {

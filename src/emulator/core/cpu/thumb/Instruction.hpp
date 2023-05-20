@@ -38,6 +38,7 @@ struct ThumbInstruction {
 
 
 auto thumbDetermineType(u16 instruction) -> ThumbInstructionType;
+auto thumbDisassembleInstruction(u16 instruction, u32 address = 0, u16 prev = 0) -> std::string;
 auto thumbDecodeInstruction(u16 instruction, u32 address = 0, u16 prev = 0) -> ThumbInstruction;
 
 } //namespace emu
