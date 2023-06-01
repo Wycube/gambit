@@ -11,7 +11,9 @@ DebugInterface::DebugInterface(GBA &core) : core(core) {
 
 void DebugInterface::reset() {
     cpu_usage.clear();
-    frame_start = 0;
+    frame_start_cycle = 0;
+    frame_times.clear();
+    frame_start_time = std::chrono::steady_clock::now();
     force_break = false;
 }
 
@@ -101,11 +103,19 @@ auto DebugInterface::getCPUUsage() const -> const common::ThreadSafeRingBuffer<f
     return cpu_usage;
 }
 
+auto DebugInterface::getFrameTimes() const -> const common::ThreadSafeRingBuffer<float, 100>& {
+    return frame_times;
+}
+
 void DebugInterface::onVblank() {
-    u64 total_cycles = core.scheduler.getCurrentTimestamp() - frame_start;
+    u64 total_cycles = core.scheduler.getCurrentTimestamp() - frame_start_cycle;
     cpu_usage.push((float)core.cycles_active / (float)total_cycles * 100.0f);
-    frame_start = core.scheduler.getCurrentTimestamp();
+    frame_start_cycle = core.scheduler.getCurrentTimestamp();
     core.cycles_active = 0;
+
+    auto now = std::chrono::steady_clock::now();
+    frame_times.push((float)(now - frame_start_time).count() / 1'000'000.0f);
+    frame_start_time = now;
 }
 
 auto DebugInterface::getRegister(u8 reg, u8 mode) const -> u32 {

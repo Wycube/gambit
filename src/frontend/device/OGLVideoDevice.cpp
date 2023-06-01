@@ -9,8 +9,6 @@ OGLVideoDevice::OGLVideoDevice() {
     createTexture();
     clear(0);
     updateTexture(present_framebuffer);
-
-    frame_times.clear();
 }
 
 OGLVideoDevice::~OGLVideoDevice() {
@@ -46,19 +44,9 @@ void OGLVideoDevice::setLine(int y, const u32 *colors) {
 }
 
 void OGLVideoDevice::presentFrame() {
-    auto now = std::chrono::steady_clock::now();
-    auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(now - start);
-    start = now;
-
-    frame_times.push(frame_time.count() / 1000.0f);
-
     std::lock_guard lock(update_mutex);
     std::memcpy(present_framebuffer, internal_framebuffer, 240 * 160 * sizeof(u32));
     new_frame = true;
-}
-
-void OGLVideoDevice::reset() {
-    start = std::chrono::steady_clock::now();
 }
 
 auto OGLVideoDevice::getTextureID() -> GLuint {

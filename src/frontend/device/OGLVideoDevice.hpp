@@ -17,12 +17,7 @@ public:
     void setPixel(int x, int y, u32 color) override;
     void setLine(int y, const u32 *colors) override;
     void presentFrame() override;
-    void reset();
-
     auto getTextureID() -> GLuint;
-    auto getFrameTimes() -> const common::ThreadSafeRingBuffer<float, 100>& {
-        return frame_times;
-    }
 
 private:
 
@@ -34,7 +29,4 @@ private:
     GLuint texture_id;
     std::mutex update_mutex;
     bool new_frame;
-
-    common::ThreadSafeRingBuffer<float, 100> frame_times;
-    std::chrono::time_point<std::chrono::steady_clock> start;
 };

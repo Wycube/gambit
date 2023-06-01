@@ -1,6 +1,8 @@
 #pragma once
 
 #include "frontend/Settings.hpp"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 
 class Frontend;
 
@@ -52,14 +54,12 @@ struct SettingsWindow : public Window {
 private:
 
     void drawGeneral(Settings &settings);
-    void drawInput(Settings &settings);
-    void drawVideo(Settings &settings);
-    void drawAudio(Settings &settings);
-    void drawDebug(Settings &settings);
+    void drawInput(Settings &settings, GLFWwindow *window);
 
     bool just_selected = false;
-    char rom_path_buf[100] = {0};
-    char bios_path_buf[100] = {0};
+    std::string rom_path;
+    std::string bios_path;
+    int selected_input;
 };
 
 } //namespace ui

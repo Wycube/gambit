@@ -20,8 +20,12 @@ core(std::make_shared<emu::GBA>(video_device, input_device, audio_device)), emu_
     glfwSetWindowTitle(window, fmt::format("gba  [{}]", common::GIT_DESC).c_str());
     glfwSwapInterval(1);
 
-    //Setup callbacks and retrieve window dimensions
+    //Setup callbacks and retrieve window position and size information
+    fullscreen = false;
+    glfwGetWindowPos(window, &last_pos_x, &last_pos_y);
     glfwGetWindowSize(window, &width, &height);
+    last_width = width;
+    last_height = height;
     glfwSetWindowUserPointer(window, &user_data);
     glfwSetWindowSizeCallback(window, windowSizeCallback);
 
@@ -32,8 +36,6 @@ core(std::make_shared<emu::GBA>(video_device, input_device, audio_device)), emu_
     ui_windows.push_back(&file_dialog);
     ui_windows.push_back(&metrics_window);
     ui_windows.push_back(&settings_window);
-
-    // settings.rom_path = std::filesystem::current_path().string();
 
     std::memset(audio_samples_l, 0, sizeof(audio_samples_l));
     std::memset(audio_samples_r, 0, sizeof(audio_samples_r));
@@ -97,7 +99,7 @@ void Frontend::resetEmulation() {
     }
 
     core->reset();
-    video_device.reset();
+    audio_buffer_sizes.clear();
 
     if(running) {
         startEmulation();
@@ -109,7 +111,7 @@ void Frontend::resetAndLoad(const std::string &path) {
     
     if(loadROM(path)) {
         core->reset();
-        video_device.reset();
+        audio_buffer_sizes.clear();
     }
     startEmulation();
 }
@@ -133,18 +135,78 @@ void Frontend::loadBIOS(const std::vector<u8> &bios) {
     core->loadBIOS(bios);
 }
 
-auto Frontend::getSettings() -> Settings {
+auto Frontend::getWindow() -> GLFWwindow* {
+    return window;
+}
+
+auto Frontend::getSettings() -> const Settings& {
     return settings;
 }
 
-void Frontend::setSettings(Settings new_settings) {
+void Frontend::setSettings(const Settings &new_settings) {
+    bool status_bar_changed = settings.show_status_bar != new_settings.show_status_bar;
+    bool rom_path_changed = settings.rom_path != new_settings.rom_path;
+    bool input_source_changed = settings.input_source != new_settings.input_source;
     settings = new_settings;
-    refreshScreenDimensions();
-    refreshGameList();
+
+    if(status_bar_changed) {
+        refreshScreenDimensions();
+    }
+
+    if(rom_path_changed) {
+        refreshGameList();
+    }
+
+    if(input_source_changed) {
+        input_device.updateInputSource(settings.input_source);
+    }
+}
+
+void Frontend::setToIntegerSize(int scale) {
+    int new_width = 240 * scale;
+    int new_height = 160 * scale;
+
+    if(settings.show_menu_bar) {
+        new_height += ImGui::GetFrameHeight();
+    }
+
+    if(settings.show_status_bar) {
+        new_height += ImGui::GetFrameHeight();
+    }
+
+    just_changed_windowed_size = true;
+    glfwSetWindowSize(window, new_width, new_height);
+}
+
+void Frontend::setFullscreen(bool fullscreen) {
+    this->fullscreen = fullscreen;
+    just_changed_windowed_size = true;
+
+    if(fullscreen) {
+        if(glfwGetWindowMonitor(window) != nullptr) {
+            //Already in fullscreen
+            return;
+        }
+
+        glfwGetWindowPos(window, &last_pos_x, &last_pos_y);
+        glfwGetWindowSize(window, &last_width, &last_height);
+
+        const GLFWvidmode *video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+        glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, video_mode->width, video_mode->height, GLFW_DONT_CARE);
+    } else {
+        if(glfwGetWindowMonitor(window) == nullptr) {
+            //Already in windowed mode
+            return;
+        }
+
+        glfwSetWindowMonitor(window, nullptr, last_pos_x, last_pos_y, last_width, last_height, GLFW_DONT_CARE);
+    }
 }
 
 void Frontend::refreshScreenDimensions() {
-    frame_height = settings.show_status_bar ? ImGui::GetFrameHeight() * 2 : ImGui::GetFrameHeight();
+    frame_height = 0;
+    frame_height += settings.show_status_bar ? ImGui::GetFrameHeight() : 0;
+    frame_height += settings.show_menu_bar ? ImGui::GetFrameHeight() : 0;
     const ImVec2 available = ImVec2(width, height - frame_height);
     const float gba_aspect_ratio = 240.0f / 160.0f;
 
@@ -172,14 +234,54 @@ void Frontend::refreshGameList() {
     }
 }
 
+void Frontend::drawSizeMenuItems() {
+    if(ImGui::MenuItem("Show Menu Bar", nullptr, &settings.show_menu_bar)) {
+        refreshScreenDimensions();
+    }
+
+    if(ImGui::MenuItem("Show Status Bar", nullptr, &settings.show_status_bar)) {
+        refreshScreenDimensions();
+    }
+
+    if(ImGui::MenuItem("Fullscreen", nullptr, fullscreen)) {
+        setFullscreen(!fullscreen);
+    }
+
+    if(ImGui::BeginMenu("Integer Scale", !fullscreen)) {
+        //Show integer values based on window resolution
+        const GLFWvidmode *video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+        int levels = std::fmin(video_mode->width / 240, video_mode->height / 160);
+
+        for(int i = 1; i < levels; i++) {
+            if(ImGui::MenuItem(fmt::format("{} ({}x{})", i, 240 * i, 160 * i).c_str())) {
+                setToIntegerSize(i);
+            }
+        }
+
+        ImGui::EndMenu();
+    }
+}
+
+void Frontend::drawContextMenu() {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{8, 8});
+
+    if(ImGui::BeginPopupContextWindow()) {
+        drawSizeMenuItems();
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleVar();
+}
+
 void Frontend::drawInterface() {
     beginFrame();
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
 
-    if(ImGui::BeginMainMenuBar()) {
-        if(ImGui::BeginMenu("File")) {
+    if(settings.show_menu_bar && ImGui::BeginMainMenuBar()) {
+            if(ImGui::BeginMenu("File")) {
             if(ImGui::MenuItem("Load ROM")) {
                 file_dialog.open();
             }
@@ -225,6 +327,9 @@ void Frontend::drawInterface() {
 
         if(ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Metrics", nullptr, &metrics_window.active);
+            ImGui::Separator();
+            drawSizeMenuItems();
+
             ImGui::EndMenu();
         }
         
@@ -239,14 +344,14 @@ void Frontend::drawInterface() {
 
     if(rom_loaded) {
         ImGui::SetNextWindowSize(ImVec2(width, height - frame_height));
-        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetFrameHeight()));
+        ImGui::SetNextWindowPos(ImVec2(0, settings.show_menu_bar ? ImGui::GetFrameHeight() : 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize;
-        flags |= ImGuiWindowFlags_NoInputs;
         flags |= ImGuiWindowFlags_NoDecoration;
         flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         if(ImGui::Begin("##GBA Screen", nullptr, flags)) {
+            drawContextMenu();
             ImVec2 available = ImGui::GetContentRegionAvail();
             
             ImGui::SetCursorPos(ImVec2((available.x - screen_width) * 0.5f, (available.y - screen_height) * 0.5f));
@@ -268,14 +373,15 @@ void Frontend::drawInterface() {
         ImVec2 padding = ImGui::GetStyle().WindowPadding;
         
         ImGui::SetNextWindowBgAlpha(1.0f);
-        ImGui::SetNextWindowSize(ImVec2(width, height - ImGui::GetFrameHeight()));
-        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetFrameHeight()));
+        ImGui::SetNextWindowSize(ImVec2(width, height - (settings.show_menu_bar ? ImGui::GetFrameHeight() : 0)));
+        ImGui::SetNextWindowPos(ImVec2(0, settings.show_menu_bar ? ImGui::GetFrameHeight() : 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize;
         flags |= ImGuiWindowFlags_NoDecoration;
         flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         if(ImGui::Begin("Game List", nullptr, flags)) {
+            drawContextMenu();
             ImGui::SetCursorPos(padding);
 
             if(ImGui::Button("Refresh")) {
@@ -283,31 +389,32 @@ void Frontend::drawInterface() {
             }
 
             ImGui::SameLine();
-            ImGui::Text("Items: %zu", game_list.size());
+            ImGui::Text("%zu items", game_list.size());
             ImGui::Separator();
 
             ImGui::BeginChild("##GameList_List");
+            drawContextMenu();
             ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg;
-            ImGui::BeginTable("##GameList_Table", 2, table_flags);
-            
-            ImGuiListClipper clipper(game_list.size());            
-            while(clipper.Step()) {
-                for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
+            if(ImGui::BeginTable("##GameList_Table", 2, table_flags)) {
+                ImGuiListClipper clipper(game_list.size());            
+                while(clipper.Step()) {
+                    for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
 
-                    ImVec2 item_size = ImVec2(0, ImGui::GetTextLineHeightWithSpacing());
-                    if(ImGui::Selectable(fmt::format(" {:<30}", game_list[i]).c_str(), false, ImGuiSelectableFlags_SpanAllColumns, item_size)) {
-                        resetAndLoad(game_list[i]);
+                        ImVec2 item_size = ImVec2(0, ImGui::GetTextLineHeightWithSpacing());
+                        if(ImGui::Selectable(fmt::format(" {:<30}", game_list[i]).c_str(), false, ImGuiSelectableFlags_SpanAllColumns, item_size)) {
+                            resetAndLoad(game_list[i]);
+                        }
+
+                        ImGui::TableNextColumn();
+
+                        unsigned int size = std::filesystem::file_size(game_list[i]) / 1_KiB;
+                        ImGui::Text("%u KiB", size);
                     }
-
-                    ImGui::TableNextColumn();
-
-                    float size = std::filesystem::file_size(game_list[i]) / 1_KiB;
-                    ImGui::Text("%.1f KiB", size);
                 }
+                ImGui::EndTable();
             }
-            ImGui::EndTable();
             ImGui::EndChild();
         }
         ImGui::End();
@@ -327,12 +434,15 @@ void Frontend::drawInterface() {
 }
 
 void Frontend::beginFrame() {
-    // m_start = std::chrono::steady_clock::now();
+    // start = std::chrono::steady_clock::now();
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    input_device.update();
+    if(input_device.update(settings)) {
+        //Gamepad got disconnected
+        settings.input_source = 0;
+    }
 }
 
 void Frontend::endFrame() {
@@ -359,7 +469,7 @@ void Frontend::endFrame() {
     average_fps = (1000.0f * host_size) / average_fps;
 
     //Calculate framerate as a moving average of the last 100 frames
-    const auto &gba_frame_times = video_device.getFrameTimes();
+    const auto &gba_frame_times = core->debug.getFrameTimes();
     gba_fps = 0;
     for(size_t i = 0; i < gba_frame_times.size(); i++) {
         if(gba_frame_times.peek(i) != 0) {
@@ -374,7 +484,7 @@ void Frontend::endFrame() {
     metrics_window.setGUIFrameTimes(temp);
     gba_frame_times.copy(temp);
     metrics_window.setGBAFrameTimes(temp);
-    audio_buffer_size.copy(temp);
+    audio_buffer_sizes.copy(temp);
     metrics_window.setAudioBufferSizes(temp);
     core->debug.getCPUUsage().copy(temp);
     metrics_window.setCPUUsage(temp);
@@ -382,9 +492,7 @@ void Frontend::endFrame() {
 
 void Frontend::audioCallback(bool new_samples, float *samples, size_t buffer_size) {
     emu_thread.sendCommand(RUN);
-    audio_buffer_mutex.lock();
-    audio_buffer_size.push(buffer_size);
-    audio_buffer_mutex.unlock();
+    audio_buffer_sizes.push(buffer_size);
 
     if(!new_samples) {
         return;
@@ -406,7 +514,14 @@ void Frontend::windowSizeCallback(GLFWwindow *window, int width, int height) {
 
         //Redraw gui
         instance->refreshScreenDimensions();
-        instance->drawInterface();
+        
+        if(!instance->just_changed_windowed_size) {
+            //Redrawing the interface immediately after setting the size or going fullscreen/windowed causes a crash
+            instance->drawInterface();
+        } else {
+            instance->just_changed_windowed_size = false;
+        }
+        
         glfwSwapBuffers(window);
     }
 }

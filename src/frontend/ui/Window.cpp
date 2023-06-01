@@ -1,5 +1,4 @@
 #include "Window.hpp"
-#include "Common.hpp"
 #include "frontend/Frontend.hpp"
 #include "common/Version.hpp"
 #include "common/File.hpp"
@@ -8,6 +7,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 
 namespace ui {
@@ -100,7 +100,7 @@ void SettingsWindow::draw(Frontend &frontend) {
     ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-
+    ImGui::SetNextWindowSize(ImVec2{608.0f, 311.0f}, ImGuiCond_FirstUseEver);
     if(ImGui::Begin("Settings", &active)) {
         if(ImGui::IsWindowAppearing()) {
             just_selected = true;
@@ -110,7 +110,7 @@ void SettingsWindow::draw(Frontend &frontend) {
         Settings new_settings = frontend.getSettings();
 
         static int current_item;
-        static const char *categories[] = {"General", "Input", "Video", "Audio", "Debug"};
+        static const char *categories[] = {"General", "Input"};
         ImGui::BeginGroup();
         ImGui::SetNextItemWidth(ImGui::CalcTextSize("General______").x);
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -130,10 +130,7 @@ void SettingsWindow::draw(Frontend &frontend) {
         
         switch(current_item) {
             case 0 : drawGeneral(new_settings); break;
-            case 1 : drawInput(new_settings); break;
-            case 2 : drawVideo(new_settings); break;
-            case 3 : drawAudio(new_settings); break;
-            case 4 : drawDebug(new_settings); break;
+            case 1 : drawInput(new_settings, frontend.getWindow()); break;
         }
 
         if(just_selected) {
@@ -153,115 +150,201 @@ void SettingsWindow::draw(Frontend &frontend) {
 }
 
 void SettingsWindow::drawGeneral(Settings &settings) {
-    ImGui::Text("UI");
-    ImGui::Separator();
-    ImGui::Text("Show Status Bar");
-    ImGui::SameLine();
-    ImGui::Checkbox("##ShowStatusBar", &settings.show_status_bar);
-
     ImGui::Text("ROM/BIOS");
     ImGui::Separator();
 
     if(just_selected) {
-        rom_path_buf[0] = '\0';
-        bios_path_buf[0] = '\0';
-        std::memcpy(rom_path_buf, settings.rom_path.data(), 100 < settings.rom_path.size() ? 100 : settings.rom_path.size());
-        std::memcpy(bios_path_buf, settings.bios_path.data(), 100 < settings.bios_path.size() ? 100 : settings.bios_path.size());
+        rom_path = settings.rom_path;
+        bios_path = settings.bios_path;
     }
 
-    ImGui::Text("ROMs Folder:");
-    ImGui::SameLine();
-    ImGui::InputText("##ROMsFolder", rom_path_buf, 100);
-    ImGui::SameLine();
+    ImGui::Text("ROMs Folder");
+    ImGui::BeginTable("##GeneralSettingsTable", 2);
+    ImGui::TableSetupColumn("##InputColumn", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("##SetColumn", ImGuiTableColumnFlags_WidthFixed);
+
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("##ROMsPath", &rom_path);
+    ImGui::TableNextColumn();
     if(ImGui::Button("Set##ROMsFolder")) {
-        settings.rom_path = rom_path_buf;
+        settings.rom_path = rom_path;
     }
+    ImGui::EndTable();
 
-    ImGui::Text("BIOS Path:");
-    ImGui::SameLine();
-    ImGui::InputText("##BIOSPath", bios_path_buf, 100);
-    ImGui::SameLine();
+    ImGui::Text("BIOS Path");
+    ImGui::BeginTable("##GeneralSettingsTable", 2);
+    ImGui::TableSetupColumn("##InputColumn", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("##SetColumn", ImGuiTableColumnFlags_WidthFixed);
+
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("##BIOSPath", &bios_path);
+    ImGui::TableNextColumn();
     if(ImGui::Button("Set##BIOSPath")) {
-        settings.bios_path = bios_path_buf;
+        settings.bios_path = bios_path;
     }
+    ImGui::EndTable();
 
-    ImGui::Text("Skip BIOS Intro");
-    ImGui::SameLine();
-    ImGui::Checkbox("##SkipBIOSIntro", &settings.skip_bios);
+    ImGui::Checkbox(" Skip BIOS Intro", &settings.skip_bios);
+
+    ImGui::Dummy(ImVec2(0.0f, ImGui::GetTextLineHeight()));
+    ImGui::Text("Debug");
+    ImGui::Separator();
+
+    ImGui::Checkbox("  Enable Debugger", &settings.enable_debugger);
 }
 
-void SettingsWindow::drawInput(Settings &settings) {
+auto getInputName(const Settings &settings, int index) -> std::string {
+    if(settings.input_source == 0) {
+        if(glfwGetKeyName(settings.key_map[index], 0) != nullptr) {
+            return glfwGetKeyName(settings.key_map[index], 0);
+        } else {
+            return std::to_string(settings.key_map[index]);
+        }
+    } else {
+        if(settings.gamepad_map[index].is_button) {
+            return fmt::format("Button {}", std::to_string(settings.gamepad_map[index].id));
+        } else {
+            return fmt::format("{}Axis {}", settings.gamepad_map[index].positive ? '+' : '-', settings.gamepad_map[index].id);
+        }
+        return std::to_string(settings.gamepad_map[index].id);
+    }
+}
+
+void inputMapButton(const std::string &label, const std::string &name, int index, bool &open_popup, int &selected_input) {
+    if(ImGui::Button(name.c_str(), ImVec2{ImGui::CalcTextSize("_______").x, 0.0f})) {
+        open_popup = true;
+        selected_input = index;
+    }
+    ImGui::SameLine();
+    ImGui::Text("%s", label.c_str());
+}
+
+void SettingsWindow::drawInput(Settings &settings, GLFWwindow *window) {
+    std::string sources = "Keyboard\0";
+    std::vector<int> sources_list = {0};
+    bool fix_list = false;
+
+    for(int i = 0; i < GLFW_JOYSTICK_LAST; i++) {
+        if(glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+            fix_list = true;
+            sources += '\0';
+            sources += fmt::format("{}", glfwGetGamepadName(i));
+            sources_list.push_back(i);
+        }
+    }
+
+    if(fix_list) {
+        sources += '\0';
+    }
+
     ImGui::Text("Input Source:");
     ImGui::SameLine();
-    static int aldkwnflkamwdl;
-    ImGui::Combo("##InputSource", &aldkwnflkamwdl, "Keyboard\0Controller\0");
+    ImGui::Combo("##InputSource", &settings.input_source, sources.c_str());
+    ImGui::Separator();
 
-    const char *buttons[12] = {"A", "B", "X", "Y", "R", "L", "START", "SELECT", "UP", "DOWN", "LEFT", "RIGHT"};
-    for(int i = 0; i < 12; i++) {
-        ImGui::Text("%s", buttons[i]);
-        ImGui::SameLine();
-        ImGui::Button("##aklwdmlakwnlk");
+    bool open_popup = false;
+    ImGui::BeginTable("##InputMappingTable", 4, ImGuiTableFlags_SizingFixedFit);
+    ImGui::TableNextRow();
+
+    ImGui::TableSetColumnIndex(0);
+    inputMapButton("L", getInputName(settings, 9), 9, open_popup, selected_input);
+    ImGui::TableNextColumn();
+    inputMapButton("R", getInputName(settings, 8), 8, open_popup, selected_input);
+
+    ImGui::TableNextColumn();
+    inputMapButton("UP", getInputName(settings, 6), 6, open_popup, selected_input);
+    ImGui::TableNextColumn();
+    inputMapButton("DOWN", getInputName(settings, 7), 7, open_popup, selected_input);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    inputMapButton("A", getInputName(settings, 0), 0, open_popup, selected_input);
+    ImGui::TableNextColumn();
+    inputMapButton("B", getInputName(settings, 1), 1, open_popup, selected_input);
+
+    ImGui::TableNextColumn();
+    inputMapButton("LEFT", getInputName(settings, 5), 5, open_popup, selected_input);
+    ImGui::TableNextColumn();
+    inputMapButton("RIGHT", getInputName(settings, 4), 4, open_popup, selected_input);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    inputMapButton("SELECT", getInputName(settings, 2), 2, open_popup, selected_input);
+    ImGui::TableNextColumn();
+    inputMapButton("START", getInputName(settings, 3), 3, open_popup, selected_input);
+
+    ImGui::EndTable();
+
+    //Gamepad-only Settings
+    if(settings.input_source > 0) {
+        ImGui::Spacing();
+        ImGui::Text("Stick Dead Zone");
+        ImGui::SliderFloat("##StickDeadZoneSlider", &settings.stick_deadzone, 0.0f, 1.0f);
+        ImGui::Text("Trigger Dead Zone");
+        ImGui::SliderFloat("##TriggerDeadZoneSlider", &settings.trigger_deadzone, 0.0f, 1.0f);
     }
-}
 
-void SettingsWindow::drawVideo(Settings &settings) {
-    ImGui::Text("Screen Filter");
-    ImGui::SameLine();
-    ImGui::Combo("##ScreenFilter", &settings.screen_filter, "None\0Linear\0");
+    if(open_popup) {
+        ImGui::OpenPopup("Input Binding");
+        LOG_INFO("Popup opened");
+    }
 
-    static bool kselkm;
-    ImGui::Text("Enabled Layers");
-    ImGui::Text("Background 0:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##Background0", &kselkm);
-    ImGui::Text("Background 1:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##Background1", &kselkm);
-    ImGui::Text("Background 2:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##Background2", &kselkm);
-    ImGui::Text("Background 3:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##Background3", &kselkm);
-    ImGui::Text("Objects:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##Objects", &kselkm);
-    ImGui::Text("Effects:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##Effects", &kselkm);
-}
+    static bool dummy;
+    dummy = true;
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if(ImGui::BeginPopupModal("Input Binding", &dummy, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if(settings.input_source == 0) {
+            ImGui::Text("  Press a Key...  ");
 
-void SettingsWindow::drawAudio(Settings &settings) {
-    ImGui::Text("Volume:");
-    ImGui::SameLine();
-    ImGui::SliderFloat("##Volume", &settings.volume, 0.0f, 100.0f, "%.0f%%", ImGuiSliderFlags_AlwaysClamp);
+            for(int key = 0; key < GLFW_KEY_LAST; key++) {
+                if(glfwGetKey(window, key) == GLFW_PRESS) {
+                    settings.key_map[selected_input] = key;
+                    ImGui::CloseCurrentPopup();
+                    break;
+                }
+            }
+        } else {
+            ImGui::Text("  Make new input...  ");
 
-    static bool yeet;
-    ImGui::Text("Enabled Channels");
-    ImGui::Text("Pulse Channel 1:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##PulseChannel1", &yeet);
-    ImGui::Text("Pulse Channel 2:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##PulseChannel2", &yeet);
-    ImGui::Text("Wave Channel:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##WaveChannel", &yeet);
-    ImGui::Text("Noise Channel:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##NoiseChannel", &yeet);
-    ImGui::Text("FIFO A:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##FIFOA", &yeet);
-    ImGui::Text("FIFO B:");
-    ImGui::SameLine();
-    ImGui::Checkbox("##FIFOB", &yeet);
-}
+            bool finished = false;
+            GLFWgamepadstate state;
+            glfwGetGamepadState(sources_list[settings.input_source], &state);
+        
+            //Check all buttons
+            for(int button = 0; button < GLFW_GAMEPAD_BUTTON_LAST; button++) {
+                if(state.buttons[button]) {
+                    settings.gamepad_map[selected_input] = {true, button};
+                    finished = true;
+                    break;
+                }
+            }
 
-void SettingsWindow::drawDebug(Settings &settings) {
-    ImGui::Text("Enable Debugger");
-    ImGui::SameLine();
-    ImGui::Checkbox("##EnableDebugger", &settings.enable_debugger);
+            //Check all axes
+            if(!finished) {
+                for(int axis = 0; axis < GLFW_GAMEPAD_AXIS_LAST; axis++) {
+                    if(state.axes[axis] > 0.5f) {
+                        settings.gamepad_map[selected_input] = {false, axis, true};
+                        finished = true;
+                        break;
+                    } else if(axis != GLFW_GAMEPAD_AXIS_LEFT_TRIGGER && axis != GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER && state.axes[axis] < -0.5f) {
+                        settings.gamepad_map[selected_input] = {false, axis, false};
+                        finished = true;
+                        break;
+                    }
+                }
+            }
+            
+            if(finished) {
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        
+        ImGui::EndPopup();
+    }
 }
 
 } //namespace ui

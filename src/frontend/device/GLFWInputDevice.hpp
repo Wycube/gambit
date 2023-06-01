@@ -1,6 +1,7 @@
 #pragma once
 
 #include "emulator/device/InputDevice.hpp"
+#include "frontend/Settings.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <atomic>
@@ -11,7 +12,10 @@ public:
 
     explicit GLFWInputDevice(GLFWwindow *window);
 
-    void update();
+    auto update(const Settings &settings) -> bool;
+    void updateInputSource(int source);
+    void setActive(bool active);
+    auto isActive() -> bool;
     auto getKeys() -> u16 override;
 
 private:
@@ -22,4 +26,5 @@ private:
     bool pressed[10];
     int current_joystick;
     bool joystick_connected;
+    bool active;
 };

@@ -5,6 +5,7 @@
 #include "common/Types.hpp"
 #include <unordered_map>
 #include <functional>
+#include <chrono>
 
 
 namespace emu {
@@ -38,6 +39,7 @@ public:
     auto onStep() -> bool;
 
     auto getCPUUsage() const -> const common::ThreadSafeRingBuffer<float, 100>&;
+    auto getFrameTimes() const -> const common::ThreadSafeRingBuffer<float, 100>&;
     void onVblank();
 
     auto getRegister(u8 reg, u8 mode = 0) const -> u32;
@@ -52,7 +54,9 @@ private:
     std::function<void ()> on_break;
     bool force_break;
     common::ThreadSafeRingBuffer<float, 100> cpu_usage;
-    u64 frame_start;
+    u64 frame_start_cycle;
+    common::ThreadSafeRingBuffer<float, 100> frame_times;
+    std::chrono::time_point<std::chrono::steady_clock> frame_start_time;
 };
 
 } //namespace emu

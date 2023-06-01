@@ -24,13 +24,18 @@ public:
     void resetAndLoad(const std::string &path);
     auto loadROM(const std::string &path) -> bool;
     void loadBIOS(const std::vector<u8> &bios);
-    auto getSettings() -> Settings;
-    void setSettings(Settings new_settings);
+    auto getWindow() -> GLFWwindow*;
+    auto getSettings() -> const Settings&;
+    void setSettings(const Settings &new_settings);
 
 private:
 
+    void setToIntegerSize(int scale);
+    void setFullscreen(bool fullscreen);
     void refreshScreenDimensions();
     void refreshGameList();
+    void drawSizeMenuItems();
+    void drawContextMenu();
     void drawInterface();
     void beginFrame();
     void endFrame();
@@ -38,7 +43,10 @@ private:
     static void windowSizeCallback(GLFWwindow *window, int width, int height);
 
     GLFWwindow *window;
+    int last_pos_x, last_pos_y;
+    int last_width, last_height;
     int width, height;
+    bool fullscreen, just_changed_windowed_size = false;
     CallbackUserData user_data;
     OGLVideoDevice video_device;
     GLFWInputDevice input_device;
@@ -58,7 +66,7 @@ private:
     ui::SettingsWindow settings_window;
 
     common::FixedRingBuffer<float, 100> frame_times;
-    common::FixedRingBuffer<float, 100> audio_buffer_size;
+    common::ThreadSafeRingBuffer<float, 100> audio_buffer_sizes;
     std::mutex audio_buffer_mutex;
     float audio_samples_l[750];
     float audio_samples_r[750];
