@@ -42,10 +42,10 @@ public:
     auto getFrameTimes() const -> const common::ThreadSafeRingBuffer<float, 100>&;
     void onVblank();
 
-    auto getRegister(u8 reg, u8 mode = 0) const -> u32;
+    // auto getRegister(u8 reg, u8 mode = 0) const -> u32;
     // void setRegister(u8 reg, u8 mode, u32 value);
-    auto getCurrentStatus() const -> StatusRegister;
-    auto getSavedStatus(u8 mode) const -> StatusRegister;
+    // auto getCurrentStatus() const -> StatusRegister;
+    // auto getSavedStatus(u8 mode) const -> StatusRegister;
 
 private:
 

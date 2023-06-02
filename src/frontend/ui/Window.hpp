@@ -48,6 +48,10 @@ private:
     float cpu_usage[100];
 };
 
+struct RomInfoWindow final : public Window {
+    void draw(Frontend &frontend) override;
+};
+
 struct SettingsWindow : public Window {
     void draw(Frontend &frontend) override;
 

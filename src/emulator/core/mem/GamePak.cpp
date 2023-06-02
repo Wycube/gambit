@@ -124,6 +124,7 @@ void GamePak::updateWaitstates(u16 waitcnt) {
     ws1_s = WS1S_WAIT_CYCLES[(waitcnt >> 7) & 1];
     ws2_n = WSN_WAIT_CYCLES[(waitcnt >> 8) & 3];
     ws2_s = WS2S_WAIT_CYCLES[(waitcnt >> 10) & 1];
+    // LOG_INFO("ws2_n {}, ws2_s {}, ws1_n {}, ws1_n {}, ws0_n {}, ws0_s {}", ws2_n, ws2_s, ws1_n, ws1_s, ws0_n, ws0_s);
     // LOG_INFO("Updated waitstate sram: {}, WS0 1st: {}, WS0 2nd: {}", sram_waitstate, ws0_n, ws0_s);
 }
 

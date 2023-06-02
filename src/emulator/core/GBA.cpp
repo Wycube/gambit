@@ -6,11 +6,11 @@ namespace emu {
 
 GBA::GBA(VideoDevice &video_device, InputDevice &input_device, AudioDevice &audio_device) 
         : video_device(video_device), input_device(input_device), audio_device(audio_device),
-        debug(*this), keypad(*this), timer(*this), dma(*this), sio(*this), ppu(*this), apu(*this), bus(*this), cpu(*this) {
-    cycles_active = 0;
-}
+        debug(*this), keypad(*this), timer(*this), dma(*this), sio(*this), ppu(*this), apu(*this), bus(*this), cpu(*this) { }
 
-void GBA::reset() {
+void GBA::reset(bool skip_bios, bool enable_debugger) {
+    this->enable_debugger = enable_debugger;
+
     scheduler.reset();
     debug.reset();
     keypad.reset();
@@ -20,7 +20,7 @@ void GBA::reset() {
     ppu.reset();
     apu.reset();
     bus.reset();
-    cpu.reset();
+    cpu.reset(skip_bios);
     cpu.flushPipeline();
 }
 
@@ -36,6 +36,10 @@ void GBA::step() {
     } else {
         cpu.step();
         cycles_active += scheduler.getCurrentTimestamp() - start;
+    }
+
+    if(enable_debugger) {
+        debug.onStep();
     }
 }
 
@@ -61,7 +65,7 @@ auto GBA::run(u32 cycles) -> u32 {
             cycles_active += scheduler.getCurrentTimestamp() - start;
         }
 
-        if(debug.onStep()) {
+        if(enable_debugger && debug.onStep()) {
             break;
         }
     }

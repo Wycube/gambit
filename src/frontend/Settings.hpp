@@ -36,7 +36,7 @@ struct Settings {
 
     std::string rom_path;
     std::string bios_path;
-    bool skip_bios = false;
+    bool skip_bios = true;
 
     int input_source = 0;
     int key_map[10];

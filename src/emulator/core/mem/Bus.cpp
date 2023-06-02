@@ -12,6 +12,7 @@ Bus::Bus(GBA &core) : pak(core.scheduler), core(core) {
 
 void Bus::reset() {
     waitcnt = 0;
+    pak.updateWaitstates(waitcnt);
     bios_open_bus = 0xE129F000;
     std::memset(ewram, 0, sizeof(ewram));
     std::memset(iwram, 0, sizeof(iwram));

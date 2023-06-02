@@ -18,7 +18,7 @@ public:
 
     explicit CPU(GBA &core);
 
-    void reset();
+    void reset(bool skip_bios = true);
     void halt();
     auto halted() -> bool;
     void checkForInterrupt();

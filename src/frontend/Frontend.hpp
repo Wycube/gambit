@@ -27,6 +27,7 @@ public:
     auto getWindow() -> GLFWwindow*;
     auto getSettings() -> const Settings&;
     void setSettings(const Settings &new_settings);
+    auto getGamePakHeader() -> const emu::GamePakHeader&;
 
 private:
 
@@ -63,6 +64,7 @@ private:
     ui::AboutDialog about_dialog;
     ui::FileDialog file_dialog;
     ui::MetricsWindow metrics_window;
+    ui::RomInfoWindow rom_info_window;
     ui::SettingsWindow settings_window;
 
     common::FixedRingBuffer<float, 100> frame_times;

@@ -22,7 +22,7 @@ public:
 
     GBA(VideoDevice &video_device, InputDevice &input_device, AudioDevice &audio_device);
 
-    void reset();
+    void reset(bool skip_bios = true, bool enable_debugger = false);
     void step();
     auto run(u32 cycles) -> u32;
     void loadBIOS(const std::vector<u8> &bios);
@@ -41,7 +41,8 @@ public:
     Bus bus;
     CPU cpu;
 
-    u32 cycles_active;
+    u32 cycles_active = 0;
+    bool enable_debugger = false;
 };
 
 } //namespace emu

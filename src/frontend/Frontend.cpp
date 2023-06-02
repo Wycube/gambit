@@ -35,6 +35,7 @@ core(std::make_shared<emu::GBA>(video_device, input_device, audio_device)), emu_
     ui_windows.push_back(&about_dialog);
     ui_windows.push_back(&file_dialog);
     ui_windows.push_back(&metrics_window);
+    ui_windows.push_back(&rom_info_window);
     ui_windows.push_back(&settings_window);
 
     std::memset(audio_samples_l, 0, sizeof(audio_samples_l));
@@ -98,7 +99,7 @@ void Frontend::resetEmulation() {
         stopEmulation();
     }
 
-    core->reset();
+    core->reset(settings.skip_bios, settings.enable_debugger);
     audio_buffer_sizes.clear();
 
     if(running) {
@@ -110,7 +111,7 @@ void Frontend::resetAndLoad(const std::string &path) {
     stopEmulation();
     
     if(loadROM(path)) {
-        core->reset();
+        core->reset(settings.skip_bios, settings.enable_debugger);
         audio_buffer_sizes.clear();
     }
     startEmulation();
@@ -160,6 +161,10 @@ void Frontend::setSettings(const Settings &new_settings) {
     if(input_source_changed) {
         input_device.updateInputSource(settings.input_source);
     }
+}
+
+auto Frontend::getGamePakHeader() -> const emu::GamePakHeader& {
+    return core->bus.pak.getHeader();
 }
 
 void Frontend::setToIntegerSize(int scale) {
@@ -327,6 +332,7 @@ void Frontend::drawInterface() {
 
         if(ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Metrics", nullptr, &metrics_window.active);
+            ImGui::MenuItem("ROM Info", nullptr, &rom_info_window.active);
             ImGui::Separator();
             drawSizeMenuItems();
 

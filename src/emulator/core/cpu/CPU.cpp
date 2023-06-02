@@ -14,7 +14,7 @@ CPU::CPU(GBA &core) : core(core) {
     reset();
 }
 
-void CPU::reset() {
+void CPU::reset(bool skip_bios) {
     int_enable = 0;
     int_flag.store(0);
     master_enable = false;
@@ -27,7 +27,7 @@ void CPU::reset() {
     setRegister(13, 0x03007FA0, MODE_IRQ);
     setRegister(13, 0x03007FE0, MODE_SUPERVISOR);
     setRegister(14, 0x08000000);
-    state.pc = 0x08000000;
+    state.pc = skip_bios ? 0x08000000 : 0;
 }
 
 void CPU::halt() {

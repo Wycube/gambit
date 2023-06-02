@@ -27,10 +27,22 @@ void AboutDialog::draw(Frontend&) {
     if(ImGui::BeginPopupModal("About", &active, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::Text("Game Boy Advance Emulator,");
         ImGui::Text("Copyright (c) 2021-2023 Wycube");
+        ImGui::Dummy(ImVec2{0.0f, ImGui::GetTextLineHeight()});
+
+        ImGui::Text("Version Info");
         ImGui::Separator();
         ImGui::Text("Version: %s", common::GIT_DESC);
-        ImGui::Text("Commit: %s", common::GIT_COMMIT);
         ImGui::Text("Branch: %s", common::GIT_BRANCH);
+        ImGui::Text("Commit: %s", common::GIT_COMMIT);
+        ImGui::Dummy(ImVec2{0.0f, ImGui::GetTextLineHeight()});
+
+        ImGui::Text("Libraries Used");
+        ImGui::Separator();
+        ImGui::Text("{fmt}");
+        ImGui::Text("Glad - MIT License");
+        ImGui::Text("GLFW - Zlib License");
+        ImGui::Text("Dear ImGui - MIT License");
+        ImGui::Text("miniaudio - MIT No Attribution");
     }
     ImGui::EndPopup();
 }
@@ -96,6 +108,42 @@ void MetricsWindow::setCPUUsage(const float *values) {
     std::memcpy(cpu_usage, values, sizeof(cpu_usage));
 }
 
+void RomInfoWindow::draw(Frontend &frontend) {
+    if(ImGui::Begin("ROM Info", &active, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const emu::GamePakHeader &header = frontend.getGamePakHeader();
+        char title[13] = {0};
+        std::memcpy(title, header.title, sizeof(header.title));
+        
+        ImGui::BeginTable("##RomInfoTable", 2);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        ImGui::Text("Title Code");
+        ImGui::TableNextColumn();
+        ImGui::Text("%s", title);
+        ImGui::TableNextColumn();
+        ImGui::Text("Version");
+        ImGui::TableNextColumn();
+        ImGui::Text("%i", header.version);
+        ImGui::TableNextColumn();
+        ImGui::Text("Game Code");
+        ImGui::TableNextColumn();
+        ImGui::Text("%c%c%c%c", header.game_code[0], header.game_code[1], header.game_code[2], header.game_code[3]);
+        ImGui::TableNextColumn();
+        ImGui::Text("Maker Code");
+        ImGui::TableNextColumn();
+        ImGui::Text("%c%c", header.maker_code[0], header.maker_code[1]);
+        ImGui::TableNextColumn();
+        ImGui::Text("Unit Code");
+        ImGui::TableNextColumn();
+        ImGui::Text("%i", header.unit_code);
+        ImGui::TableNextColumn();
+        
+        ImGui::EndTable();
+    }
+    ImGui::End();
+}
+
 void SettingsWindow::draw(Frontend &frontend) {
     ImVec2 window_padding = ImGui::GetStyle().WindowPadding;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -142,9 +190,9 @@ void SettingsWindow::draw(Frontend &frontend) {
             LOG_INFO("Settings Changed");
         }
 
-        ImGui::End();
         ImGui::PopStyleVar();
     }
+    ImGui::End();
 
     ImGui::PopStyleVar();
 }
@@ -169,7 +217,11 @@ void SettingsWindow::drawGeneral(Settings &settings) {
     ImGui::InputText("##ROMsPath", &rom_path);
     ImGui::TableNextColumn();
     if(ImGui::Button("Set##ROMsFolder")) {
-        settings.rom_path = rom_path;
+        if(std::filesystem::exists(rom_path)) {
+            settings.rom_path = rom_path;
+        } else {
+            LOG_WARNING("ROMs folder '{}' does not exist!", rom_path);
+        }
     }
     ImGui::EndTable();
 
@@ -184,7 +236,11 @@ void SettingsWindow::drawGeneral(Settings &settings) {
     ImGui::InputText("##BIOSPath", &bios_path);
     ImGui::TableNextColumn();
     if(ImGui::Button("Set##BIOSPath")) {
-        settings.bios_path = bios_path;
+        if(std::filesystem::exists(bios_path)) {
+            settings.bios_path = bios_path;
+        } else {
+            LOG_WARNING("BIOS path '{}' does not exist!", bios_path);
+        }
     }
     ImGui::EndTable();
 
