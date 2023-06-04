@@ -106,38 +106,38 @@ int main(int argc, char *argv[]) {
 
     common::log::set_log_filter(log_filter);
 
-    if(!has_bios_path) {
-        LOG_WARNING("No BIOS file specified! Using default: bios.bin");
-        bios_path = "bios.bin";
-    }
-
     LOG_DEBUG("Version : {}", common::GIT_DESC);
     LOG_DEBUG("Branch  : {}", common::GIT_BRANCH);
     LOG_DEBUG("Commit  : {}", common::GIT_COMMIT);
 
-    std::vector<u8> rom_data = common::loadFileBytes(rom_path.c_str());
-    std::vector<u8> bios_data = common::loadFileBytes(bios_path.c_str());
-
-    if(has_rom_path && rom_data.empty()) {
-        LOG_FATAL("Unable to open ROM file {}!", rom_path);
-    }
-
-    if(bios_data.empty()) {
-        LOG_FATAL("Unable to open BIOS file {}!", bios_path);
-    }
-
     GLFWwindow *window = init();
     Frontend app(window);
     app.init();
-    app.loadBIOS(bios_data);
     
     Settings settings = app.getSettings();
-    settings.bios_path = bios_path;
-    settings.rom_path = std::filesystem::current_path().string();
+
+    if(has_bios_path) {
+        settings.bios_path = bios_path;
+    } else {
+        if(settings.bios_path.empty()) {
+            settings.bios_path = "bios.bin";
+        }
+    }
+
+    if(settings.rom_path.empty()) {
+        if(has_rom_path) {
+            settings.rom_path = std::filesystem::path(rom_path).parent_path().string();
+        } else {
+            settings.rom_path = std::filesystem::current_path().string();
+        }
+    }
+
     app.setSettings(settings);
 
     if(has_rom_path) {
-        app.resetAndLoad(rom_path.c_str());
+        if(app.loadROM(rom_path)) {
+            app.startEmulation();
+        }
     }
 
     app.mainloop();

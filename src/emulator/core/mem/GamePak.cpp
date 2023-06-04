@@ -90,7 +90,7 @@ auto GamePak::read(u32 address, AccessType access) -> T {
 }
 
 template<typename T>
-void GamePak::write(u32 address, T value, AccessType access) {
+void GamePak::write(u32 address, T value, AccessType /* access */) {
     u32 sub_address = address & 0xFFFFFF;
 
     switch(address >> 24) {

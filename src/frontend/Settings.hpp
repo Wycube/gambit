@@ -1,9 +1,12 @@
 #pragma once
 
+#include "common/INIParser.hpp"
+#include "common/Log.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <cstring>
 #include <string>
+#include <filesystem>
 
 
 //TODO: Implement better remapping for gamepads (i.e. dpad and axis for a single input)
@@ -49,6 +52,43 @@ struct Settings {
     Settings() {
         std::memcpy(key_map, default_key_map, sizeof(key_map));
         std::memcpy(gamepad_map, default_gamepad_map, sizeof(gamepad_map));
+    }
+
+    void loadConfigFile() {
+        common::IniMap config = common::loadIniFile(std::filesystem::current_path().string() + "/config.ini");
+
+        if(config.sections.empty() || config.sections.count("settings") == 0) {
+            LOG_WARNING("Failed to load 'config.ini' file!");
+            return;
+        }
+
+        size_t settings_section = config.sections["settings"];
+
+        if(config.values[settings_section].count("show_status_bar") != 0) {
+            show_status_bar = config.values[settings_section]["show_status_bar"] == "true";
+        }
+        if(config.values[settings_section].count("rom_path") != 0) {
+            rom_path = config.values[settings_section]["rom_path"];
+        }
+        if(config.values[settings_section].count("bios_path") != 0) {
+            bios_path = config.values[settings_section]["bios_path"];
+        }
+        if(config.values[settings_section].count("skip_bios") != 0) {
+            skip_bios = config.values[settings_section]["skip_bios"] == "true";
+        }
+    }
+
+    void writeConfigFile() {
+        common::IniMap config{};
+
+        config.sections["settings"] = 0;
+        config.values.push_back({});
+        config.values[0]["show_status_bar"] = show_status_bar ? "true" : "false";
+        config.values[0]["rom_path"] = rom_path;
+        config.values[0]["bios_path"] = bios_path;
+        config.values[0]["skip_bios"] = skip_bios ? "true" : "false";
+        config.values[0]["enable_debugger"] = enable_debugger ? "true" : "false";
+        common::writeIniFile(config, std::filesystem::current_path().string() + "/config.ini");
     }
 
     auto operator==(const Settings &other) -> bool {

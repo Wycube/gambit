@@ -23,7 +23,7 @@ public:
     void resetEmulation();
     void resetAndLoad(const std::string &path);
     auto loadROM(const std::string &path) -> bool;
-    void loadBIOS(const std::vector<u8> &bios);
+    auto loadBIOS(const std::string &path) -> bool;
     auto getWindow() -> GLFWwindow*;
     auto getSettings() -> const Settings&;
     void setSettings(const Settings &new_settings);
@@ -56,6 +56,9 @@ private:
     EmuThread emu_thread;
 
     bool rom_loaded;
+    bool bios_loaded;
+    bool show_bios_popup;
+    bool bios_dirty;
     float screen_width, screen_height;
     float frame_height;
     Settings settings;

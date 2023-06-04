@@ -31,6 +31,9 @@ core(std::make_shared<emu::GBA>(video_device, input_device, audio_device)), emu_
 
     user_data = {this, core};
     rom_loaded = false;
+    bios_loaded = false;
+    show_bios_popup = false;
+    bios_dirty = false;
 
     ui_windows.push_back(&about_dialog);
     ui_windows.push_back(&file_dialog);
@@ -47,7 +50,7 @@ void Frontend::init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
     ImGui::StyleColorsDark();
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -60,7 +63,8 @@ void Frontend::init() {
     //ImGui::GetFrameHeight() will return a wrong value if done before any frame
     ImGui::NewFrame();
     ImGui::EndFrame();
- 
+
+    settings.loadConfigFile();
     refreshScreenDimensions();
     refreshGameList();
 }
@@ -68,6 +72,8 @@ void Frontend::init() {
 void Frontend::shutdown() {
     emu_thread.stop();
     audio_device.stop();
+
+    settings.writeConfigFile();
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -83,6 +89,10 @@ void Frontend::mainloop() {
 }
 
 void Frontend::startEmulation() {
+    if(!rom_loaded || !bios_loaded) {
+        return;
+    }
+
     emu_thread.start();
     audio_device.start();
 }
@@ -93,31 +103,44 @@ void Frontend::stopEmulation() {
 }
 
 void Frontend::resetEmulation() {
-    bool running = emu_thread.running();
+    bool was_running = emu_thread.running();
 
-    if(running) {
+    if(was_running) {
         stopEmulation();
     }
 
     core->reset(settings.skip_bios, settings.enable_debugger);
     audio_buffer_sizes.clear();
 
-    if(running) {
+    if(was_running) {
         startEmulation();
     }
 }
 
 void Frontend::resetAndLoad(const std::string &path) {
-    stopEmulation();
+    bool was_running = emu_thread.running();
+
+    if(was_running) {
+        stopEmulation();
+    }
     
     if(loadROM(path)) {
         core->reset(settings.skip_bios, settings.enable_debugger);
         audio_buffer_sizes.clear();
     }
-    startEmulation();
+
+    if(was_running) {
+        startEmulation();
+    }
 }
 
 auto Frontend::loadROM(const std::string &path) -> bool {
+    if(!bios_loaded || bios_dirty) {
+        if(!loadBIOS(settings.bios_path)) {
+            return false;
+        }
+    }
+
     if(core->bus.pak.loadFile(path)) {
         core->cpu.flushPipeline();
         rom_loaded = true;
@@ -132,8 +155,21 @@ auto Frontend::loadROM(const std::string &path) -> bool {
     }
 }
 
-void Frontend::loadBIOS(const std::vector<u8> &bios) {
-    core->loadBIOS(bios);
+auto Frontend::loadBIOS(const std::string &path) -> bool {
+    std::vector<u8> bios_data = common::loadFileBytes(path.c_str());
+
+    if(bios_data.empty()) {
+        LOG_ERROR("Unable to open BIOS file '{}'!", path);
+        show_bios_popup = true;
+        return false;
+    }
+    
+    //TODO: Add error checking in loadBIOS method
+    bios_loaded = true;
+    bios_dirty = false;
+    core->loadBIOS(bios_data);
+
+    return true;
 }
 
 auto Frontend::getWindow() -> GLFWwindow* {
@@ -147,6 +183,7 @@ auto Frontend::getSettings() -> const Settings& {
 void Frontend::setSettings(const Settings &new_settings) {
     bool status_bar_changed = settings.show_status_bar != new_settings.show_status_bar;
     bool rom_path_changed = settings.rom_path != new_settings.rom_path;
+    bool bios_path_changed = settings.bios_path != new_settings.bios_path;
     bool input_source_changed = settings.input_source != new_settings.input_source;
     settings = new_settings;
 
@@ -156,6 +193,10 @@ void Frontend::setSettings(const Settings &new_settings) {
 
     if(rom_path_changed) {
         refreshGameList();
+    }
+
+    if(bios_path_changed) {
+        bios_dirty = true;
     }
 
     if(input_source_changed) {
@@ -272,7 +313,6 @@ void Frontend::drawContextMenu() {
 
     if(ImGui::BeginPopupContextWindow()) {
         drawSizeMenuItems();
-
         ImGui::EndPopup();
     }
 
@@ -321,6 +361,8 @@ void Frontend::drawInterface() {
                 video_device.clear(0);
                 audio_device.clear();
                 rom_loaded = false;
+
+                glfwSetWindowTitle(window, fmt::format("gba  [{}]", common::GIT_DESC).c_str());
             }
             ImGui::EndMenu();
         }
@@ -348,7 +390,7 @@ void Frontend::drawInterface() {
         ImGui::EndMainMenuBar();
     }
 
-    if(rom_loaded) {
+    if(rom_loaded && bios_loaded) {
         ImGui::SetNextWindowSize(ImVec2(width, height - frame_height));
         ImGui::SetNextWindowPos(ImVec2(0, settings.show_menu_bar ? ImGui::GetFrameHeight() : 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -411,6 +453,7 @@ void Frontend::drawInterface() {
                         ImVec2 item_size = ImVec2(0, ImGui::GetTextLineHeightWithSpacing());
                         if(ImGui::Selectable(fmt::format(" {:<30}", game_list[i]).c_str(), false, ImGuiSelectableFlags_SpanAllColumns, item_size)) {
                             resetAndLoad(game_list[i]);
+                            startEmulation();
                         }
 
                         ImGui::TableNextColumn();
@@ -427,6 +470,22 @@ void Frontend::drawInterface() {
         ImGui::PopStyleVar();
     }
 
+    if(show_bios_popup) {
+        ImGui::OpenPopup("BIOS Warning");
+        show_bios_popup = false;
+    }
+
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if(ImGui::BeginPopupModal("BIOS Warning", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Unable to load BIOS file!");
+        ImGui::Text("A BIOS file is necessary in order to run.");
+
+        if(ImGui::Button("OK")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 
     for(auto ui_window : ui_windows) {
         if(ui_window->active) {
@@ -444,6 +503,11 @@ void Frontend::beginFrame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    //Keep the keyboard from providing input to the emulator while inputting text or modal popups are open.
+    if(input_device.isActive() == ImGui::GetIO().WantCaptureKeyboard) {
+        input_device.setActive(!ImGui::GetIO().WantCaptureKeyboard);
+    }
 
     if(input_device.update(settings)) {
         //Gamepad got disconnected

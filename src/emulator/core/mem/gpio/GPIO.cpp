@@ -43,11 +43,11 @@ auto RTC::read(u8 port_dir) -> u8 {
             case REG_FREE : value = 1; break;
         }
 
-        LOG_INFO("RTC: Read {}", value);
+        // LOG_INFO("RTC: Read {}", value);
 
         if(++buffer_size == 8) {
             if(++params_transferred == RTC_REGISTER_SIZES[selected_reg]) {
-                LOG_INFO("RTC: Finished reading register");
+                // LOG_INFO("RTC: Finished reading register");
                 state = END;
             }
             
@@ -83,8 +83,8 @@ void RTC::write(u8 value, u8 port_dir) {
             }
 
             if(buffer_size == 8) {
-                LOG_INFO("RTC: Write command {:08b}", serial_buffer);
-                LOG_INFO("RTC: Selected Register: {}", (serial_buffer >> 1) & 7);
+                // LOG_INFO("RTC: Write command {:08b}", serial_buffer);
+                // LOG_INFO("RTC: Selected Register: {}", (serial_buffer >> 1) & 7);
                 state = serial_buffer & 1 ? PARAM_TRANSFER_READ : PARAM_TRANSFER_WRITE;
                 selected_reg = (serial_buffer >> 1) & 7;
                 serial_buffer = 0;
@@ -110,7 +110,7 @@ void RTC::write(u8 value, u8 port_dir) {
             }
 
             if(buffer_size == 8) {
-                LOG_INFO("RTC: Write Parameter {:08b}", serial_buffer);
+                // LOG_INFO("RTC: Write Parameter {:08b}", serial_buffer);
 
                 switch(selected_reg) {
                     case REG_CONTROL :

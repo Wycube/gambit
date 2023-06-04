@@ -118,7 +118,7 @@ void RomInfoWindow::draw(Frontend &frontend) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
 
-        ImGui::Text("Title Code");
+        ImGui::Text("Title");
         ImGui::TableNextColumn();
         ImGui::Text("%s", title);
         ImGui::TableNextColumn();
@@ -187,7 +187,6 @@ void SettingsWindow::draw(Frontend &frontend) {
 
         if(new_settings != prev_settings) {
             frontend.setSettings(new_settings);
-            LOG_INFO("Settings Changed");
         }
 
         ImGui::PopStyleVar();
@@ -346,7 +345,6 @@ void SettingsWindow::drawInput(Settings &settings, GLFWwindow *window) {
 
     if(open_popup) {
         ImGui::OpenPopup("Input Binding");
-        LOG_INFO("Popup opened");
     }
 
     static bool dummy;
