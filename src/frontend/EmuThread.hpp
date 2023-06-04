@@ -24,20 +24,20 @@ public:
     void setFastforward(bool enable);
     auto fastforwarding() -> bool;
 
-    auto running() const -> bool;
+    auto isRunning() const -> bool;
 
 private:
 
     void processCommands();
 
-    std::shared_ptr<emu::GBA> m_core;
+    std::shared_ptr<emu::GBA> core;
 
-    std::thread m_thread;
-    std::atomic<bool> m_running;
+    std::thread thread;
+    std::atomic<bool> running;
 
-    std::condition_variable m_cv;
-    std::mutex m_mutex;
-    s32 m_cycle_diff;
+    std::condition_variable cv;
+    std::mutex mutex;
+    s32 cycle_diff;
 
     common::ThreadSafeRingBuffer<Command, 20> cmd_queue;
     std::atomic<bool> fastforward;

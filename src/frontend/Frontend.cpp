@@ -103,7 +103,7 @@ void Frontend::stopEmulation() {
 }
 
 void Frontend::resetEmulation() {
-    bool was_running = emu_thread.running();
+    bool was_running = emu_thread.isRunning();
 
     if(was_running) {
         stopEmulation();
@@ -118,7 +118,7 @@ void Frontend::resetEmulation() {
 }
 
 void Frontend::resetAndLoad(const std::string &path) {
-    bool was_running = emu_thread.running();
+    bool was_running = emu_thread.isRunning();
 
     if(was_running) {
         stopEmulation();
@@ -334,15 +334,15 @@ void Frontend::drawInterface() {
         }
 
         if(ImGui::BeginMenu("Emulation")) {
-            if(ImGui::MenuItem("Pause", nullptr, rom_loaded && !emu_thread.running(), rom_loaded)) {
-                if(emu_thread.running()) {
+            if(ImGui::MenuItem("Pause", nullptr, rom_loaded && !emu_thread.isRunning(), rom_loaded)) {
+                if(emu_thread.isRunning()) {
                     stopEmulation();
                 } else {
                     startEmulation();
                 }
             }
 
-            if(ImGui::MenuItem("Next frame", nullptr, nullptr, rom_loaded && !emu_thread.running())) {
+            if(ImGui::MenuItem("Next frame", nullptr, nullptr, rom_loaded && !emu_thread.isRunning())) {
                 core->run(280896);
             }
 

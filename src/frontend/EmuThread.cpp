@@ -3,51 +3,51 @@
 #include "common/Log.hpp"
 
 
-EmuThread::EmuThread(std::shared_ptr<emu::GBA> core) : m_core(core) {
-    m_cycle_diff = 0;
-    m_running.store(false);
+EmuThread::EmuThread(std::shared_ptr<emu::GBA> core) : core(core) {
+    cycle_diff = 0;
+    running.store(false);
     fastforward.store(false);
 
-    m_core->debug.setCallback([this]() {
-        m_mutex.lock();
+    core->debug.setCallback([this]() {
+        mutex.lock();
         cmd_queue.clear();
         cmd_queue.push(TERMINATE);
-        m_cv.notify_one();
-        m_mutex.unlock();
+        cv.notify_one();
+        mutex.unlock();
     });
 }
 
 EmuThread::~EmuThread() {
-    if(m_thread.joinable()) {
-        m_thread.join();
+    if(thread.joinable()) {
+        thread.join();
     }
 }
 
 void EmuThread::start() {
     //Don't do anything if already running
-    if(m_thread.joinable()) {
-        if(!m_running.load()) {
-            m_thread.join();
+    if(thread.joinable()) {
+        if(!running.load()) {
+            thread.join();
         } else {
             return;
         }
     }
 
-    m_thread = std::thread([this]() {
+    thread = std::thread([this]() {
         processCommands();
     });
 }
 
 void EmuThread::stop() {
     sendCommand(TERMINATE);
-    while(m_running.load()) { }
+    while(running.load()) { }
 }
 
 void EmuThread::sendCommand(Command cmd) {
-    m_mutex.lock();
+    mutex.lock();
     cmd_queue.push(cmd);
-    m_cv.notify_one();
-    m_mutex.unlock();
+    cv.notify_one();
+    mutex.unlock();
 }
 
 void EmuThread::setFastforward(bool enable) {
@@ -58,52 +58,46 @@ auto EmuThread::fastforwarding() -> bool {
     return fastforward.load();
 }
 
-auto EmuThread::running() const -> bool {
-    return m_running.load();
+auto EmuThread::isRunning() const -> bool {
+    return running.load();
 }
 
 void EmuThread::processCommands() {
-    bool running = true;
-    m_cycle_diff = 0;
+    bool finished = false;
+    cycle_diff = 0;
     cmd_queue.clear();
-    m_running.store(true);
+    running.store(true);
 
-    while(running) {
+    while(!finished) {
         Command cmd;
 
         if(fastforward.load()) {
-            // auto start = std::chrono::steady_clock::now();
-            m_core->run(16777216 / 64);
-            // LOG_INFO("Ran {} cycles in {}ms", actual, (std::chrono::steady_clock::now() - start).count() / 1000000.0f);
+            core->run(16777216 / 64);
 
             if(cmd_queue.size() == 0) {
-                // std::this_thread::yield();
                 continue;
             }
 
             cmd = cmd_queue.pop();
         } else {
-            std::unique_lock lock(m_mutex);
-            m_cv.wait(lock, [this]() { return cmd_queue.size() > 0; });
+            std::unique_lock lock(mutex);
+            cv.wait(lock, [this]() { return cmd_queue.size() > 0; });
             cmd = cmd_queue.pop();
             lock.unlock();
-            // LOG_INFO("Waited for {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
         }
 
         switch(cmd) {
             case RUN : 
                 if(!fastforward) {
-                    m_cycle_diff += 16777216 / 64;
-                    // auto start = std::chrono::steady_clock::now();
-                    u32 actual = m_core->run(m_cycle_diff);
-                    // LOG_INFO("Ran {} cycles in {}ms", actual, (std::chrono::steady_clock::now() - start).count() / 1000000.0f);
-                    m_cycle_diff = m_cycle_diff - actual;
+                    cycle_diff += 16777216 / 64;
+                    u32 actual = core->run(cycle_diff);
+                    cycle_diff = cycle_diff - actual;
                 }
                 break;
 
-            case TERMINATE : running = false; break;
+            case TERMINATE : finished = true; break;
         }
     }
 
-    m_running.store(false);
+    running.store(false);
 }
