@@ -7,7 +7,7 @@ Gambit uses CMake, so to build just clone recursively and generate build files f
 
 # Resources
 Some of the helpful resources used while making this.
-- [GBATEK](https://problemkaputt.de/gbatek.htm), an excellent document detailing the GBA hardware
-- [Tonc Guide](https://www.coranac.com/tonc/text/toc.htm), a series 
+- [GBATEK](https://problemkaputt.de/gbatek.htm), an excellent document detailing the GBA hardware.
+- [Tonc Guide](https://www.coranac.com/tonc/text/toc.htm), a series of articles mainly for homebrew development.
 - [Article on Cartridge Flash Storage](https://dillonbeliveau.com/2020/06/05/GBA-FLASH.html), by Dillon Beliveau
 - [Article on EEPROM Backup Storage](https://densinh.github.io/DenSinH/emulation/2021/02/01/gba-eeprom.html), by DenSinH
