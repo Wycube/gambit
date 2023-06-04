@@ -17,7 +17,7 @@ core(std::make_shared<emu::GBA>(video_device, input_device, audio_device)), emu_
     LOG_DEBUG("Initializing Frontend...");
 
     //Set window stuff
-    glfwSetWindowTitle(window, fmt::format("gba  [{}]", common::GIT_DESC).c_str());
+    glfwSetWindowTitle(window, fmt::format("Gambit  [{}]", common::GIT_DESC).c_str());
     glfwSwapInterval(1);
 
     //Setup callbacks and retrieve window position and size information
@@ -146,7 +146,7 @@ auto Frontend::loadROM(const std::string &path) -> bool {
         rom_loaded = true;
 
         //Set Window title to the title in the ROM's header
-        glfwSetWindowTitle(window, fmt::format("gba  [{}] - {}", common::GIT_DESC, core->bus.pak.getTitle()).c_str());
+        glfwSetWindowTitle(window, fmt::format("Gambit  [{}] - {}", common::GIT_DESC, core->bus.pak.getTitle()).c_str());
 
         return true;
     } else {
@@ -362,7 +362,7 @@ void Frontend::drawInterface() {
                 audio_device.clear();
                 rom_loaded = false;
 
-                glfwSetWindowTitle(window, fmt::format("gba  [{}]", common::GIT_DESC).c_str());
+                glfwSetWindowTitle(window, fmt::format("Gambit  [{}]", common::GIT_DESC).c_str());
             }
             ImGui::EndMenu();
         }
@@ -535,7 +535,6 @@ void Frontend::endFrame() {
             host_size++;
         }
     }
-    // (1 / (average / 100)) * 1000
     average_fps = (1000.0f * host_size) / average_fps;
 
     //Calculate framerate as a moving average of the last 100 frames
@@ -547,7 +546,6 @@ void Frontend::endFrame() {
         }
     }
     gba_fps = (1000.0f * gba_frame_times.size()) / gba_fps;
-    // LOG_INFO("Speed: {}%", (m_gba_fps / 59.7275f) * 100.0f);
 
     float temp[100];
     frame_times.copy(temp);

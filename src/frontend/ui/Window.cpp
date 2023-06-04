@@ -25,7 +25,7 @@ void AboutDialog::draw(Frontend&) {
 
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if(ImGui::BeginPopupModal("About", &active, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
-        ImGui::Text("Game Boy Advance Emulator,");
+        ImGui::Text("Gambit, Game Boy Advance Emulator,");
         ImGui::Text("Copyright (c) 2021-2023 Wycube");
         ImGui::Dummy(ImVec2{0.0f, ImGui::GetTextLineHeight()});
 
