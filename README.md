@@ -2,6 +2,8 @@
 A Game Boy Advance Emulator written in C++.
 The emulator is cross-platform and uses GLFW for window creation, Dear ImGui for UI, and miniaudio for sound.
 
+![screenshot](img/screenshot.png)
+
 # Building
 Gambit uses CMake, so to build just clone recursively and generate build files for your preferred build system.
 
