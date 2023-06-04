@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
             const char *substr = &argv[i][1];
 
             if(strcmp(substr, "h") == 0 || strcmp(substr, "-help") == 0) {
-                fmt::print("Usage: emu [options] rom_path\n");
+                fmt::print("Usage: gambit [options] rom_path\n");
                 fmt::print("\n");
                 fmt::print("-h --help     Prints help text\n");
                 fmt::print("-v --version  Prints version information\n");
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
                 
                 return 0;
             } else if(strcmp(substr, "v") == 0 || strcmp(substr, "-version") == 0) {
-                fmt::print("Game Boy Advance Emulator,\n");
+                fmt::print("Gambit, Game Boy Advance Emulator,\n");
                 fmt::print("Copyright (c) 2021-2023 Wycube\n");
                 fmt::print("\n");
                 fmt::print("Version : {}\n", common::GIT_DESC);
