@@ -255,14 +255,20 @@ void Frontend::refreshScreenDimensions() {
     frame_height += settings.show_menu_bar ? ImGui::GetFrameHeight() : 0;
     const ImVec2 available = ImVec2(width, height - frame_height);
     const float gba_aspect_ratio = 240.0f / 160.0f;
+    float scale = 1.0f;
 
     if(available.x / available.y > gba_aspect_ratio) {
-        screen_width = available.y * gba_aspect_ratio;
-        screen_height = available.y;
+        scale = available.y * gba_aspect_ratio / 240.0f;
     } else {
-        screen_width = available.x;
-        screen_height = available.x / gba_aspect_ratio;
+        scale = available.x / 240.0f;
     }
+
+    if(settings.force_integer_scale && scale > 1.0f) {
+        scale = std::truncf(scale);
+    }
+
+    screen_width = 240 * scale;
+    screen_height = 160 * scale;
 }
 
 void Frontend::refreshGameList() {
@@ -293,13 +299,17 @@ void Frontend::drawSizeMenuItems() {
         setFullscreen(!fullscreen);
     }
 
+    if(ImGui::MenuItem("Force Integer Scale", nullptr, &settings.force_integer_scale)) {
+        refreshScreenDimensions();
+    }
+
     if(ImGui::BeginMenu("Integer Scale", !fullscreen)) {
         //Show integer values based on window resolution
         const GLFWvidmode *video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
         int levels = std::fmin(video_mode->width / 240, video_mode->height / 160);
 
         for(int i = 1; i < levels; i++) {
-            if(ImGui::MenuItem(fmt::format("{} ({}x{})", i, 240 * i, 160 * i).c_str())) {
+            if(ImGui::MenuItem(fmt::format("{}x ({}x{})", i, 240 * i, 160 * i).c_str())) {
                 setToIntegerSize(i);
             }
         }
@@ -402,7 +412,7 @@ void Frontend::drawInterface() {
             drawContextMenu();
             ImVec2 available = ImGui::GetContentRegionAvail();
             
-            ImGui::SetCursorPos(ImVec2((available.x - screen_width) * 0.5f, (available.y - screen_height) * 0.5f));
+            ImGui::SetCursorPos(ImVec2(std::roundf((available.x - screen_width) * 0.5f), std::roundf((available.y - screen_height) * 0.5f)));
             ImGui::Image((void*)(intptr_t)video_device.getTextureID(), ImVec2(screen_width, screen_height));
         }
         ImGui::End();

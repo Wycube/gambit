@@ -36,6 +36,7 @@ constexpr GamepadInput default_gamepad_map[10] = {
 struct Settings {
     bool show_status_bar = false;
     bool show_menu_bar = true;
+    bool force_integer_scale = false;
 
     std::string rom_path;
     std::string bios_path;
@@ -67,6 +68,9 @@ struct Settings {
         if(config.values[settings_section].count("show_status_bar") != 0) {
             show_status_bar = config.values[settings_section]["show_status_bar"] == "true";
         }
+        if(config.values[settings_section].count("force_integer_scale") != 0) {
+            force_integer_scale = config.values[settings_section]["force_integer_scale"] == "true";
+        }
         if(config.values[settings_section].count("rom_path") != 0) {
             rom_path = config.values[settings_section]["rom_path"];
         }
@@ -84,6 +88,7 @@ struct Settings {
         config.sections["settings"] = 0;
         config.values.push_back({});
         config.values[0]["show_status_bar"] = show_status_bar ? "true" : "false";
+        config.values[0]["force_integer_scale"] = force_integer_scale ? "true" : "false";
         config.values[0]["rom_path"] = rom_path;
         config.values[0]["bios_path"] = bios_path;
         config.values[0]["skip_bios"] = skip_bios ? "true" : "false";
@@ -94,6 +99,7 @@ struct Settings {
     auto operator==(const Settings &other) -> bool {
         return show_status_bar == other.show_status_bar &&
             show_menu_bar == other.show_menu_bar &&
+            force_integer_scale == other.force_integer_scale &&
             rom_path == other.rom_path &&
             bios_path == other.bios_path &&
             skip_bios == other.skip_bios &&
