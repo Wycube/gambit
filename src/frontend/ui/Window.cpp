@@ -270,7 +270,7 @@ auto getInputName(const Settings &settings, int index) -> std::string {
 }
 
 void inputMapButton(const std::string &label, const std::string &name, int index, bool &open_popup, int &selected_input) {
-    if(ImGui::Button(name.c_str(), ImVec2{ImGui::CalcTextSize("_______").x, 0.0f})) {
+    if(ImGui::Button((name + "##" + std::to_string(index)).c_str(), ImVec2{ImGui::CalcTextSize("_______").x, 0.0f})) {
         open_popup = true;
         selected_input = index;
     }

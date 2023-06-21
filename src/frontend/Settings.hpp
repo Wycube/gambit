@@ -11,9 +11,13 @@
 
 //TODO: Implement better remapping for gamepads (i.e. dpad and axis for a single input)
 
+static const char *BUTTON_NAMES[10] = {
+    "button_a", "button_b", "select", "start", "right", "left", "up", "down", "button_l", "button_r"
+};
+
 constexpr int default_key_map[10] = {
     GLFW_KEY_A, GLFW_KEY_S,
-    GLFW_KEY_Z, GLFW_KEY_X,
+    GLFW_KEY_X, GLFW_KEY_W,
     GLFW_KEY_RIGHT, GLFW_KEY_LEFT,
     GLFW_KEY_UP, GLFW_KEY_DOWN,
     GLFW_KEY_W, GLFW_KEY_Q
@@ -80,6 +84,15 @@ struct Settings {
         if(config.values[settings_section].count("skip_bios") != 0) {
             skip_bios = config.values[settings_section]["skip_bios"] == "true";
         }
+
+        //Load button maps
+        for(int i = 0; i < 10; i++) {
+            std::string key_name = std::string("key/") + BUTTON_NAMES[i];
+            
+            if(config.values[settings_section].count(key_name) != 0) {
+                key_map[i] = std::stoi(config.values[settings_section][key_name]);
+            }
+        }
     }
 
     void writeConfigFile() {
@@ -93,6 +106,13 @@ struct Settings {
         config.values[0]["bios_path"] = bios_path;
         config.values[0]["skip_bios"] = skip_bios ? "true" : "false";
         config.values[0]["enable_debugger"] = enable_debugger ? "true" : "false";
+
+        //Write button maps
+        for(int i = 0; i < 10; i++) {
+            std::string key_name = std::string("key/") + BUTTON_NAMES[i];
+            config.values[0][key_name] = std::to_string(key_map[i]);
+        }
+
         common::writeIniFile(config, std::filesystem::current_path().string() + "/config.ini");
     }
 
