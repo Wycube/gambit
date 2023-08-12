@@ -1,5 +1,6 @@
-.vscode
+.vscode/
 build/
+.cache/
 
 # CMake generated file
 src/common/Version.hpp

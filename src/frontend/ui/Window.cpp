@@ -38,7 +38,7 @@ void AboutDialog::draw(Frontend&) {
 
         ImGui::Text("Libraries Used");
         ImGui::Separator();
-        ImGui::Text("{fmt}");
+        ImGui::Text("{fmt} - MIT License");
         ImGui::Text("Glad - MIT License");
         ImGui::Text("GLFW - Zlib License");
         ImGui::Text("Dear ImGui - MIT License");

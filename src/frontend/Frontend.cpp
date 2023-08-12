@@ -60,6 +60,9 @@ void Frontend::init() {
     io.Fonts->AddFontFromMemoryCompressedTTF(noto_sans_mono_medium_compressed_data, noto_sans_mono_medium_compressed_size, 15);
     io.Fonts->Build();
 
+    //Change style to make backgrounds opaque
+    ImGui::GetStyle().Alpha = 1.0f;
+
     //ImGui::GetFrameHeight() will return a wrong value if done before any frame
     ImGui::NewFrame();
     ImGui::EndFrame();
