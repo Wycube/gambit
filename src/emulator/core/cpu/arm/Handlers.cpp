@@ -1,7 +1,6 @@
 #include "emulator/core/cpu/CPU.hpp"
 #include "emulator/core/cpu/Names.hpp"
 #include "emulator/core/GBA.hpp"
-#include "Instruction.hpp"
 #include "common/Log.hpp"
 #include "common/Bits.hpp"
 
@@ -232,8 +231,8 @@ void CPU::armMultiplyLong(u32 instruction) {
         result = (u64)getRegister(rm) * (u64)getRegister(rs) + (a ? ((u64)getRegister(rd_hi) << 32) | (getRegister(rd_lo)) : 0);
     }
 
-    setRegister(rd_hi, bits::get<32, 32>(result));
     setRegister(rd_lo, bits::get<0, 32>(result));
+    setRegister(rd_hi, bits::get<32, 32>(result));
 
     //Note: The carry flag is destroyed on ARMv4, like multiply,
     //and apparently the overflow flag as well.

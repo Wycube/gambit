@@ -465,13 +465,13 @@ void Frontend::drawInterface() {
 
                         ImVec2 item_size = ImVec2(0, ImGui::GetTextLineHeightWithSpacing());
                         if(ImGui::Selectable(fmt::format(" {:<30}", game_list[i]).c_str(), false, ImGuiSelectableFlags_SpanAllColumns, item_size)) {
-                            resetAndLoad(game_list[i]);
+                            resetAndLoad(settings.rom_path + "/" + game_list[i]);
                             startEmulation();
                         }
 
                         ImGui::TableNextColumn();
 
-                        unsigned int size = std::filesystem::file_size(game_list[i]) / 1_KiB;
+                        unsigned int size = std::filesystem::file_size(settings.rom_path + "/" + game_list[i]) / 1_KiB;
                         ImGui::Text("%u KiB", size);
                     }
                 }

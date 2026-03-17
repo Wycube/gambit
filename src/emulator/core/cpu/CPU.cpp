@@ -39,7 +39,7 @@ auto CPU::halted() -> bool {
 }
 
 void CPU::checkForInterrupt() {
-    if(int_enable && int_flag.load()) {
+    if(int_enable & int_flag.load()) {
         state.halted = false;
     }
 }

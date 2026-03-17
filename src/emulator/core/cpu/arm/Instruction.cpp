@@ -27,10 +27,28 @@ constexpr char ARM_ENCODINGS[16][13] = {
     "1111xxxxxxxx"  //Software Interrupt
 };
 
+constexpr size_t ARM_MATCHES[16] = {
+    ARM_BRANCH_EXCHANGE,
+    ARM_PSR_TRANSFER,
+    ARM_PSR_TRANSFER,
+    ARM_DATA_PROCESSING,
+    ARM_MULTIPLY,
+    ARM_MULTIPLY_LONG,
+    ARM_SINGLE_DATA_SWAP,
+    ARM_HALFWORD_DATA_TRANSFER,
+    ARM_SINGLE_DATA_TRANSFER,
+    ARM_UNDEFINED,
+    ARM_BLOCK_DATA_TRANSFER,
+    ARM_BRANCH,
+    ARM_COPROCESSOR_DATA_TRANSFER,
+    ARM_COPROCESSOR_DATA_OPERATION,
+    ARM_COPROCESSOR_REGISTER_TRANSFER,
+    ARM_SOFTWARE_INTERRUPT
+};
+
 auto armDetermineType(u32 instruction) -> ArmInstructionType {
     const u16 decoding_bits = (((instruction >> 16) & 0xFF0) | ((instruction >> 4) & 0xF));
-    size_t index = common::const_match_bits<16, 13, ARM_ENCODINGS>(decoding_bits, ARM_UNDEFINED);
-    index -= index >= 2; //Adjust for the two PSR Transfer patterns
+    size_t index = common::const_match_bits<16, 13, ARM_ENCODINGS, ARM_MATCHES>(decoding_bits, ARM_UNDEFINED);
 
     return static_cast<ArmInstructionType>(index);
 }

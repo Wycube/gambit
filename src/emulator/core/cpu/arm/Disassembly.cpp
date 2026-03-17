@@ -1,5 +1,4 @@
 #include "Disassembly.hpp"
-#include "common/StringUtils.hpp"
 #include "common/Bits.hpp"
 #include <fmt/format.h>
 #include <cassert>

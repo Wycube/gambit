@@ -135,7 +135,7 @@ constexpr auto generate_multiple_masks() -> std::array<PatternMask<T>, _count> {
     return pattern_masks;
 }
 
-template<size_t _count, size_t _length, const char patterns[_count][_length], typename T, typename = std::enable_if<std::is_integral<T>::value>>
+template<size_t _count, size_t _length, const char patterns[_count][_length], const size_t matches[_count], typename T, typename = std::enable_if<std::is_integral<T>::value>>
 auto const_match_bits(T value, size_t no_match = _count) -> size_t {
     static constexpr std::array<PatternMask<T>, _count> pattern_masks = generate_multiple_masks<_count, _length, patterns, T>();
 
@@ -148,7 +148,7 @@ auto const_match_bits(T value, size_t no_match = _count) -> size_t {
                 continue;
             }
 
-            return i;
+            return matches[i];
         }
     }
 

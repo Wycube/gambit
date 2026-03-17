@@ -31,10 +31,33 @@ constexpr char THUMB_ENCODINGS[20][9] = {
     "1111xxxx"  //Long Branch with Link
 };
 
+constexpr size_t THUMB_MATCHES[20] = {
+    THUMB_MOVE_SHIFTED_REGISTER,
+    THUMB_ADD_SUBTRACT,
+    THUMB_PROCESS_IMMEDIATE,
+    THUMB_ALU_OPERATION,
+    THUMB_HI_REGISTER_OPERATION,
+    THUMB_BRANCH_EXCHANGE,
+    THUMB_PC_RELATIVE_LOAD,
+    THUMB_LOAD_STORE_REGISTER,
+    THUMB_LOAD_STORE_SIGN_EXTEND,
+    THUMB_LOAD_STORE_IMMEDIATE,
+    THUMB_LOAD_STORE_HALFWORD,
+    THUMB_SP_RELATIVE_LOAD_STORE,
+    THUMB_LOAD_ADDRESS,
+    THUMB_ADJUST_STACK_POINTER,
+    THUMB_PUSH_POP_REGISTERS,
+    THUMB_LOAD_STORE_MULTIPLE,
+    THUMB_CONDITIONAL_BRANCH,
+    THUMB_SOFTWARE_INTERRUPT,
+    THUMB_UNCONDITIONAL_BRANCH,
+    THUMB_LONG_BRANCH
+};
+
 auto thumbDetermineType(u16 instruction) -> ThumbInstructionType {
     const u8 decoding_bits = instruction >> 8;
 
-    return static_cast<ThumbInstructionType>(common::const_match_bits<20, 9, THUMB_ENCODINGS>(decoding_bits, THUMB_UNDEFINED));
+    return static_cast<ThumbInstructionType>(common::const_match_bits<20, 9, THUMB_ENCODINGS, THUMB_MATCHES>(decoding_bits, THUMB_UNDEFINED));
 }
 
 auto thumbDisassembleInstruction(u16 instruction, u32 address, u16 prev) -> std::string {
