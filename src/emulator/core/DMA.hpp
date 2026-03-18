@@ -14,6 +14,7 @@ public:
     explicit DMA(GBA &core);
 
     void reset();
+    void serialize(std::ofstream &file);
     auto running() -> bool;
     void step(u32 cycles);
 

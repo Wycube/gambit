@@ -1,6 +1,7 @@
 #include "PulseChannel.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
+#include <fstream>
 
 //12.5% |-_______-_______|
 //25.0% |--______--______|
@@ -28,6 +29,19 @@ void PulseChannel::reset() {
     sndcnt_l = 0;
     sndcnt_x = 0;
     enabled = false;
+}
+
+void PulseChannel::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&sndcnt_l), sizeof(sndcnt_l));
+    file.write(reinterpret_cast<const char*>(&sndcnt_h), sizeof(sndcnt_h));
+    file.write(reinterpret_cast<const char*>(&sndcnt_x), sizeof(sndcnt_x));
+    file.write(reinterpret_cast<const char*>(&enabled), sizeof(enabled));
+    file.write(reinterpret_cast<const char*>(&wave_duty_pos), sizeof(wave_duty_pos));
+    file.write(reinterpret_cast<const char*>(&current_vol), sizeof(current_vol));
+    file.write(reinterpret_cast<const char*>(&envelope_timer), sizeof(envelope_timer));
+    file.write(reinterpret_cast<const char*>(&length_timer), sizeof(length_timer));
+    file.write(reinterpret_cast<const char*>(&shadow_freq), sizeof(shadow_freq));
+    file.write(reinterpret_cast<const char*>(&sweep_timer), sizeof(sweep_timer));
 }
 
 auto PulseChannel::read(u32 address) -> u8 {

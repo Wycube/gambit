@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/Types.hpp"
+#include <fstream>
 
 
 namespace emu {
@@ -29,6 +30,7 @@ struct Background {
     s16 param_a, param_b, param_c, param_d;
 
     void reset();
+    void serialize(std::ofstream &file);
 
     void write(u32 address, u8 value);
     auto read(u32 address, bool regular) -> u8;
@@ -68,6 +70,7 @@ struct Window {
     u16 winin, winout;
 
     void reset();
+    void serialize(std::ofstream &file);
 
     auto insideWindow(int x, int y, int window) -> bool;
 };

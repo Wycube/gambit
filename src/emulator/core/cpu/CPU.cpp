@@ -30,6 +30,22 @@ void CPU::reset(bool skip_bios) {
     state.pc = skip_bios ? 0x08000000 : 0;
 }
 
+void CPU::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(state.pipeline), sizeof(state.pipeline));
+    file.write(reinterpret_cast<const char*>(state.regs), sizeof(state.regs));
+    file.write(reinterpret_cast<const char*>(state.banked_regs), sizeof(state.banked_regs));
+    file.write(reinterpret_cast<const char*>(state.fiq_regs), sizeof(state.fiq_regs));
+    file.write(reinterpret_cast<const char*>(&state.pc), sizeof(state.pc));
+    file.write(reinterpret_cast<const char*>(&state.cpsr), sizeof(state.cpsr));
+    file.write(reinterpret_cast<const char*>(state.spsr), sizeof(state.spsr));
+    file.write(reinterpret_cast<const char*>(&state.halted), sizeof(state.halted));
+    
+    file.write(reinterpret_cast<const char*>(&int_enable), sizeof(int_enable));
+    u16 int_flag_val = int_flag.load();
+    file.write(reinterpret_cast<const char*>(&int_flag_val), sizeof(int_flag_val));
+    file.write(reinterpret_cast<const char*>(&master_enable), sizeof(master_enable));
+}
+
 void CPU::halt() {
     state.halted = true;
 }

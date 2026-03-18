@@ -3,6 +3,7 @@
 #include "Types.hpp"
 #include "common/Types.hpp"
 #include <atomic>
+#include <fstream>
 
 
 namespace emu {
@@ -19,6 +20,7 @@ public:
     explicit CPU(GBA &core);
 
     void reset(bool skip_bios = true);
+    void serialize(std::ofstream &file);
     void halt();
     auto halted() -> bool;
     void checkForInterrupt();

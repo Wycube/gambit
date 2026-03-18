@@ -16,6 +16,7 @@ public:
     explicit Bus(GBA &core);
 
     void reset();
+    void serialize(std::ofstream &file);
 
     auto read8(u32 address, AccessType access) -> u8;
     auto read16(u32 address, AccessType access) -> u16; 

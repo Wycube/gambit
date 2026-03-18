@@ -64,6 +64,25 @@ void PPU::reset() {
     core.scheduler.addEvent(hblank_start_event, 960);
 }
 
+void PPU::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char *>(&state.dispcnt), sizeof(state.dispcnt));
+    file.write(reinterpret_cast<const char *>(&state.dispstat), sizeof(state.dispstat));
+    file.write(reinterpret_cast<const char *>(&state.line), sizeof(state.line));
+    file.write(reinterpret_cast<const char *>(&state.bldcnt), sizeof(state.bldcnt));
+    file.write(reinterpret_cast<const char *>(&state.bldalpha), sizeof(state.bldalpha));
+    file.write(reinterpret_cast<const char *>(&state.bldy), sizeof(state.bldy));
+    file.write(reinterpret_cast<const char *>(&state.mosaic), sizeof(state.mosaic));
+
+    for(int i = 0; i < 4; i++) {
+        state.bg[i].serialize(file);
+    }
+    state.win.serialize(file);
+
+    file.write(reinterpret_cast<const char*>(state.vram), sizeof(state.vram));
+    file.write(reinterpret_cast<const char*>(state.palette), sizeof(state.palette));
+    file.write(reinterpret_cast<const char*>(state.oam), sizeof(state.oam));
+}
+
 auto PPU::readIO(u32 address) -> u8 {
     switch(address) {
         case 0x00 : return bits::get<0, 8>(state.dispcnt); //DISPCNT (LCD Control)

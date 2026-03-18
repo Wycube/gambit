@@ -1,7 +1,6 @@
 #include "Drawing.hpp"
 #include "Types.hpp"
 #include "common/Bits.hpp"
-#include "common/Log.hpp"
 
 
 namespace emu {
@@ -24,6 +23,27 @@ void Background::reset() {
     param_b = 0;
     param_c = 0;
     param_d = 0x100;
+}
+
+void Background::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&priority), sizeof(priority));
+    file.write(reinterpret_cast<const char*>(&char_base_block), sizeof(char_base_block));
+    file.write(reinterpret_cast<const char*>(&mosaic), sizeof(mosaic));
+    file.write(reinterpret_cast<const char*>(&color_mode), sizeof(color_mode));
+    file.write(reinterpret_cast<const char*>(&scr_base_block), sizeof(scr_base_block));
+    file.write(reinterpret_cast<const char*>(&disp_overflow), sizeof(disp_overflow));
+    file.write(reinterpret_cast<const char*>(&screen_size), sizeof(screen_size));
+    file.write(reinterpret_cast<const char*>(&unused), sizeof(unused));
+    file.write(reinterpret_cast<const char*>(&h_offset), sizeof(h_offset));
+    file.write(reinterpret_cast<const char*>(&v_offset), sizeof(v_offset));
+    file.write(reinterpret_cast<const char*>(&reference_x), sizeof(reference_x));
+    file.write(reinterpret_cast<const char*>(&reference_y), sizeof(reference_y));
+    file.write(reinterpret_cast<const char*>(&param_a), sizeof(param_a));
+    file.write(reinterpret_cast<const char*>(&param_b), sizeof(param_b));
+    file.write(reinterpret_cast<const char*>(&param_c), sizeof(param_c));
+    file.write(reinterpret_cast<const char*>(&param_d), sizeof(param_d));
+    file.write(reinterpret_cast<const char*>(&internal_x), sizeof(internal_x));
+    file.write(reinterpret_cast<const char*>(&internal_y), sizeof(internal_y));
 }
 
 void Background::write(u32 address, u8 value) {
@@ -259,6 +279,15 @@ void Window::reset() {
     winv[1] = 0;
     winin = 0;
     winout = 0;
+}
+
+void Window::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&winh[0]), sizeof(winh[0]));
+    file.write(reinterpret_cast<const char*>(&winh[1]), sizeof(winh[1]));
+    file.write(reinterpret_cast<const char*>(&winv[0]), sizeof(winv[0]));
+    file.write(reinterpret_cast<const char*>(&winv[1]), sizeof(winv[1]));
+    file.write(reinterpret_cast<const char*>(&winin), sizeof(winin));
+    file.write(reinterpret_cast<const char*>(&winout), sizeof(winout));
 }
 
 //TODO: Window has some weird behavior to implement

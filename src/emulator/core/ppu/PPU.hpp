@@ -15,6 +15,7 @@ public:
     explicit PPU(GBA &core);
 
     void reset();
+    void serialize(std::ofstream &file);
 
     auto readIO(u32 address) -> u8;
     void writeIO(u32 address, u8 value);

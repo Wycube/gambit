@@ -1,7 +1,6 @@
 #include "APU.hpp"
 #include "emulator/core/GBA.hpp"
 #include "common/Log.hpp"
-#include <algorithm>
 
 
 namespace emu {
@@ -28,6 +27,22 @@ void APU::reset() {
 
     core.scheduler.addEvent(step_event, 32768);
     core.scheduler.addEvent(sample_event, 512);
+}
+
+void APU::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&sndcnt_l), sizeof(sndcnt_l));
+    file.write(reinterpret_cast<const char*>(&sndcnt_h), sizeof(sndcnt_h));
+    file.write(reinterpret_cast<const char*>(&sndcnt_x), sizeof(sndcnt_x));
+    file.write(reinterpret_cast<const char*>(&sndbias), sizeof(sndbias));
+    file.write(reinterpret_cast<const char*>(&fifo_a.front()), fifo_a.size());
+    file.write(reinterpret_cast<const char*>(&fifo_b.front()), fifo_b.size());
+    file.write(reinterpret_cast<const char*>(&fifo_sample_a), sizeof(fifo_sample_a));
+    file.write(reinterpret_cast<const char*>(&fifo_sample_b), sizeof(fifo_sample_b));
+
+    pulse1.serialize(file);
+    pulse2.serialize(file);
+    wave.serialize(file);
+    noise.serialize(file);
 }
 
 auto APU::read(u32 address) -> u8 {

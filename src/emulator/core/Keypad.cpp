@@ -14,6 +14,10 @@ void Keypad::reset() {
     keycnt = 0;
 }
 
+void Keypad::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&keycnt), sizeof(keycnt));
+}
+
 auto Keypad::read8(u32 address) -> u8 {
     switch(address) {
         case 0x130 : return bits::get<0, 8>(core.input_device.getKeys());

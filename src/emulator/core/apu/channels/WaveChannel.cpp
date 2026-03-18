@@ -1,6 +1,7 @@
 #include "WaveChannel.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
+#include <fstream>
 #include <cstring>
 
 static constexpr u8 VOLUMES[4] = {0, 4, 2, 1};
@@ -19,6 +20,16 @@ void WaveChannel::reset() {
     snd3cnt_x = 0;
     std::memset(wave_ram, 0, sizeof(wave_ram));
     enabled = false;
+}
+
+void WaveChannel::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&snd3cnt_l), sizeof(snd3cnt_l));
+    file.write(reinterpret_cast<const char*>(&snd3cnt_h), sizeof(snd3cnt_h));
+    file.write(reinterpret_cast<const char*>(&snd3cnt_x), sizeof(snd3cnt_x));
+    file.write(reinterpret_cast<const char*>(&enabled), sizeof(enabled));
+    file.write(reinterpret_cast<const char*>(&length_timer), sizeof(length_timer));
+    file.write(reinterpret_cast<const char*>(&wave_pos), sizeof(wave_pos));
+    file.write(reinterpret_cast<const char*>(wave_ram), sizeof(wave_ram));
 }
 
 auto WaveChannel::read(u32 address) -> u8 {

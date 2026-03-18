@@ -18,6 +18,13 @@ void Bus::reset() {
     std::memset(iwram, 0, sizeof(iwram));
 }
 
+void Bus::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&bios_open_bus), sizeof(bios_open_bus));
+    file.write(reinterpret_cast<const char*>(&waitcnt), sizeof(waitcnt));
+    file.write(reinterpret_cast<const char*>(ewram), sizeof(ewram));
+    file.write(reinterpret_cast<const char*>(iwram), sizeof(iwram));
+}
+
 auto Bus::read8(u32 address, AccessType access) -> u8 {
     core.scheduler.step(1);
     return read<u8>(address, access);

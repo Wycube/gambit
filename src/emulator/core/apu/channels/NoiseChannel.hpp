@@ -12,6 +12,7 @@ public:
     explicit NoiseChannel(Scheduler &scheduler);
 
     void reset();
+    void serialize(std::ofstream &file);
 
     auto read(u32 address) -> u8;
     void write(u32 address, u8 value);

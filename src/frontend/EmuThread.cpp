@@ -1,7 +1,5 @@
 #include "EmuThread.hpp"
 
-#include "common/Log.hpp"
-
 
 EmuThread::EmuThread(std::shared_ptr<emu::GBA> core) : core(core) {
     cycle_diff = 0;

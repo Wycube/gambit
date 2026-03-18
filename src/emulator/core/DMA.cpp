@@ -33,6 +33,20 @@ void DMA::reset() {
     }
 }
 
+void DMA::serialize(std::ofstream &file) {
+    for(int i = 0; i < 4; i++) {
+        const DMAChannel &dma = channel[i];
+        file.write(reinterpret_cast<const char*>(&dma.active), sizeof(DMAChannel::active));
+        file.write(reinterpret_cast<const char*>(&dma.source), sizeof(DMAChannel::source));
+        file.write(reinterpret_cast<const char*>(&dma.destination), sizeof(DMAChannel::destination));
+        file.write(reinterpret_cast<const char*>(&dma.length), sizeof(DMAChannel::length));
+        file.write(reinterpret_cast<const char*>(&dma.control), sizeof(DMAChannel::control));
+        file.write(reinterpret_cast<const char*>(&dma._source), sizeof(DMAChannel::_source));
+        file.write(reinterpret_cast<const char*>(&dma._destination), sizeof(DMAChannel::_destination));
+        file.write(reinterpret_cast<const char*>(&dma._length), sizeof(DMAChannel::_length));
+    }
+}
+
 auto DMA::running() -> bool {
     return channel[0].active || channel[1].active || channel[2].active || channel[3].active;
 }

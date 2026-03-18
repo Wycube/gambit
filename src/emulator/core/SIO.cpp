@@ -24,6 +24,11 @@ void SIO::reset() {
     rcnt = 0;
 }
 
+void SIO::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char *>(&siocnt), sizeof(siocnt));
+    file.write(reinterpret_cast<const char *>(&rcnt), sizeof(rcnt));
+}
+
 auto SIO::read8(u32 address) -> u8 {
     switch(address) {
         case 0x128 : return bits::get<0, 8>(siocnt) | 0x40;

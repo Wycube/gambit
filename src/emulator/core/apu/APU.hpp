@@ -4,7 +4,6 @@
 #include "channels/WaveChannel.hpp"
 #include "channels/NoiseChannel.hpp"
 #include "common/Types.hpp"
-#include <chrono>
 #include <deque>
 
 
@@ -18,6 +17,7 @@ public:
     explicit APU(GBA &core);
 
     void reset();
+    void serialize(std::ofstream &file);
 
     auto read(u32 address) -> u8;
     void write(u32 address, u8 value);

@@ -1,6 +1,7 @@
 #include "NoiseChannel.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
+#include <fstream>
 
 
 namespace emu {
@@ -14,6 +15,17 @@ void NoiseChannel::reset() {
     snd4cnt_l = 0;
     snd4cnt_h = 0;
     enabled = false;
+}
+
+void NoiseChannel::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char*>(&snd4cnt_l), sizeof(snd4cnt_l));
+    file.write(reinterpret_cast<const char*>(&snd4cnt_h), sizeof(snd4cnt_h));
+    file.write(reinterpret_cast<const char*>(&enabled), sizeof(enabled));
+    file.write(reinterpret_cast<const char*>(&current_vol), sizeof(current_vol));
+    file.write(reinterpret_cast<const char*>(&envelope_timer), sizeof(envelope_timer));
+    file.write(reinterpret_cast<const char*>(&length_timer), sizeof(length_timer));
+    file.write(reinterpret_cast<const char*>(&lfsr), sizeof(lfsr));
+    file.write(reinterpret_cast<const char*>(&high), sizeof(high));
 }
 
 auto NoiseChannel::read(u32 address) -> u8 {

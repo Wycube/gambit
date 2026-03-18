@@ -14,6 +14,7 @@ public:
     explicit SIO(GBA &core);
 
     void reset();
+    void serialize(std::ofstream &file);
     auto read8(u32 address) -> u8;
     void write8(u32 address, u8 value);
 
