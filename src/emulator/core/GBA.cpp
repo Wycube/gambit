@@ -1,5 +1,4 @@
 #include "GBA.hpp"
-#include "common/Log.hpp"
 
 
 namespace emu {
@@ -75,6 +74,32 @@ auto GBA::run(u32 cycles) -> u32 {
 
 void GBA::loadBIOS(const std::vector<u8> &bios) {
     bus.loadBIOS(bios);
+}
+
+void saveState(std::ofstream &file) {
+    //TODO:
+    // - Write a header magic used to verify file type and endianness
+    u32 magic = 0x47424153; //'GBAS' in little-endian
+    file.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
+
+    // - Write a version number
+    file.write(reinterpret_cast<const char*>(&SAVE_STATE_VERSION), sizeof(SAVE_STATE_VERSION));
+
+    // - Run each components serialize state functions
+    // scheduler.serialize(file);
+    // keypad.serialize(file);
+    // timer.serialize(file);
+    // dma.serialize(file);
+    // sio.serialize(file);
+    // ppu.serialize(file);
+    // apu.serialize(file);
+    // bus.serialize(file);
+    // cpu.serialize(file);
+
+}
+
+void loadState(std::ifstream &file) {
+
 }
 
 } //namespace emu

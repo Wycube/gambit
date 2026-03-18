@@ -13,9 +13,13 @@
 #include "emulator/device/VideoDevice.hpp"
 #include "emulator/device/InputDevice.hpp"
 #include "emulator/device/AudioDevice.hpp"
+#include <fstream>
 
 
 namespace emu {
+
+//Increment whenever some component is changed in a way that causes the save state format to change.
+constexpr u16 SAVE_STATE_VERSION = 0x1;
 
 class GBA final {
 public:
@@ -26,6 +30,8 @@ public:
     void step();
     auto run(u32 cycles) -> u32;
     void loadBIOS(const std::vector<u8> &bios);
+    void saveState(std::ofstream &file);
+    void loadState(std::ifstream &file);
 
     VideoDevice &video_device;
     InputDevice &input_device;

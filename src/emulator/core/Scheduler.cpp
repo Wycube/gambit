@@ -1,5 +1,5 @@
 #include "Scheduler.hpp"
-#include <algorithm>
+#include <fstream>
 
 
 namespace emu {
@@ -11,6 +11,18 @@ Scheduler::Scheduler() {
 void Scheduler::reset() {
     current_timestamp = 0;
     events.clear();
+}
+
+void Scheduler::serialize(std::ofstream &file) {
+    file.write(reinterpret_cast<const char *>(current_timestamp), sizeof(current_timestamp));
+
+    //Handles are dependent on the initialization order of components, 
+    //any changes to that order should increment the save state version.
+    const std::vector<Event> &container = events.getContainer();
+    for(const auto &event : container) {
+        file.write(reinterpret_cast<const char *>(event.handle), sizeof(Event::handle));
+        file.write(reinterpret_cast<const char *>(event.scheduled_timestamp), sizeof(Event::scheduled_timestamp));
+    }
 }
 
 auto Scheduler::registerEvent(EventFunc callback) -> EventHandle {

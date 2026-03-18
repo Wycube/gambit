@@ -59,6 +59,10 @@ public:
         return elements.size() == 0;
     }
 
+    auto getContainer() -> const std::vector<T>& {
+        return elements;
+    }
+
 private:
 
     constexpr auto parent(size_t i) -> size_t {

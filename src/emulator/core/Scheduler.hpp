@@ -30,6 +30,7 @@ public:
     Scheduler();
 
     void reset();
+    void serialize(std::ofstream &file);
 
     auto registerEvent(EventFunc callback) -> EventHandle;
     void addEvent(EventHandle handle, u64 cycles_from_now);
