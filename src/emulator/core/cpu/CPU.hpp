@@ -21,6 +21,7 @@ public:
 
     void reset(bool skip_bios = true);
     void serialize(std::ofstream &file);
+    void deserialize(std::ifstream &file);
     void halt();
     auto halted() -> bool;
     void checkForInterrupt();

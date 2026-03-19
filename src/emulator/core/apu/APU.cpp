@@ -34,7 +34,12 @@ void APU::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(&sndcnt_h), sizeof(sndcnt_h));
     file.write(reinterpret_cast<const char*>(&sndcnt_x), sizeof(sndcnt_x));
     file.write(reinterpret_cast<const char*>(&sndbias), sizeof(sndbias));
+
+    size_t fifo_a_size = fifo_a.size();
+    file.write(reinterpret_cast<const char*>(&fifo_a_size), sizeof(fifo_a_size));
     file.write(reinterpret_cast<const char*>(&fifo_a.front()), fifo_a.size());
+    size_t fifo_b_size = fifo_b.size();
+    file.write(reinterpret_cast<const char*>(&fifo_b_size), sizeof(fifo_b_size));
     file.write(reinterpret_cast<const char*>(&fifo_b.front()), fifo_b.size());
     file.write(reinterpret_cast<const char*>(&fifo_sample_a), sizeof(fifo_sample_a));
     file.write(reinterpret_cast<const char*>(&fifo_sample_b), sizeof(fifo_sample_b));
@@ -43,6 +48,39 @@ void APU::serialize(std::ofstream &file) {
     pulse2.serialize(file);
     wave.serialize(file);
     noise.serialize(file);
+}
+
+void APU::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&sndcnt_l), sizeof(sndcnt_l));
+    file.read(reinterpret_cast<char*>(&sndcnt_h), sizeof(sndcnt_h));
+    file.read(reinterpret_cast<char*>(&sndcnt_x), sizeof(sndcnt_x));
+    file.read(reinterpret_cast<char*>(&sndbias), sizeof(sndbias));
+    
+    size_t fifo_a_size = 0;
+    file.read(reinterpret_cast<char*>(&fifo_a_size), sizeof(fifo_a_size));
+    fifo_a.clear();
+    for(size_t i = 0; i < fifo_a_size; i++) {
+        u8 val = 0;
+        file.read(reinterpret_cast<char*>(&val), sizeof(val));
+        fifo_a.push_back(val);
+    }
+
+    size_t fifo_b_size = 0;
+    file.read(reinterpret_cast<char*>(&fifo_b_size), sizeof(fifo_b_size));
+    fifo_b.clear();
+    for(size_t i = 0; i < fifo_b_size; i++) {
+        u8 val = 0;
+        file.read(reinterpret_cast<char*>(&val), sizeof(val));
+        fifo_b.push_back(val);
+    }
+
+    file.read(reinterpret_cast<char*>(&fifo_sample_a), sizeof(fifo_sample_a));
+    file.read(reinterpret_cast<char*>(&fifo_sample_b), sizeof(fifo_sample_b));
+
+    pulse1.deserialize(file);
+    pulse2.deserialize(file);
+    wave.deserialize(file);
+    noise.deserialize(file);
 }
 
 auto APU::read(u32 address) -> u8 {

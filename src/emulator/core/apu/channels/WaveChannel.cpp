@@ -32,6 +32,16 @@ void WaveChannel::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(wave_ram), sizeof(wave_ram));
 }
 
+void WaveChannel::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&snd3cnt_l), sizeof(snd3cnt_l));
+    file.read(reinterpret_cast<char*>(&snd3cnt_h), sizeof(snd3cnt_h));
+    file.read(reinterpret_cast<char*>(&snd3cnt_x), sizeof(snd3cnt_x));
+    file.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));
+    file.read(reinterpret_cast<char*>(&length_timer), sizeof(length_timer));
+    file.read(reinterpret_cast<char*>(&wave_pos), sizeof(wave_pos));
+    file.read(reinterpret_cast<char*>(wave_ram), sizeof(wave_ram));
+}
+
 auto WaveChannel::read(u32 address) -> u8 {
     switch(address) {
         case 0x70 : return snd3cnt_l & 0xFF;

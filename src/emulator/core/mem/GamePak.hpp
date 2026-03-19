@@ -49,7 +49,7 @@ private:
     void parseHeader();
     auto findSaveType(const std::string &path) -> bool;
 
-    [[maybe_unused]] Scheduler &scheduler;
+    Scheduler &scheduler;
     u8 sram_waitstate;
     u32 ws0_n, ws0_s, ws1_n, ws1_s, ws2_n, ws2_s;
     std::vector<u8> rom;

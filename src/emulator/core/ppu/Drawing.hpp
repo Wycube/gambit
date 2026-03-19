@@ -31,6 +31,7 @@ struct Background {
 
     void reset();
     void serialize(std::ofstream &file);
+    void deserialize(std::ifstream &file);
 
     void write(u32 address, u8 value);
     auto read(u32 address, bool regular) -> u8;
@@ -71,6 +72,7 @@ struct Window {
 
     void reset();
     void serialize(std::ofstream &file);
+    void deserialize(std::ifstream &file);
 
     auto insideWindow(int x, int y, int window) -> bool;
 };

@@ -46,6 +46,23 @@ void CPU::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(&master_enable), sizeof(master_enable));
 }
 
+void CPU::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(state.pipeline), sizeof(state.pipeline));
+    file.read(reinterpret_cast<char*>(state.regs), sizeof(state.regs));
+    file.read(reinterpret_cast<char*>(state.banked_regs), sizeof(state.banked_regs));
+    file.read(reinterpret_cast<char*>(state.fiq_regs), sizeof(state.fiq_regs));
+    file.read(reinterpret_cast<char*>(&state.pc), sizeof(state.pc));
+    file.read(reinterpret_cast<char*>(&state.cpsr), sizeof(state.cpsr));
+    file.read(reinterpret_cast<char*>(state.spsr), sizeof(state.spsr));
+    file.read(reinterpret_cast<char*>(&state.halted), sizeof(state.halted));
+    
+    file.read(reinterpret_cast<char*>(&int_enable), sizeof(int_enable));
+    u16 int_flag_val = 0;
+    file.read(reinterpret_cast<char*>(&int_flag_val), sizeof(int_flag_val));
+    int_flag.store(int_flag_val);
+    file.read(reinterpret_cast<char*>(&master_enable), sizeof(master_enable));
+}
+
 void CPU::halt() {
     state.halted = true;
 }

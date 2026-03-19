@@ -19,9 +19,25 @@ void Scheduler::serialize(std::ofstream &file) {
     //Handles are dependent on the initialization order of components, 
     //any changes to that order should increment the save state version.
     const std::vector<Event> &container = events.getContainer();
+    size_t size = container.size();
+    file.write(reinterpret_cast<const char*>(&size), sizeof(size));
     for(const auto &event : container) {
         file.write(reinterpret_cast<const char *>(&event.handle), sizeof(Event::handle));
         file.write(reinterpret_cast<const char *>(&event.scheduled_timestamp), sizeof(Event::scheduled_timestamp));
+    }
+}
+
+void Scheduler::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&current_timestamp), sizeof(current_timestamp));
+    
+    size_t size = 0;
+    file.read(reinterpret_cast<char*>(&size), sizeof(size));
+    events.clear();
+    for(size_t i = 0; i < size; i++) {
+        Event event;
+        file.read(reinterpret_cast<char *>(&event.handle), sizeof(Event::handle));
+        file.read(reinterpret_cast<char *>(&event.scheduled_timestamp), sizeof(Event::scheduled_timestamp));
+        events.insert(event);
     }
 }
 

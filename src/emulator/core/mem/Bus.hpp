@@ -2,7 +2,6 @@
 
 #include "Types.hpp"
 #include "GamePak.hpp"
-#include "emulator/core/cpu/Types.hpp"
 #include "common/Types.hpp"
 
 
@@ -17,6 +16,7 @@ public:
 
     void reset();
     void serialize(std::ofstream &file);
+    void deserialize(std::ifstream &file);
 
     auto read8(u32 address, AccessType access) -> u8;
     auto read16(u32 address, AccessType access) -> u16; 

@@ -15,6 +15,7 @@ public:
 
     void reset();
     void serialize(std::ofstream &file);
+    void deserialize(std::ifstream &file);
     auto running() -> bool;
     void step(u32 cycles);
 

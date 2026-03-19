@@ -18,6 +18,7 @@ public:
 
     void reset();
     void serialize(std::ofstream &file);
+    void deserialize(std::ifstream &file);
 
     auto read(u32 address) -> u8;
     void write(u32 address, u8 value);
@@ -43,6 +44,7 @@ private:
     u8 sndcnt_x;  //NR52
     u16 sndbias;
 
+    //TODO: Use static arrays instead
     std::deque<s8> fifo_a;
     std::deque<s8> fifo_b;
     s8 fifo_sample_a, fifo_sample_b;

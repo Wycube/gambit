@@ -40,6 +40,15 @@ void Timer::serialize(std::ofstream &file) {
     }
 }
 
+void Timer::deserialize(std::ifstream &file) {
+    for(int i = 0; i < 4; i++) {
+        file.read(reinterpret_cast<char*>(&timer_start[i]), sizeof(timer_start[i]));
+        file.read(reinterpret_cast<char*>(&timer_counter[i]), sizeof(timer_counter[i]));
+        file.read(reinterpret_cast<char*>(&timer_reload[i]), sizeof(timer_reload[i]));
+        file.read(reinterpret_cast<char*>(&tmcnt[i]), sizeof(tmcnt[i]));
+    }
+}
+
 auto Timer::read8(u32 address) -> u8 {
     switch(address) {
         case 0x100 : return bits::get<0, 8>(getTimerIntermediateValue(0, isTimerRunning(0)));

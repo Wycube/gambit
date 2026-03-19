@@ -83,6 +83,25 @@ void PPU::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(state.oam), sizeof(state.oam));
 }
 
+void PPU::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char *>(&state.dispcnt), sizeof(state.dispcnt));
+    file.read(reinterpret_cast<char *>(&state.dispstat), sizeof(state.dispstat));
+    file.read(reinterpret_cast<char *>(&state.line), sizeof(state.line));
+    file.read(reinterpret_cast<char *>(&state.bldcnt), sizeof(state.bldcnt));
+    file.read(reinterpret_cast<char *>(&state.bldalpha), sizeof(state.bldalpha));
+    file.read(reinterpret_cast<char *>(&state.bldy), sizeof(state.bldy));
+    file.read(reinterpret_cast<char *>(&state.mosaic), sizeof(state.mosaic));
+
+    for(int i = 0; i < 4; i++) {
+        state.bg[i].deserialize(file);
+    }
+    state.win.deserialize(file);
+
+    file.read(reinterpret_cast<char*>(state.vram), sizeof(state.vram));
+    file.read(reinterpret_cast<char*>(state.palette), sizeof(state.palette));
+    file.read(reinterpret_cast<char*>(state.oam), sizeof(state.oam));
+}
+
 auto PPU::readIO(u32 address) -> u8 {
     switch(address) {
         case 0x00 : return bits::get<0, 8>(state.dispcnt); //DISPCNT (LCD Control)

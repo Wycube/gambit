@@ -2,7 +2,6 @@
 #include "common/Types.hpp"
 #include "common/Log.hpp"
 #include "Frontend.hpp"
-#include "common/File.hpp"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -10,8 +9,6 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <glad/gl.h>
 #include <filesystem>
-#include <fstream>
-#include <vector>
 
 
 auto init() -> GLFWwindow* {

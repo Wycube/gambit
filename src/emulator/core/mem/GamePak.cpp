@@ -1,5 +1,4 @@
 #include "GamePak.hpp"
-#include "emulator/core/GBA.hpp"
 #include "save/EEPROM.hpp"
 #include "save/Flash.hpp"
 #include "save/SRAM.hpp"

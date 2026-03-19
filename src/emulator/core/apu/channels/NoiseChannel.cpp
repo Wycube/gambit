@@ -28,6 +28,17 @@ void NoiseChannel::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(&high), sizeof(high));
 }
 
+void NoiseChannel::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&snd4cnt_l), sizeof(snd4cnt_l));
+    file.read(reinterpret_cast<char*>(&snd4cnt_h), sizeof(snd4cnt_h));
+    file.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));
+    file.read(reinterpret_cast<char*>(&current_vol), sizeof(current_vol));
+    file.read(reinterpret_cast<char*>(&envelope_timer), sizeof(envelope_timer));
+    file.read(reinterpret_cast<char*>(&length_timer), sizeof(length_timer));
+    file.read(reinterpret_cast<char*>(&lfsr), sizeof(lfsr));
+    file.read(reinterpret_cast<char*>(&high), sizeof(high));
+}
+
 auto NoiseChannel::read(u32 address) -> u8 {
     switch(address) {
         case 0x79 : return snd4cnt_l >> 8;

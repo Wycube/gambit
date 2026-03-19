@@ -13,6 +13,7 @@ public:
 
     void reset();
     void serialize(std::ofstream &file);
+    void deserialize(std::ifstream &file);
 
     auto read(u32 address) -> u8;
     void write(u32 address, u8 value);

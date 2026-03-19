@@ -46,6 +46,27 @@ void Background::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(&internal_y), sizeof(internal_y));
 }
 
+void Background::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&priority), sizeof(priority));
+    file.read(reinterpret_cast<char*>(&char_base_block), sizeof(char_base_block));
+    file.read(reinterpret_cast<char*>(&mosaic), sizeof(mosaic));
+    file.read(reinterpret_cast<char*>(&color_mode), sizeof(color_mode));
+    file.read(reinterpret_cast<char*>(&scr_base_block), sizeof(scr_base_block));
+    file.read(reinterpret_cast<char*>(&disp_overflow), sizeof(disp_overflow));
+    file.read(reinterpret_cast<char*>(&screen_size), sizeof(screen_size));
+    file.read(reinterpret_cast<char*>(&unused), sizeof(unused));
+    file.read(reinterpret_cast<char*>(&h_offset), sizeof(h_offset));
+    file.read(reinterpret_cast<char*>(&v_offset), sizeof(v_offset));
+    file.read(reinterpret_cast<char*>(&reference_x), sizeof(reference_x));
+    file.read(reinterpret_cast<char*>(&reference_y), sizeof(reference_y));
+    file.read(reinterpret_cast<char*>(&param_a), sizeof(param_a));
+    file.read(reinterpret_cast<char*>(&param_b), sizeof(param_b));
+    file.read(reinterpret_cast<char*>(&param_c), sizeof(param_c));
+    file.read(reinterpret_cast<char*>(&param_d), sizeof(param_d));
+    file.read(reinterpret_cast<char*>(&internal_x), sizeof(internal_x));
+    file.read(reinterpret_cast<char*>(&internal_y), sizeof(internal_y));
+}
+
 void Background::write(u32 address, u8 value) {
     if(address & 1) {
         scr_base_block = value & 0x1F;
@@ -288,6 +309,15 @@ void Window::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(&winv[1]), sizeof(winv[1]));
     file.write(reinterpret_cast<const char*>(&winin), sizeof(winin));
     file.write(reinterpret_cast<const char*>(&winout), sizeof(winout));
+}
+
+void Window::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&winh[0]), sizeof(winh[0]));
+    file.read(reinterpret_cast<char*>(&winh[1]), sizeof(winh[1]));
+    file.read(reinterpret_cast<char*>(&winv[0]), sizeof(winv[0]));
+    file.read(reinterpret_cast<char*>(&winv[1]), sizeof(winv[1]));
+    file.read(reinterpret_cast<char*>(&winin), sizeof(winin));
+    file.read(reinterpret_cast<char*>(&winout), sizeof(winout));
 }
 
 //TODO: Window has some weird behavior to implement

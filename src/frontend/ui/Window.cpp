@@ -1,8 +1,6 @@
 #include "Window.hpp"
 #include "frontend/Frontend.hpp"
 #include "common/Version.hpp"
-#include "common/File.hpp"
-#include "common/Types.hpp"
 #include "common/Log.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>

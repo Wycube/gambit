@@ -1,6 +1,5 @@
 #include "DebugInterface.hpp"
 #include "emulator/core/GBA.hpp"
-#include "common/Log.hpp"
 
 
 namespace emu {

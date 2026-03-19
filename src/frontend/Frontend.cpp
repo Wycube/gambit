@@ -377,6 +377,28 @@ void Frontend::drawInterface() {
 
                 glfwSetWindowTitle(window, fmt::format("Gambit  [{}]", common::GIT_DESC).c_str());
             }
+
+            if(ImGui::MenuItem("Save State", nullptr, nullptr, rom_loaded)) {
+                bool was_running = emu_thread.isRunning();
+                stopEmulation();
+                //TODO: Write to file from user provided path
+                // core->saveState(file);
+                
+                if(was_running) {
+                    startEmulation();
+                }
+            }
+            
+            if(ImGui::MenuItem("Load State", nullptr, nullptr, rom_loaded)) {
+                bool was_running = emu_thread.isRunning();
+                stopEmulation();
+                //TODO: Load file from user provided path
+                // core->loadState(file);
+                
+                if(was_running) {
+                    startEmulation();
+                }
+            }
             ImGui::EndMenu();
         }
 

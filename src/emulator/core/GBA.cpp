@@ -1,4 +1,5 @@
 #include "GBA.hpp"
+#include "common/Log.hpp"
 
 
 namespace emu {
@@ -96,8 +97,32 @@ void GBA::saveState(std::ofstream &file) {
     cpu.serialize(file);
 }
 
-void loadState(std::ifstream &file) {
+void GBA::loadState(std::ifstream &file) {
+    //TODO:
+    //Load and verify magic
+    u32 magic = 0;
+    file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
+    if(magic != 0x53414247) {
+        LOG_FATAL("Incorrect magic ({:08X}) for save state!", magic);
+    }
 
+    //Load and verify version
+    u16 version = 0;
+    file.read(reinterpret_cast<char*>(&version), sizeof(version));
+    if(version != SAVE_STATE_VERSION) {
+        LOG_FATAL("Incorrect version ({:04X}) for save state!", version);
+    }
+
+    //Deserialize each component state
+    scheduler.deserialize(file);
+    keypad.deserialize(file);
+    timer.deserialize(file);
+    dma.deserialize(file);
+    sio.deserialize(file);
+    ppu.deserialize(file);
+    apu.deserialize(file);
+    bus.deserialize(file);
+    cpu.deserialize(file);
 }
 
 } //namespace emu

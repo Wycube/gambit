@@ -1,6 +1,5 @@
 #pragma once
 
-#include "emulator/core/cpu/Types.hpp"
 #include "common/Buffer.hpp"
 #include "common/Types.hpp"
 #include <unordered_map>

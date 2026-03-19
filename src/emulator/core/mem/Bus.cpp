@@ -25,6 +25,13 @@ void Bus::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(iwram), sizeof(iwram));
 }
 
+void Bus::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&bios_open_bus), sizeof(bios_open_bus));
+    file.read(reinterpret_cast<char*>(&waitcnt), sizeof(waitcnt));
+    file.read(reinterpret_cast<char*>(ewram), sizeof(ewram));
+    file.read(reinterpret_cast<char*>(iwram), sizeof(iwram));
+}
+
 auto Bus::read8(u32 address, AccessType access) -> u8 {
     core.scheduler.step(1);
     return read<u8>(address, access);

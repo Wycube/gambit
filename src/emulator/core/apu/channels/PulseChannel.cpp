@@ -44,6 +44,19 @@ void PulseChannel::serialize(std::ofstream &file) {
     file.write(reinterpret_cast<const char*>(&sweep_timer), sizeof(sweep_timer));
 }
 
+void PulseChannel::deserialize(std::ifstream &file) {
+    file.read(reinterpret_cast<char*>(&sndcnt_l), sizeof(sndcnt_l));
+    file.read(reinterpret_cast<char*>(&sndcnt_h), sizeof(sndcnt_h));
+    file.read(reinterpret_cast<char*>(&sndcnt_x), sizeof(sndcnt_x));
+    file.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));
+    file.read(reinterpret_cast<char*>(&wave_duty_pos), sizeof(wave_duty_pos));
+    file.read(reinterpret_cast<char*>(&current_vol), sizeof(current_vol));
+    file.read(reinterpret_cast<char*>(&envelope_timer), sizeof(envelope_timer));
+    file.read(reinterpret_cast<char*>(&length_timer), sizeof(length_timer));
+    file.read(reinterpret_cast<char*>(&shadow_freq), sizeof(shadow_freq));
+    file.read(reinterpret_cast<char*>(&sweep_timer), sizeof(sweep_timer));
+}
+
 auto PulseChannel::read(u32 address) -> u8 {
     switch(address) {
         case 0x60 : return sndcnt_l;
