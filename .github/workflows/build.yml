@@ -15,9 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6.0.2
       with:
         submodules: true
+        fetch-tags: true
         
     - name: Install Dependencies
       run: |
@@ -36,7 +37,7 @@ jobs:
       with:
         name: linux
         path:
-          ${{github.workspace}}/build/bin/${{env.BUILD_TYPE}}/main
+          ${{github.workspace}}/build/bin/${{env.BUILD_TYPE}}/gambit
 
   build-windows:
     runs-on: windows-latest
@@ -54,17 +55,17 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3.2.2
       with:
         name: windows
         path:
-          ${{github.workspace}}/build/bin/${{env.BUILD_TYPE}}/${{env.BUILD_TYPE}}/main.exe
+          ${{github.workspace}}/build/bin/${{env.BUILD_TYPE}}/${{env.BUILD_TYPE}}/gambit.exe
           
   build-macos:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3.2.2
       with:
         submodules: true
 
@@ -76,8 +77,8 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3.2.2
       with:
         name: macOS
         path:
-          ${{github.workspace}}/build/bin/${{env.BUILD_TYPE}}/main
+          ${{github.workspace}}/build/bin/${{env.BUILD_TYPE}}/gambit
