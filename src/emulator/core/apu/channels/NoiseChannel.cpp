@@ -1,7 +1,6 @@
 #include "NoiseChannel.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
-#include <fstream>
 
 
 namespace emu {

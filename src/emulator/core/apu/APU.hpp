@@ -5,6 +5,7 @@
 #include "channels/NoiseChannel.hpp"
 #include "common/Types.hpp"
 #include <deque>
+#include <fstream>
 
 
 namespace emu {

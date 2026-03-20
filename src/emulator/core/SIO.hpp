@@ -2,6 +2,7 @@
 
 #include "Scheduler.hpp"
 #include "common/Types.hpp"
+#include <fstream>
 
 
 namespace emu {

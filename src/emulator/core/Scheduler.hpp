@@ -4,6 +4,7 @@
 #include "common/Heap.hpp"
 #include <functional>
 #include <vector>
+#include <fstream>
 
 
 namespace emu {

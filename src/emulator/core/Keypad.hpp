@@ -2,6 +2,7 @@
 
 #include "common/Types.hpp"
 #include <mutex>
+#include <fstream>
 
 
 namespace emu {

@@ -1,7 +1,6 @@
 #include "WaveChannel.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
-#include <fstream>
 #include <cstring>
 
 static constexpr u8 VOLUMES[4] = {0, 4, 2, 1};

@@ -1,7 +1,6 @@
 #include "PulseChannel.hpp"
 #include "common/Bits.hpp"
 #include "common/Log.hpp"
-#include <fstream>
 
 //12.5% |-_______-_______|
 //25.0% |--______--______|
