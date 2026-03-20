@@ -24,6 +24,8 @@ public:
     void resetAndLoad(const std::string &path);
     auto loadROM(const std::string &path) -> bool;
     auto loadBIOS(const std::string &path) -> bool;
+    void loadState(const std::string &path);
+    void saveState(const std::string &path);
     auto getWindow() -> GLFWwindow*;
     auto getSettings() -> const Settings&;
     void setSettings(const Settings &new_settings);

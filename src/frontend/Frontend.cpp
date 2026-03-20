@@ -175,6 +175,38 @@ auto Frontend::loadBIOS(const std::string &path) -> bool {
     return true;
 }
 
+void Frontend::loadState(const std::string &path) {
+    std::ifstream file(path, std::ios_base::binary);
+    if(!file.is_open()) {
+        LOG_ERROR("Failed to open file '{}' for loading state!", path);
+        return;
+    }
+    
+    bool was_running = emu_thread.isRunning();
+    stopEmulation();
+    core->loadState(file);
+    
+    if(was_running) {
+        startEmulation();
+    }
+}
+
+void Frontend::saveState(const std::string &path) {
+    std::ofstream file(path, std::ios_base::binary);
+    if(!file.is_open()) {
+        LOG_ERROR("Failed to open file '{}' for saving state!", path);
+        return;
+    }
+    
+    bool was_running = emu_thread.isRunning();
+    stopEmulation();
+    core->saveState(file);
+    
+    if(was_running) {
+        startEmulation();
+    }
+}
+
 auto Frontend::getWindow() -> GLFWwindow* {
     return window;
 }
@@ -341,7 +373,7 @@ void Frontend::drawInterface() {
     if(settings.show_menu_bar && ImGui::BeginMainMenuBar()) {
             if(ImGui::BeginMenu("File")) {
             if(ImGui::MenuItem("Load ROM")) {
-                file_dialog.open();
+                file_dialog.open(ui::FileDialogType::ROM_LOAD);
             }
             ImGui::EndMenu();
         }
@@ -379,25 +411,11 @@ void Frontend::drawInterface() {
             }
 
             if(ImGui::MenuItem("Save State", nullptr, nullptr, rom_loaded)) {
-                bool was_running = emu_thread.isRunning();
-                stopEmulation();
-                //TODO: Write to file from user provided path
-                // core->saveState(file);
-                
-                if(was_running) {
-                    startEmulation();
-                }
+                file_dialog.open(ui::FileDialogType::STATE_SAVE);
             }
             
             if(ImGui::MenuItem("Load State", nullptr, nullptr, rom_loaded)) {
-                bool was_running = emu_thread.isRunning();
-                stopEmulation();
-                //TODO: Load file from user provided path
-                // core->loadState(file);
-                
-                if(was_running) {
-                    startEmulation();
-                }
+                file_dialog.open(ui::FileDialogType::STATE_LOAD);
             }
             ImGui::EndMenu();
         }

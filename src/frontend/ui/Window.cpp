@@ -45,16 +45,21 @@ void AboutDialog::draw(Frontend&) {
     ImGui::EndPopup();
 }
 
-void FileDialog::open() {
+void FileDialog::open(FileDialogType type) {
     open_popup = true;
     active = true;
+    this->type = type;
 }
 
 void FileDialog::draw(Frontend &frontend) {
     static char path_buf[100];
 
     if(open_popup) {
-        ImGui::OpenPopup("Load ROM");
+        switch(type) {
+            case ROM_LOAD : ImGui::OpenPopup("Load ROM"); break;
+            case STATE_LOAD : ImGui::OpenPopup("Load State"); break;
+            case STATE_SAVE : ImGui::OpenPopup("Save State"); break;
+        }
         open_popup = false;
         path_buf[0] = '\0';
     }
@@ -68,6 +73,30 @@ void FileDialog::draw(Frontend &frontend) {
                 frontend.resetAndLoad(path_buf);
                 ImGui::CloseCurrentPopup();
             }
+        }
+    }
+    ImGui::EndPopup();
+
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if(ImGui::BeginPopupModal("Load State", &active, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+        bool entered = ImGui::InputText("Path", path_buf, 100, ImGuiInputTextFlags_EnterReturnsTrue);
+
+        if(ImGui::Button("Load") || entered) {
+            if(std::filesystem::exists(path_buf) && std::filesystem::is_regular_file(path_buf)) {
+                frontend.loadState(path_buf);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+    }
+    ImGui::EndPopup();
+
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if(ImGui::BeginPopupModal("Save State", &active, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+        bool entered = ImGui::InputText("Path", path_buf, 100, ImGuiInputTextFlags_EnterReturnsTrue);
+
+        if(ImGui::Button("Save") || entered) {
+            frontend.saveState(path_buf);
+            ImGui::CloseCurrentPopup();
         }
     }
     ImGui::EndPopup();

@@ -98,19 +98,20 @@ void GBA::saveState(std::ofstream &file) {
 }
 
 void GBA::loadState(std::ifstream &file) {
-    //TODO:
     //Load and verify magic
     u32 magic = 0;
     file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
     if(magic != 0x53414247) {
-        LOG_FATAL("Incorrect magic ({:08X}) for save state!", magic);
+        LOG_ERROR("Incorrect magic ({:08X}) for save state!", magic);
+        return;
     }
 
     //Load and verify version
     u16 version = 0;
     file.read(reinterpret_cast<char*>(&version), sizeof(version));
     if(version != SAVE_STATE_VERSION) {
-        LOG_FATAL("Incorrect version ({:04X}) for save state!", version);
+        LOG_ERROR("Incorrect version ({:04X}) for save state!", version);
+        return;
     }
 
     //Deserialize each component state

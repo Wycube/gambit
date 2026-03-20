@@ -23,13 +23,18 @@ private:
     bool open_popup = false;
 };
 
+enum FileDialogType {
+    ROM_LOAD, STATE_LOAD, STATE_SAVE
+};
+
 struct FileDialog final : public Window {
-    void open();
+    void open(FileDialogType type);
     void draw(Frontend &frontend) override;
 
 private:
 
     bool open_popup = false;
+    FileDialogType type = ROM_LOAD;
 };
 
 struct MetricsWindow final : public Window {
