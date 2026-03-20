@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6.0.2
+    - uses: actions/checkout@v6
       with:
         submodules: true
         fetch-tags: true
@@ -33,7 +33,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: linux
         path:
@@ -43,7 +43,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
       with:
         submodules: true
 
@@ -55,7 +55,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
     - name: Upload
-      uses: actions/upload-artifact@v3.2.2
+      uses: actions/upload-artifact@v4
       with:
         name: windows
         path:
@@ -65,7 +65,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v3.2.2
+    - uses: actions/checkout@v6
       with:
         submodules: true
 
@@ -77,7 +77,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
     - name: Upload
-      uses: actions/upload-artifact@v3.2.2
+      uses: actions/upload-artifact@v4
       with:
         name: macOS
         path:
